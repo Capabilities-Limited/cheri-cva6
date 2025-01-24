@@ -74,7 +74,7 @@ module scoreboard #(
     // Transaction ID at which to write the result back - EX_STAGE
     input logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_i,
     // Results to write back - EX_STAGE
-    input logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.XLEN-1:0] wbdata_i,
+    input logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.REGLEN-1:0] wbdata_i,
     // Exception from a functional unit (e.g.: ld/st exception) - EX_STAGE
     input exception_t [CVA6Cfg.NrWbPorts-1:0] ex_i,
     // Indicates valid results - EX_STAGE
@@ -208,8 +208,8 @@ module scoreboard #(
         end
         mem_n[trans_id_i[i]].sbe.result = wbdata_i[i];
         // save the target address of a branch (needed for debug in commit stage)
-        if (CVA6Cfg.DebugEn) begin
-          mem_n[trans_id_i[i]].sbe.bp.predict_address = resolved_branch_i.target_address;
+        if (CVA6Cfg.DebugEn || CVA6Cfg.RVFI_DII) begin
+          mem_n[trans_id_i[i]].sbe.bp.predict_address = resolved_branch_i.target_address[CVA6Cfg.XLEN-1:0];
         end
         if (mem_n[trans_id_i[i]].sbe.fu == ariane_pkg::CVXIF) begin
           if (x_we_i) mem_n[trans_id_i[i]].sbe.rd = x_rd_i;
