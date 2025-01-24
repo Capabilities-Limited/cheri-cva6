@@ -53,15 +53,15 @@ module issue_stage
     // Handshake's acknowledge with decode stage - ID_STAGE
     output logic [CVA6Cfg.NrIssuePorts-1:0] decoded_instr_ack_o,
     // rs1 forwarding - EX_STAGE
-    output [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.VLEN-1:0] rs1_forwarding_o,
+    output [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs1_forwarding_o,
     // rs2 forwarding - EX_STAGE
-    output [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.VLEN-1:0] rs2_forwarding_o,
+    output [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs2_forwarding_o,
     // FU data useful to execute instruction - EX_STAGE
     output fu_data_t [CVA6Cfg.NrIssuePorts-1:0] fu_data_o,
     // ALU to ALU bypass control - EX_STAGE
     output alu_bypass_t alu_bypass_o,
     // Program Counter - EX_STAGE
-    output logic [CVA6Cfg.VLEN-1:0] pc_o,
+    output logic [CVA6Cfg.REGLEN-1:0] pc_o,
     // Is zcmt instruction - EX_STAGE
     output logic is_zcmt_o,
     // Is compressed instruction - EX_STAGE
@@ -100,6 +100,8 @@ module issue_stage
     output logic [CVA6Cfg.NrIssuePorts-1:0] alu2_valid_o,
     // CSR is valid - EX_STAGE
     output logic [CVA6Cfg.NrIssuePorts-1:0] csr_valid_o,
+    // CLU is valid - EX_STAGE
+    output logic clu_valid_o,
     // CVXIF FU is valid - EX_STAGE
     output logic [CVA6Cfg.NrIssuePorts-1:0] xfu_valid_o,
     // CVXIF is FU ready - EX_STAGE
@@ -137,7 +139,7 @@ module issue_stage
     // Result from branch unit - EX_STAGE
     input bp_resolve_t resolved_branch_i,
     // Results to write back - EX_STAGE
-    input logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.XLEN-1:0] wbdata_i,
+    input logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.REGLEN-1:0] wbdata_i,
     // exception from execute stage or CVXIF - EX_STAGE
     input exception_t [CVA6Cfg.NrWbPorts-1:0] ex_ex_i,
     // Indicates valid results - EX_STAGE
@@ -149,7 +151,13 @@ module issue_stage
     // Destination register in register file - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0][4:0] waddr_i,
     // Value to write to register file - COMMIT_STAGE
-    input logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] wdata_i,
+    input logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.REGLEN-1:0] wdata_i,
+    // Fast-Register Clear - EX_STAGE
+    output  logic [CVA6Cfg.NrCommitPorts-1:0]              clr_i,
+    // Fast-Register Clear Mask - EX_STAGE
+    output  logic [CVA6Cfg.NrCommitPorts-1:0][7:0]         mask_i,
+    // Fast-Register Clear Quarter - EX_STAGE
+    output  logic [CVA6Cfg.NrCommitPorts-1:0][1:0]         quarter_i,
     // GPR write enable - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_i,
     // FPR write enable - COMMIT_STAGE
@@ -292,6 +300,7 @@ module issue_stage
       .cvxif_ready_i           (xfu_ready_i),
       .cvxif_off_instr_o       (x_off_instr_o),
       .hart_id_i               (hart_id_i),
+      .clu_valid_o             (clu_valid_o),
       .x_issue_ready_i         (x_issue_ready_i),
       .x_issue_resp_i          (x_issue_resp_i),
       .x_issue_valid_o         (x_issue_valid_o),
@@ -307,6 +316,9 @@ module issue_stage
       .x_id_o                  (x_id_iro_sb),
       .waddr_i,
       .wdata_i,
+      .clr_i,
+      .mask_i,
+      .quarter_i,
       .we_gpr_i,
       .we_fpr_i,
       .stall_issue_o,

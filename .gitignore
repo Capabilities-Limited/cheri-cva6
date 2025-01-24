@@ -57,3 +57,5 @@ Bender.lock
 /verif/sim/encaps.traces
 /verif/sim/iti.traces
 /verif/sim/verilator.fst.hier
+corev_apu/tb/*/work-*/*
+corev_apu/tb/*/logs/*

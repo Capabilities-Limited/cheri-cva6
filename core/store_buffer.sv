@@ -43,9 +43,10 @@ module store_buffer
 
     input  logic [CVA6Cfg.PLEN-1:0]  paddr_i,         // physical address of store which needs to be placed in the queue
     output logic [CVA6Cfg.PLEN-1:0] rvfi_mem_paddr_o,
-    input logic [CVA6Cfg.XLEN-1:0] data_i,  // data which is placed in the queue
-    input logic [(CVA6Cfg.XLEN/8)-1:0] be_i,  // byte enable in
-    input logic [1:0] data_size_i,  // type of request we are making (e.g.: bytes to write)
+    input logic [CVA6Cfg.CLEN-1:0] data_i,  // data which is placed in the queue
+    input logic [CVA6Cfg.CheriCapTagWidth-1:0] cap_tag_i,  // capability tag bit
+    input logic [(CVA6Cfg.CLEN/8)-1:0] be_i,  // byte enable in
+    input logic [CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0] data_size_i,  // type of request we are making (e.g.: bytes to write)
     input cbo_t cbo_op_i,  // type of cache block operation
 
     // D$ interface
@@ -58,9 +59,10 @@ module store_buffer
   // 2. Commit queue which is non-speculative, e.g.: the store will definitely happen.
   struct packed {
     logic [CVA6Cfg.PLEN-1:0] address;
-    logic [CVA6Cfg.XLEN-1:0] data;
-    logic [(CVA6Cfg.XLEN/8)-1:0] be;
-    logic [1:0] data_size;
+    logic [CVA6Cfg.CLEN-1:0] data;
+    logic [CVA6Cfg.CheriCapTagWidth-1:0] cap_tag;
+    logic [(CVA6Cfg.CLEN/8)-1:0] be;
+    logic [CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0] data_size;
     cbo_t cbo_op;
     logic valid;  // this entry is valid, we need this for checking if the address offset matches
     logic wait_rvalid;  // need to wait for rvalid...
@@ -97,6 +99,7 @@ module store_buffer
     if (valid_i) begin
       speculative_queue_n[speculative_write_pointer_q].address = paddr_i;
       speculative_queue_n[speculative_write_pointer_q].data = data_i;
+      speculative_queue_n[speculative_write_pointer_q].cap_tag = cap_tag_i;
       speculative_queue_n[speculative_write_pointer_q].be = be_i;
       speculative_queue_n[speculative_write_pointer_q].data_size = data_size_i;
       speculative_queue_n[speculative_write_pointer_q].valid = 1'b1;
@@ -152,7 +155,7 @@ module store_buffer
                                                                                     CVA6Cfg.DCACHE_INDEX_WIDTH-1 :
                                                                                     CVA6Cfg.DCACHE_INDEX_WIDTH];
   assign req_port_o.data_wdata = commit_queue_q[commit_read_pointer_q].data;
-  assign req_port_o.data_wuser = '0;
+  assign req_port_o.data_wuser = commit_queue_q[commit_read_pointer_q].cap_tag;
   assign req_port_o.data_be = commit_queue_q[commit_read_pointer_q].be;
   assign req_port_o.data_size = commit_queue_q[commit_read_pointer_q].data_size;
 

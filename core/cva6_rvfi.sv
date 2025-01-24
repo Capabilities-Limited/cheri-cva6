@@ -241,13 +241,15 @@ module cva6_rvfi
   logic [CVA6Cfg.NrIssuePorts-1:0] decoded_instr_valid;
   logic [CVA6Cfg.NrIssuePorts-1:0] decoded_instr_ack;
 
-  logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.XLEN-1:0] rs1;
-  logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.XLEN-1:0] rs2;
+  logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs1;
+  logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs2;
 
   logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] rvfi_intr;
 
   logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.VLEN-1:0] commit_instr_pc;
+  logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.VLEN-1:0] commit_instr_next_pc;
   fu_op [CVA6Cfg.NrCommitPorts-1:0] commit_instr_op;
+  fu_t [CVA6Cfg.NrCommitPorts-1:0] commit_instr_fu;
   logic [CVA6Cfg.NrCommitPorts-1:0][REG_ADDR_SIZE-1:0] commit_instr_rs1;
   logic [CVA6Cfg.NrCommitPorts-1:0][REG_ADDR_SIZE-1:0] commit_instr_rs2;
   logic [CVA6Cfg.NrCommitPorts-1:0][REG_ADDR_SIZE-1:0] commit_instr_rd;
@@ -270,18 +272,18 @@ module cva6_rvfi
 
   logic [CVA6Cfg.VLEN-1:0] lsu_ctrl_vaddr;
   fu_t lsu_ctrl_fu;
-  logic [(CVA6Cfg.XLEN/8)-1:0] lsu_ctrl_be;
+  logic [(CVA6Cfg.CLEN/8)-1:0] lsu_ctrl_be;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] lsu_ctrl_trans_id;
 
-  logic [((CVA6Cfg.CvxifEn || CVA6Cfg.RVV) ? 5 : 4)-1:0][CVA6Cfg.XLEN-1:0] wbdata;
+  logic [((CVA6Cfg.CvxifEn || CVA6Cfg.RVV) ? 5 : 4)-1:0][CVA6Cfg.REGLEN-1:0] wbdata;
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack;
   logic [CVA6Cfg.PLEN-1:0] mem_paddr;
   logic debug_mode;
   logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] wdata;
 
   logic [CVA6Cfg.VLEN-1:0] lsu_addr;
-  logic [(CVA6Cfg.XLEN/8)-1:0] lsu_rmask;
-  logic [(CVA6Cfg.XLEN/8)-1:0] lsu_wmask;
+  logic [(CVA6Cfg.CLEN/8)-1:0] lsu_rmask;
+  logic [(CVA6Cfg.CLEN/8)-1:0] lsu_wmask;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] lsu_addr_trans_id;
 
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] branch_trans_id;
@@ -323,7 +325,9 @@ module cva6_rvfi
   assign rs2 = instr.rs2;
 
   assign commit_instr_pc = instr.commit_instr_pc;
+  assign commit_instr_next_pc = instr.commit_instr_next_pc;
   assign commit_instr_op = instr.commit_instr_op;
+  assign commit_instr_fu = instr.commit_instr_fu;
   assign commit_instr_rs1 = instr.commit_instr_rs1;
   assign commit_instr_rs2 = instr.commit_instr_rs2;
   assign commit_instr_rd = instr.commit_instr_rd;
@@ -425,12 +429,12 @@ module cva6_rvfi
 
   // this is the FIFO struct of the issue queue
   typedef struct packed {
-    logic [CVA6Cfg.XLEN-1:0] rs1_rdata;
-    logic [CVA6Cfg.XLEN-1:0] rs2_rdata;
+    logic [CVA6Cfg.REGLEN-1:0] rs1_rdata;
+    logic [CVA6Cfg.REGLEN-1:0] rs2_rdata;
     logic [CVA6Cfg.VLEN-1:0] lsu_addr;
-    logic [(CVA6Cfg.XLEN/8)-1:0] lsu_rmask;
-    logic [(CVA6Cfg.XLEN/8)-1:0] lsu_wmask;
-    logic [CVA6Cfg.XLEN-1:0] lsu_wdata;
+    logic [(CVA6Cfg.CLEN/8)-1:0] lsu_rmask;
+    logic [(CVA6Cfg.CLEN/8)-1:0] lsu_wmask;
+    logic [CVA6Cfg.CLEN-1:0] lsu_wdata;
     logic [31:0] instr;
     logic branch_valid;
     logic is_taken;
@@ -467,7 +471,7 @@ module cva6_rvfi
     end else if (lsu_wmask != 0) begin
       mem_n[lsu_addr_trans_id].lsu_addr  = lsu_addr;
       mem_n[lsu_addr_trans_id].lsu_wmask = lsu_wmask;
-      mem_n[lsu_addr_trans_id].lsu_wdata = wbdata[STORE_WB];
+      mem_n[lsu_addr_trans_id].lsu_wdata = wbdata[STORE_WB][CVA6Cfg.CLEN-1:0];
     end
   end
 
@@ -491,7 +495,8 @@ module cva6_rvfi
       valid     = (commit_ack[i] && !ex_commit_valid && !commit_drop[i]) ||
         (exception && (ex_commit_cause == riscv::ENV_CALL_MMODE ||
                   ex_commit_cause == riscv::ENV_CALL_SMODE ||
-                  ex_commit_cause == riscv::ENV_CALL_UMODE));
+                  ex_commit_cause == riscv::ENV_CALL_UMODE ||
+                  ex_commit_cause == cva6_cheri_pkg::CAP_EXCEPTION));
       rvfi_instr_o[i].valid <= valid;
       rvfi_instr_o[i].insn  <= mem_q[commit_pointer[i]].instr;
       // when synchronous trap, the instruction is not executed
@@ -514,14 +519,21 @@ module cva6_rvfi
       rvfi_instr_o[i].rs1_addr <= commit_instr_rs1[i];
       rvfi_instr_o[i].rs2_addr <= commit_instr_rs2[i];
       rvfi_instr_o[i].rd_addr <= commit_instr_rd[i];
-      rvfi_instr_o[i].rd_wdata <= (CVA6Cfg.FpPresent && is_rd_fpr(
+      rvfi_instr_o[i].rd_wdata <= (rvfi_instr_o[i].rd_addr == 0) ? '0 : (CVA6Cfg.FpPresent && is_rd_fpr(
           commit_instr_op[i]
       )) ? commit_instr_result[i] : wdata[i];
       rvfi_instr_o[i].pc_rdata <= commit_instr_pc[i];
-      rvfi_instr_o[i].mem_addr <= mem_q[commit_pointer[i]].lsu_addr;
+      if (mem_q[commit_pointer[i]].instr == 32'h30200073 && !exception) begin
+        rvfi_instr_o[i].pc_wdata <= csr.mepcc_q[63:0];
+      end else if (mem_q[commit_pointer[i]].instr == 32'h10200073 && !exception) begin
+        rvfi_instr_o[i].pc_wdata <= '0/* csr.sepc_q */;
+      end else begin
+        rvfi_instr_o[i].pc_wdata <= (exception) ? {csr.mtcc_q[63:2], 2'b00} : (commit_instr_fu[i] == CTRL_FLOW) ? commit_instr_next_pc[i] : commit_instr_pc[i] + 4;
+      end
+      rvfi_instr_o[i].mem_addr <= mem_q[commit_pointer[i]].lsu_addr + ((commit_instr_op[i] == ariane_pkg::CLOAD_TAGS) ? 48 : 0);
       // So far, only write paddr is reported. TODO: read paddr
       rvfi_instr_o[i].mem_paddr <= mem_paddr;
-      rvfi_instr_o[i].mem_wmask <= mem_q[commit_pointer[i]].lsu_wmask;
+      rvfi_instr_o[i].mem_wmask <= mem_q[commit_pointer[i]].lsu_wmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
 
       // For AMO operations, compute the actual write value
       // Note: AMO operations write a computed value to memory, not the original register value
@@ -535,10 +547,10 @@ module cva6_rvfi
         rvfi_instr_o[i].mem_wdata <= mem_q[commit_pointer[i]].lsu_wdata;
       end
 
-      rvfi_instr_o[i].mem_rmask <= mem_q[commit_pointer[i]].lsu_rmask;
+      rvfi_instr_o[i].mem_rmask <= mem_q[commit_pointer[i]].lsu_rmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
       rvfi_instr_o[i].mem_rdata <= commit_instr_result[i];
       rvfi_instr_o[i].rs1_rdata <= mem_q[commit_pointer[i]].rs1_rdata;
-      rvfi_instr_o[i].rs2_rdata <= mem_q[commit_pointer[i]].rs2_rdata;
+      rvfi_instr_o[i].rs2_rdata <= (rvfi_instr_o[i].rs2_addr == 0) ? '0 : mem_q[commit_pointer[i]].rs2_rdata;
       rvfi_to_iti_o.branch_valid[i] <= mem_q[commit_pointer[i]].branch_valid;
       rvfi_to_iti_o.is_taken[i] <= mem_q[commit_pointer[i]].is_taken;
       rvfi_to_iti_o.is_compressed[i] <= mem_q[commit_pointer[i]].is_compressed;

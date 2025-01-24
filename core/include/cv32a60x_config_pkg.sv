@@ -52,6 +52,8 @@ package cva6_config_pkg;
       CoproType: config_pkg::COPRO_EXAMPLE,
       RVZiCond: bit'(0),
       RVZiCbom: bit'(0),
+      RVZcheripurecap: bit'(0),
+      RVZcherihybrid: bit'(0),
       RVZicntr: bit'(0),
       RVZihpm: bit'(0),
       NrScoreboardEntries: unsigned'(4),
@@ -115,6 +117,8 @@ package cva6_config_pkg;
       NrLoadPipeRegs: int'(0),
       NrStorePipeRegs: int'(0),
       DcacheIdWidth: int'(1)
+      CheriCapTagWidth : int'(1),
+      RVFI_DII : int'(0)
   };
 
 endpackage
