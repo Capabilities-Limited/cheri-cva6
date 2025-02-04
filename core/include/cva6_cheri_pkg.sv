@@ -585,7 +585,7 @@ package cva6_cheri_pkg;
         length_mid_bits = top_mid_bits - base_mid_bits;
         length = $unsigned(length_mid_bits) << cap.bounds.exp;
         // if E >= 52, length takes up the entire address space
-        return /* (cap.bounds.exp >= CAP_RESET_EXP) ? ~(1 << XLEN) : */ length;
+        return (cap.bounds.exp >= CAP_RESET_EXP) ? ~(1 << XLEN) : length;
     endfunction
 
     /**
