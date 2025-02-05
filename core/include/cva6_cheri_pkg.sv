@@ -760,7 +760,7 @@ package cva6_cheri_pkg;
         mw_t addr_mid = cap.addr_mid;
         bool_t check_addr = inclusive ? addr_mid <= cap.bounds.top_bits
                             : addr_mid <  cap.bounds.top_bits;
-        bool_t check_top  = (meta_data.addr_hi_r  == meta_data.addr_hi_r) ? check_addr : meta_data.top_hi_r;
+        bool_t check_top  = (meta_data.top_hi_r   == meta_data.addr_hi_r) ? check_addr : meta_data.top_hi_r;
         bool_t check_base = (meta_data.base_hi_r  == meta_data.addr_hi_r) ? addr_mid >= cap.bounds.base_bits
                                          : meta_data.addr_hi_r;
         return check_top && check_base;
