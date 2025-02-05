@@ -403,7 +403,7 @@ package cva6_cheri_pkg;
         return ret.addr;
     endfunction
 
-    function automatic addrw_t set_cap_mem_addr_inc (capw_t cap, addrw_t inc);
+    function automatic capw_t set_cap_mem_addr_inc (capw_t cap, logic [CAP_M_WIDTH-4:0] inc);
         cap_mem_t ret = cap;
         addrw_t addr = get_cap_mem_addr(cap);
         ret.addr = set_cap_mem_addr_unsafe(cap, addr + $signed(inc));
