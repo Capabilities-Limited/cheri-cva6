@@ -13,9 +13,9 @@
     // Upstream repository
     upstream: {
         // URL
-        url: "https://github.com/pulp-platform/axi_riscv_atomics.git",
+        url: "https://github.com/ninolomata/axi_riscv_atomics.git",
         // revision
-        rev: "550881f12e22dfae405612fc1df6368f4c003e68",
+        rev: "05ba290a4b4dca92fa44017329b28e56e803646a",
     }
 
     // Patch dir for local changes
