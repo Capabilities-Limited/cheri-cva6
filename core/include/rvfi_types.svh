@@ -178,6 +178,9 @@
   logic [Cfg.REGLEN-1:0] mtcc_q; \
   logic [Cfg.REGLEN-1:0] mtdc_q; \
   logic [Cfg.REGLEN-1:0] mepcc_q; \
+  logic [Cfg.REGLEN-1:0] stcc_q; \
+  logic [Cfg.REGLEN-1:0] stdc_q; \
+  logic [Cfg.REGLEN-1:0] sepcc_q; \
   logic [Cfg.REGLEN-1:0] ddc_q; \
 }
 
