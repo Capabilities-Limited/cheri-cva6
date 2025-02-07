@@ -220,7 +220,8 @@ module issue_read_operands
   logic [ CVA6Cfg.NrIssuePorts-1:0][             CVA6Cfg.XLEN-1:0] rs2_res;
   logic [ CVA6Cfg.NrIssuePorts-1:0][             CVA6Cfg.XLEN-1:0] rs3_res;
 
-  logic [CVA6Cfg.NrIssuePorts-1:0][31:0] tinst_n, tinst_q;  // transformed instruction
+  logic [ CVA6Cfg.NrIssuePorts-1:0][31:0]                          tinst_n, tinst_q;  // transformed instruction
+  logic [ CVA6Cfg.NrIssuePorts-1:0]                                use_ddc_n, use_ddc_q;
 
   // forwarding signals
   logic [CVA6Cfg.NrIssuePorts-1:0] forward_rs1, forward_rs2, forward_rs3;
@@ -717,6 +718,7 @@ module issue_read_operands
       fu_data_n[i].operation = issue_instr_i[i].op;
       fu_data_n[i].rs1       = CVA6Cfg.CheriPresent ? issue_instr_i[i].rs1 : '0;
       fu_data_n[i].rs2       = CVA6Cfg.CheriPresent ? issue_instr_i[i].rs2 : '0;
+      fu_data_n[i].use_ddc   = CVA6Cfg.CheriPresent ? issue_instr_i[i].use_ddc : '0;
       if (CVA6Cfg.RVH) begin
         tinst_n[i] = issue_instr_i[i].ex.tinst;
       end

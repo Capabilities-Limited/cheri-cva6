@@ -196,9 +196,11 @@ module load_store_unit
   logic [(CVA6Cfg.CLEN/8)-1:0] be_i;
 
   if (CVA6Cfg.CheriPresent) begin : gen_vaddr_cheri
-    assign vaddr_xlen = (cap_mode_i || fu_data_i.operation == ariane_pkg::CLOAD_TAGS) ?
-                         $unsigned($signed(fu_data_i.operand_a[CVA6Cfg.XLEN-1:0])  + $signed(fu_data_i.imm)) :
-                         $unsigned($signed(ddc_i.addr) + $signed(fu_data_i.operand_a[CVA6Cfg.XLEN-1:0])  + $signed(fu_data_i.imm));
+    // TODO-ninolomata(cheri): make relocation possible via configuration parameter
+    assign vaddr_xlen = //(cap_mode_i || fu_data_i.operation == ariane_pkg::CLOAD_TAGS) ?
+                         $unsigned($signed(fu_data_i.operand_a[CVA6Cfg.XLEN-1:0])  + $signed(fu_data_i.imm)); /* : */
+                         // Remove Relocation via DDC
+                         // $unsigned($signed(ddc_i.addr) + $signed(fu_data_i.operand_a[CVA6Cfg.XLEN-1:0])  + $signed(fu_data_i.imm));
   end else begin : gen_vaddr_no_cheri
     assign vaddr_xlen = $unsigned($signed(fu_data_i.imm) + $signed(fu_data_i.operand_a));
   end
@@ -902,10 +904,11 @@ module load_store_unit
     // TODO: ddc must be incremented
     // Consider moving this to CHERI unit
     always_comb begin
-      check_cap             = (cap_mode_i || lsu_ctrl.operation == ariane_pkg::CLOAD_TAGS) ? lsu_ctrl.operand_a : ddc_i;
-      fault_cap_idx         = (cap_mode_i || lsu_ctrl.operation == ariane_pkg::CLOAD_TAGS) ? {1'b0,lsu_ctrl.rs1} : {6'b100001};
+      check_cap             = (lsu_ctrl.use_ddc && lsu_ctrl.operation != ariane_pkg::CLOAD_TAGS) ? ddc_i : lsu_ctrl.operand_a;
+      fault_cap_idx         = (lsu_ctrl.use_ddc && lsu_ctrl.operation != ariane_pkg::CLOAD_TAGS) ? {6'b100001} : {1'b0,lsu_ctrl.rs1};
       check_cap_meta_data   = cva6_cheri_pkg::get_cap_reg_meta_data(check_cap);
-      check_cap_address     = check_cap.addr;
+      // TODO-cheri: add relocation check_cap.addr
+      check_cap_address     = lsu_ctrl.vaddr;
       check_cap_base        = cva6_cheri_pkg::get_cap_reg_base(check_cap,check_cap_meta_data);
       check_cap_top         = cva6_cheri_pkg::get_cap_reg_top(check_cap,check_cap_meta_data);
       check_cap_length      = cva6_cheri_pkg::get_cap_reg_length(check_cap,check_cap_meta_data);
@@ -1015,7 +1018,8 @@ module load_store_unit
     fu_data_i.trans_id,
     speculative_load_i,
     1'b0,
-    fu_data_i.rs1
+    fu_data_i.rs1,
+    fu_data_i.use_ddc
   };
 
   lsu_bypass #(
