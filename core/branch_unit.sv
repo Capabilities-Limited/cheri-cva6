@@ -207,6 +207,7 @@ module branch_unit #(
   logic jump_taken;
   always_comb begin : exception_handling
     automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+    automatic cva6_cheri_pkg::addrw_t min_instr_off;
     // Do a jump if it is either unconditional jump (JAL | JALR) or `taken` conditional jump
     branch_exception_o.cause = riscv::INSTR_ADDR_MISALIGNED;
     branch_exception_o.valid = 1'b0;
@@ -222,6 +223,8 @@ module branch_unit #(
     target_pcc_top        = target_pcc.top;
     target_pcc_address    = target_pcc.addr;
     target_pcc_is_sealed  = (operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP);
+    // TODO-cheri(ninolomata): fix this once we disable compressed instructions without trigering errors
+    min_instr_off = ((CVA6Cfg.RVC && !CVA6Cfg.RVFI_DII) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
     // Only throw instruction address misaligned exception if this is indeed a `taken` conditional branch or
     // an unconditional jump
     if (!CVA6Cfg.RVC || CVA6Cfg.RVFI_DII) begin
@@ -241,7 +244,7 @@ module branch_unit #(
                 end
             end
             // Check if target address is in bounds
-            if (target_pcc_address < target_pcc_base || (target_pcc_address + {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2}) > target_pcc_top) begin
+            if (target_pcc_address < target_pcc_base || ((target_pcc_address + min_instr_off) > target_pcc_top)) begin
                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
                cheri_tval.cause         = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
                cheri_tval.cap_idx       = {6'b100000};
