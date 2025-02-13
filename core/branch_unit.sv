@@ -118,26 +118,44 @@ module branch_unit #(
     if (fu_data_i.operation inside {ariane_pkg::CINVOKE, ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
     if (CVA6Cfg.CheriPresent) begin
       if (!ariane_pkg::op_is_branch(fu_data_i.operation) && cap_mode) begin
+        next_pc_tmp = next_pc;
+        next_pc_tmp.otype = cva6_cheri_pkg::SENTRY_CAP;
+        next_pc = next_pc_tmp;
+        if (fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) begin
+          target_address_tmp =  target_address;
+          target_address_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
+          target_address =  target_address_tmp;
+        end
+      end
+      if (fu_data_i.operation inside {ariane_pkg::CINVOKE}) begin
+        next_pc_tmp = cva6_cheri_pkg::cap_reg_to_cap_pcc(fu_data_i.operand_b);
+        next_pc_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
+      end else begin
+        if (!cap_mode) begin
+          next_pc_tmp = cva6_cheri_pkg::set_cap_pcc_cursor(cva6_cheri_pkg::PCC_NULL_CAP, next_pc[CVA6Cfg.VLEN-1:0]);
+          next_pc_tmp.tag = 1'b0;
+        end else begin
           next_pc_tmp = next_pc;
           next_pc_tmp.otype = cva6_cheri_pkg::SENTRY_CAP;
           next_pc = next_pc_tmp;
           if (fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) begin
-             target_address_tmp = target_address;
-             target_address_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
-             target_address = target_address_tmp;
+            target_address_tmp = target_address;
+            target_address_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
+            target_address = target_address_tmp;
           end
+        end
       end
       if (fu_data_i.operation inside {ariane_pkg::CINVOKE}) begin
-          next_pc_tmp = fu_data_i.operand_b;
-          next_pc_tmp.otype  =  cva6_cheri_pkg::UNSEALED_CAP;
+        next_pc_tmp = fu_data_i.operand_b;
+        next_pc_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
       end else begin
-          if (!cap_mode) begin
-            next_pc_tmp = cva6_cheri_pkg::set_cap_pcc_cursor(cva6_cheri_pkg::PCC_NULL_CAP, next_pc[CVA6Cfg.VLEN-1:0]);
-            next_pc_tmp.tag = 1'b0;
-          end else begin
-            next_pc_tmp = next_pc;
-          end
-          // branch_result_o = cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc);
+        if (!cap_mode) begin
+          next_pc_tmp = cva6_cheri_pkg::set_cap_pcc_cursor(cva6_cheri_pkg::PCC_NULL_CAP, next_pc[CVA6Cfg.VLEN-1:0]);
+          next_pc_tmp.tag = 1'b0;
+        end else begin
+          next_pc_tmp = next_pc;
+        end
+        // branch_result_o = cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc);
       end
       branch_result_o = cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc_tmp);
     end else begin
