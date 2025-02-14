@@ -441,9 +441,7 @@ package cva6_cheri_pkg;
      * @returns capability 1 if the otypes is a reserved type.
      */
     function automatic bool_t is_cap_type_reserv (otypew_t otype);
-        addrw_t type_unsigned       = otype;
-        addrw_t otype_max_unsigned  = $signed(OTYPE_MAX);
-        return type_unsigned > otype_max_unsigned;
+        return otype > OTYPE_MAX;
     endfunction
 
     /* function automatic bool_t is_cap_reg_derivable (cap_reg_t cap);
