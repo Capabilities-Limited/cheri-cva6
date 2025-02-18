@@ -16,6 +16,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# root path
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+root-dir := $(abspath $(dir $(mkfile_path))../../..)/
+
 # questa library
 library        ?= work
 # verilator lib
@@ -27,14 +31,11 @@ top_level      ?= ariane_tb
 # Maximum amount of cycles for a successful simulation run
 max_cycles     ?= 10000000
 # verilator version
-verilator      ?= /media/ninolomata/Nino1/CHERI/TestRIG/riscv-implementations/cva6/tools/verilator/bin/verilator
+verilator      ?= $(root-dir)/tools/verilator-v5.015/bin/verilator
 # traget option
 target-options ?=
 # additional definess
 defines        ?= WT_DCACHE
-# root path
-mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
-root-dir := $(abspath $(dir $(mkfile_path))../../..)/
 
 ifndef CVA6_REPO_DIR
 $(warning must set CVA6_REPO_DIR to point at the root of CVA6 sources -- doing it for you...)
@@ -105,9 +106,8 @@ CFLAGS := -I$(QUESTASIM_HOME)/include                                       \
           -I$(VCS_HOME)/include                                             \
           -I$(RISCV)/include                                                \
           -I$(SPIKE_ROOT)/include                                           \
-		  -I$(root-dir)/corev_apu/tb/tb_testRig_cheri/src/inc               \
           -I$(root-dir)/corev_apu/tb/tb_testRig_cheri/src/SocketPacketUtils \
-          -std=c++11 -I$(root-dir)/corev_apu/tb/dpi -O3
+          -I$(root-dir)/corev_apu/tb/dpi -O3
 
 # this list contains the standalone components
 src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                                                         \
