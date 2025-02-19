@@ -928,7 +928,7 @@ package cva6_cheri_pkg;
     function automatic cap_reg_t cap_mem_to_cap_reg (cap_mem_t cap);
         cap_reg_t ret;
         cap_bounds_t bounds = decode_bounds(cap.bounds, cap.int_e);
-        ew_t exp = (bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : bounds.exp;
+        ew_t exp = /*(bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP :*/ bounds.exp;
         ret = '{
             tag:       cap.tag,
             uperms:    cap.uperms,
