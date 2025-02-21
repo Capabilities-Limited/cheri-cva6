@@ -76,9 +76,9 @@ static const char *verilog_plusargs[] = {"time_out"};
     std::uint8_t rvfi_rd_addr : 8;      // [84]      Write register address:  MUST be 0 if not used.
     std::uint8_t rvfi_trap : 8;         // [85] Trap indicator:          Invalid decode, misaligned access or
                                         //                                      jump command to misaligned address.
-    std::uint8_t rvfi_halt : 8;         // [86] Halt indicator:          Marks the last instruction retired 
+    std::uint8_t rvfi_halt : 8;         // [86] Halt indicator:          Marks the last instruction retired
                                         //                                      before halting execution.
-    std::uint8_t rvfi_intr : 8;         // [87] Trap handler:            Set for first instruction in trap handler.     
+    std::uint8_t rvfi_intr : 8;         // [87] Trap handler:            Set for first instruction in trap handler.
 };
 
 struct RVFI_DII_Instruction_Packet {
@@ -104,24 +104,24 @@ void PrintInstTrace(RVFI_DII_Instruction_Packet* packet){
 
 void PrintExecTrace(RVFI_DII_Execution_Packet* packet){
   std::cout << "<------Start execution trace------>" << std::endl;
-  std::cout << "order: " << (int) packet->rvfi_order << std::endl;      
-  std::cout << "pc_rdata: " << std::hex << (int) packet->rvfi_pc_rdata << std::endl;   
-  std::cout << "pc_wdata: " << std::hex << (int) packet->rvfi_pc_wdata << std::endl;   
-  std::cout << "insn: " << std::hex << (int) packet->rvfi_insn << std::endl;       
-  std::cout << "rs1_data: " << std::hex << (int) packet->rvfi_rs1_data << std::endl;   
-  std::cout << "rs2_data: " << std::hex << (int) packet->rvfi_rs2_data << std::endl;   
-  std::cout << "rd_wdata: " << std::hex << (int) packet->rvfi_rd_wdata << std::endl;   
-  std::cout << "mem_addr: " << std::hex << (int) packet->rvfi_mem_addr << std::endl;   
-  std::cout << "mem_rdatal: " << std::hex << (int)packet->rvfi_mem_rdata << std::endl; 
-  std::cout << "mem_wdatal: " << std::hex << (int) packet->rvfi_mem_wdata << std::endl; 
-  std::cout << "mem_rmask: " << std::hex << (int) packet->rvfi_mem_rmask << std::endl;    
-  std::cout << "mem_wmask: " << std::hex << (int) packet->rvfi_mem_wmask << std::endl;   
-  std::cout << "rs1_addr: " << std::hex << (int) packet->rvfi_rs1_addr << std::endl;    
-  std::cout << "rs2_addr: " << std::hex << (int) packet->rvfi_rs2_addr << std::endl;     
-  std::cout << "rd_addr: " << std::hex << (int) packet->rvfi_rd_addr << std::endl;      
-  std::cout << "trap: " << (int) packet->rvfi_trap << std::endl;        
-  std::cout << "halt: " <<  (int) packet->rvfi_halt << std::endl;        
-  std::cout << "instr: " << std::hex << (int) packet->rvfi_intr << std::endl;        
+  std::cout << "order: " << (int) packet->rvfi_order << std::endl;
+  std::cout << "pc_rdata: " << std::hex << (int) packet->rvfi_pc_rdata << std::endl;
+  std::cout << "pc_wdata: " << std::hex << (int) packet->rvfi_pc_wdata << std::endl;
+  std::cout << "insn: " << std::hex << (int) packet->rvfi_insn << std::endl;
+  std::cout << "rs1_data: " << std::hex << (int) packet->rvfi_rs1_data << std::endl;
+  std::cout << "rs2_data: " << std::hex << (int) packet->rvfi_rs2_data << std::endl;
+  std::cout << "rd_wdata: " << std::hex << (int) packet->rvfi_rd_wdata << std::endl;
+  std::cout << "mem_addr: " << std::hex << (int) packet->rvfi_mem_addr << std::endl;
+  std::cout << "mem_rdatal: " << std::hex << (int)packet->rvfi_mem_rdata << std::endl;
+  std::cout << "mem_wdatal: " << std::hex << (int) packet->rvfi_mem_wdata << std::endl;
+  std::cout << "mem_rmask: " << std::hex << (int) packet->rvfi_mem_rmask << std::endl;
+  std::cout << "mem_wmask: " << std::hex << (int) packet->rvfi_mem_wmask << std::endl;
+  std::cout << "rs1_addr: " << std::hex << (int) packet->rvfi_rs1_addr << std::endl;
+  std::cout << "rs2_addr: " << std::hex << (int) packet->rvfi_rs2_addr << std::endl;
+  std::cout << "rd_addr: " << std::hex << (int) packet->rvfi_rd_addr << std::endl;
+  std::cout << "trap: " << (int) packet->rvfi_trap << std::endl;
+  std::cout << "halt: " <<  (int) packet->rvfi_halt << std::endl;
+  std::cout << "instr: " << std::hex << (int) packet->rvfi_intr << std::endl;
   std::cout << "<------Finish execution trace------>" << std::endl;
 }
 
@@ -390,7 +390,7 @@ done_processing:
   unsigned int insn_count = 0;
   unsigned int traces_count = 0;
   unsigned int num_insn = 0;
-  // instruction 
+  // instruction
   bool busy = false;
   bool inflight = false;
   bool eof_trace = false;
@@ -407,11 +407,11 @@ done_processing:
       busy = true;
       num_insn = instructions.size();
     }
-    
+
     while (busy) {
-        if (readTrace(returntrace, top)){
-          traces_count++;
-        }
+      if (readTrace(returntrace, top)){
+        traces_count++;
+      }
       // Routine to inject instructions into the core via RVFIDII interface
       if (!instructions.empty() /* && !inflight */){
         if ((traces_count != num_insn-1) && (top->rvfi_trap_o || (top->rvfi_valid_o && (top->rvfi_insn_o & 0x7F) == 0xF))) {
@@ -435,26 +435,26 @@ done_processing:
         }
       }
 #endif
-    top->clk_i = 0;
-    top->eval();
+      top->clk_i = 0;
+      top->eval();
 #if VM_TRACE
-    if (vcdfile || fst_fname)
-      tfp->dump(static_cast<vluint64_t>(main_time * 2));
+      if (vcdfile || fst_fname)
+        tfp->dump(static_cast<vluint64_t>(main_time * 2));
 #endif
 
-    top->clk_i = 1;
-    top->eval();
+      top->clk_i = 1;
+      top->eval();
 #if VM_TRACE
-    if (vcdfile || fst_fname)
-      tfp->dump(static_cast<vluint64_t>(main_time * 2 + 1));
+      if (vcdfile || fst_fname)
+        tfp->dump(static_cast<vluint64_t>(main_time * 2 + 1));
 #endif
-    // toggle RTC
-    if (main_time % 2 == 0) {
-      top->rtc_i ^= 1;
-    }
-    main_time++;
+      // toggle RTC
+      if (main_time % 2 == 0) {
+        top->rtc_i ^= 1;
+      }
+      main_time++;
 
-    // Reset Routine 
+      // Reset Routine
       if (eof_trace){
         for (int i = 0; i < 10; i++) {
           top->rst_ni = 0;
