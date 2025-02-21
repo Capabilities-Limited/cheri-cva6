@@ -42,10 +42,6 @@
 #include <unistd.h>
 #include <vector>
 
-#include <fesvr/dtm.h>
-#include <fesvr/htif_hexwriter.h>
-#include <fesvr/elfloader.h>
-#include "remote_bitbang.h"
 #include <socket_packet_utils.h>
 
 // This software is heavily based on Rocket Chip
@@ -57,16 +53,7 @@
 // allow modulus.  You can also use a double, if you wish.
 static vluint64_t main_time = 0;
 
-static const char *verilog_plusargs[] = {"jtag_rbb_enable", "time_out", "debug_disable"};
-
-#ifndef DROMAJO
-extern dtm_t* dtm;
-extern remote_bitbang_t * jtag;
-
-void handle_sigterm(int sig) {
-  dtm->stop();
-}
-#endif
+static const char *verilog_plusargs[] = {"time_out"};
 
 #ifdef DII
   struct RVFI_DII_Execution_Packet {
@@ -106,10 +93,6 @@ struct RVFI_DII_Instruction_Packet {
 };
 
 #endif
-
-extern "C" void read_elf(const char* filename);
-extern "C" char get_section (long long* address, long long* len);
-extern "C" void read_section_void(long long address, void * buffer, uint64_t size = 0);
 
 void PrintInstTrace(RVFI_DII_Instruction_Packet* packet){
   std::cout << "<------Start instruction trace------>" << std::endl;
@@ -178,7 +161,6 @@ EMULATOR DEBUG OPTIONS (only supported in debug build -- try `make debug`)\n",
   -p,                      Print performance statistic at end of test\n\
 ", stdout);
   // fputs("\n" PLUSARG_USAGE_OPTIONS, stdout);
-  fputs("\n" HTIF_USAGE_OPTIONS, stdout);
   printf("\n"
 "EXAMPLES\n"
 "  - run a bare metal test:\n"
@@ -193,19 +175,6 @@ EMULATOR DEBUG OPTIONS (only supported in debug build -- try `make debug`)\n",
 #endif
   , program_name, program_name);
 }
-
-// In case we use the DTM we do not want to use the JTAG
-// to preload the data but only use the DTM to host fesvr functionality.
-class preload_aware_dtm_t : public dtm_t {
-  public:
-    preload_aware_dtm_t(int argc, char **argv) : dtm_t(argc, argv) {}
-    bool is_address_preloaded(addr_t taddr, size_t len) override { return true; }
-    // We do not want to reset the hart here as the reset function in `dtm_t` seems to disregard
-    // the privilege level and in general does not perform propper reset (despite the name).
-    // As all our binaries in preloading will always start at the base of DRAM this should not
-    // be such a big problem.
-    void reset() {}
-};
 
 int main(int argc, char **argv) {
   std::clock_t c_start = std::clock();
@@ -247,7 +216,6 @@ int main(int argc, char **argv) {
       {"socket-name",         required_argument, 0, 'q' },
       {"socket-default-port",  required_argument, 0, 'w' },
 #endif
-      HTIF_LONG_OPTIONS
     };
     int option_index = 0;
 #if VM_TRACE
@@ -330,19 +298,7 @@ int main(int argc, char **argv) {
           }
           goto retry;
         }
-        // If we STILL don't find a legacy '+' argument, it still could be
-        // an HTIF (HOST) argument and not an error. If this is the case, then
-        // we're done processing EMULATOR and VERILOG arguments.
         else {
-          static struct option htif_long_options [] = { HTIF_LONG_OPTIONS };
-          struct option * htif_option = &htif_long_options[0];
-          while (htif_option->name) {
-            if (arg.substr(1, strlen(htif_option->name)) == htif_option->name) {
-              optind--;
-              goto done_processing;
-            }
-            htif_option++;
-          }
           std::cerr << argv[0] << ": invalid plus-arg (Verilog or HTIF) \""
                     << arg << "\"\n";
           c = '?';
@@ -350,12 +306,7 @@ int main(int argc, char **argv) {
         goto retry;
       }
       case 'P': break; // Nothing to do here, Verilog PlusArg
-      // Realize that we've hit HTIF (HOST) arguments or error out
       default:
-        if (c >= HTIF_LONG_OPTIONS_OPTIND) {
-          optind--;
-          goto done_processing;
-        }
         c = '?';
         goto retry;
     }
@@ -376,12 +327,7 @@ done_processing:
   const char *vcd_file = NULL;
   Verilated::commandArgs(argc, argv);
 
-  jtag = new remote_bitbang_t(rbb_port);
-  dtm = new preload_aware_dtm_t(htif_argc, htif_argv);
-  signal(SIGTERM, handle_sigterm);
-
   Variane_testharness_dii* top(new Variane_testharness_dii);
-  //read_elf(htif_argv[1]);
 
 #if VM_TRACE
   Verilated::traceEverOn(true); // Verilator must compute traced signals
@@ -438,15 +384,6 @@ done_processing:
 
 #ifdef DII
   size_t mem_size = 0x900000;
-#else
-  size_t mem_size = 0xFFFFFF;
-  while(get_section(&addr, &len))
-  {
-    if (addr == 0x80000000)
-        read_section_void(addr, (void *) MEM , mem_size);
-  }
-#endif
-#ifdef DII
   unsigned long long socket = serv_socket_create(socket_name, socket_default_port);
   serv_socket_init(socket);
   unsigned int received = 0;
@@ -462,13 +399,7 @@ done_processing:
   std::vector<RVFI_DII_Instruction_Packet> instructions;
   std::vector<RVFI_DII_Execution_Packet> returntrace;
 #endif
-#if !defined(DROMAJO) || !defined(DII)
-  while (!dtm->done() && !jtag->done() && !(top->exit_o & 0x1)) {
-#else
-  // the simulation gets killed by dromajo
   while (true) {
-#endif
-
 #ifdef DII
     // Routine to fetch a batch of intructions from the Vengine
     if (num_insn == 0) {
@@ -572,23 +503,6 @@ done_processing:
   if (vcdfile)
     fclose(vcdfile);
 #endif
-
-  /* if (dtm->exit_code()) {
-    fprintf(stderr, "%s *** FAILED *** (tohost = %d) after %ld cycles\n", htif_argv[1], dtm->exit_code(), main_time);
-    ret = dtm->exit_code();
-  } else if (jtag->exit_code()) {
-    fprintf(stderr, "%s *** FAILED *** (tohost = %d, seed %d) after %ld cycles\n", htif_argv[1], jtag->exit_code(), random_seed, main_time);
-    ret = jtag->exit_code();
-  } else if (top->exit_o & 0xFFFFFFFE) {
-    int exitcode = ((unsigned int) top->exit_o) >> 1;
-    fprintf(stderr, "%s *** FAILED *** (tohost = %d) after %ld cycles\n", htif_argv[1], exitcode, main_time);
-    ret = exitcode;
-  } else {
-    fprintf(stderr, "%s *** SUCCESS *** (tohost = 0) after %ld cycles\n", htif_argv[1], main_time);
-  } */
-
-  if (dtm) delete dtm;
-  if (jtag) delete jtag;
 
   std::clock_t c_end = std::clock();
   auto t_end = std::chrono::high_resolution_clock::now();
