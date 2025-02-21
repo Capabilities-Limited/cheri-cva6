@@ -47,7 +47,6 @@
 // This software is heavily based on Rocket Chip
 // Checkout this awesome project:
 // https://github.com/freechipsproject/rocket-chip/
-#define DII 1
 
 // This is a 64-bit integer to reduce wrap over issues and
 // allow modulus.  You can also use a double, if you wish.
@@ -55,44 +54,41 @@ static vluint64_t main_time = 0;
 
 static const char *verilog_plusargs[] = {"time_out"};
 
-#ifdef DII
-  struct RVFI_DII_Execution_Packet {
-    std::uint64_t rvfi_order : 64;      // [00 - 07] Instruction number:      INSTRET value after completion.
-    std::uint64_t rvfi_pc_rdata : 64;   // [08 - 15] PC before instr:         PC for current instruction
-    std::uint64_t rvfi_pc_wdata : 64;   // [16 - 23] PC after instr:          Following PC - either PC + 4 or jump/trap target.
-    std::uint64_t rvfi_insn : 64;       // [24 - 31] Instruction word:        32-bit command value.
-    std::uint64_t rvfi_rs1_data : 64;   // [32 - 39] Read register values:    Values as read from registers named
-    std::uint64_t rvfi_rs2_data : 64;   // [40 - 47]                          above. Must be 0 if register ID is 0.
-    std::uint64_t rvfi_rd_wdata : 64;   // [48 - 55] Write register value:    MUST be 0 if rd_ is 0.
-    std::uint64_t rvfi_mem_addr : 64;   // [56 - 63] Memory access addr:      Points to byte address (aligned if define
-                                        //                                      is set). *Should* be straightforward.
-                                        //                                      0 if unused.
-    std::uint64_t rvfi_mem_rdata : 64;  // [64 - 71] Read data:               Data read from mem_addr (i.e. before write)
-    std::uint64_t rvfi_mem_wdata : 64;  // [72 - 79] Write data:              Data written to memory by this command.
-    std::uint8_t rvfi_mem_rmask : 8;    // [80]      Read mask:               Indicates valid bytes read. 0 if unused.
-    std::uint8_t rvfi_mem_wmask : 8;    // [81]      Write mask:              Indicates valid bytes written. 0 if unused.
-    std::uint8_t rvfi_rs1_addr : 8;     // [82]      Read register addresses: Can be arbitrary when not used,
-    std::uint8_t rvfi_rs2_addr : 8;     // [83]                          otherwise set as decoded.
-    std::uint8_t rvfi_rd_addr : 8;      // [84]      Write register address:  MUST be 0 if not used.
-    std::uint8_t rvfi_trap : 8;         // [85] Trap indicator:          Invalid decode, misaligned access or
-                                        //                                      jump command to misaligned address.
-    std::uint8_t rvfi_halt : 8;         // [86] Halt indicator:          Marks the last instruction retired
-                                        //                                      before halting execution.
-    std::uint8_t rvfi_intr : 8;         // [87] Trap handler:            Set for first instruction in trap handler.
+struct RVFI_DII_Execution_Packet {
+  std::uint64_t rvfi_order : 64;      // [00 - 07] Instruction number:      INSTRET value after completion.
+  std::uint64_t rvfi_pc_rdata : 64;   // [08 - 15] PC before instr:         PC for current instruction
+  std::uint64_t rvfi_pc_wdata : 64;   // [16 - 23] PC after instr:          Following PC - either PC + 4 or jump/trap target.
+  std::uint64_t rvfi_insn : 64;       // [24 - 31] Instruction word:        32-bit command value.
+  std::uint64_t rvfi_rs1_data : 64;   // [32 - 39] Read register values:    Values as read from registers named
+  std::uint64_t rvfi_rs2_data : 64;   // [40 - 47]                          above. Must be 0 if register ID is 0.
+  std::uint64_t rvfi_rd_wdata : 64;   // [48 - 55] Write register value:    MUST be 0 if rd_ is 0.
+  std::uint64_t rvfi_mem_addr : 64;   // [56 - 63] Memory access addr:      Points to byte address (aligned if define
+                                      //                                      is set). *Should* be straightforward.
+                                      //                                      0 if unused.
+  std::uint64_t rvfi_mem_rdata : 64;  // [64 - 71] Read data:               Data read from mem_addr (i.e. before write)
+  std::uint64_t rvfi_mem_wdata : 64;  // [72 - 79] Write data:              Data written to memory by this command.
+  std::uint8_t rvfi_mem_rmask : 8;    // [80]      Read mask:               Indicates valid bytes read. 0 if unused.
+  std::uint8_t rvfi_mem_wmask : 8;    // [81]      Write mask:              Indicates valid bytes written. 0 if unused.
+  std::uint8_t rvfi_rs1_addr : 8;     // [82]      Read register addresses: Can be arbitrary when not used,
+  std::uint8_t rvfi_rs2_addr : 8;     // [83]                          otherwise set as decoded.
+  std::uint8_t rvfi_rd_addr : 8;      // [84]      Write register address:  MUST be 0 if not used.
+  std::uint8_t rvfi_trap : 8;         // [85] Trap indicator:          Invalid decode, misaligned access or
+                                      //                                      jump command to misaligned address.
+  std::uint8_t rvfi_halt : 8;         // [86] Halt indicator:          Marks the last instruction retired
+                                      //                                      before halting execution.
+  std::uint8_t rvfi_intr : 8;         // [87] Trap handler:            Set for first instruction in trap handler.
 };
 
 struct RVFI_DII_Instruction_Packet {
-    std::uint32_t dii_insn : 32;      // [0 - 3] Instruction word: 32-bit instruction or command. The lower 16-bits
-                                      // may decode to a 16-bit compressed instruction.
-    std::uint16_t dii_time : 16;      // [5 - 4] Time to inject token.  The difference between this and the previous
-                                      // instruction time gives a delay before injecting this instruction.
-                                      // This can be ignored for models but gives repeatability for implementations
-                                      // while shortening counterexamples.
-    std::uint8_t dii_cmd : 8;         // [6] This token is a trace command.  For example, reset device under test.
-    std::uint8_t padding : 8;         // [7]
+  std::uint32_t dii_insn : 32;      // [0 - 3] Instruction word: 32-bit instruction or command. The lower 16-bits
+                                    // may decode to a 16-bit compressed instruction.
+  std::uint16_t dii_time : 16;      // [5 - 4] Time to inject token.  The difference between this and the previous
+                                    // instruction time gives a delay before injecting this instruction.
+                                    // This can be ignored for models but gives repeatability for implementations
+                                    // while shortening counterexamples.
+  std::uint8_t dii_cmd : 8;         // [6] This token is a trace command.  For example, reset device under test.
+  std::uint8_t padding : 8;         // [7]
 };
-
-#endif
 
 void PrintInstTrace(RVFI_DII_Instruction_Packet* packet){
   std::cout << "<------Start instruction trace------>" << std::endl;
@@ -194,10 +190,9 @@ int main(int argc, char **argv) {
 #endif
   char ** htif_argv = NULL;
   int verilog_plusargs_legal = 1;
-#if DII
+
   char* socket_name = NULL;
   int socket_default_port = -1;
-#endif
 
   while (1) {
     static struct option long_options[] = {
@@ -212,10 +207,8 @@ int main(int argc, char **argv) {
       {"dump-start",  required_argument, 0, 'x' },
       {"fst",         required_argument, 0, 'f' },
 #endif
-#if DII
       {"socket-name",         required_argument, 0, 'q' },
       {"socket-default-port",  required_argument, 0, 'w' },
-#endif
     };
     int option_index = 0;
 #if VM_TRACE
@@ -235,14 +228,12 @@ int main(int argc, char **argv) {
       case 'r': rbb_port = atoi(optarg);    break;
       case 'V': verbose = true;             break;
       case 'p': perf = true;                break;
-#ifdef DII
       case 'q': {
         socket_name = (char*) malloc(strlen(optarg));
         strcpy(socket_name,optarg);
         break;
       }
       case 'w': socket_default_port = atoi(optarg); break;
-#endif
 #if VM_TRACE
       case 'v': {
         vcdfile = strcmp(optarg, "-") == 0 ? stdout : fopen(optarg, "w");
@@ -382,7 +373,6 @@ done_processing:
   long long addr;
   long long len;
 
-#ifdef DII
   size_t mem_size = 0x900000;
   unsigned long long socket = serv_socket_create(socket_name, socket_default_port);
   serv_socket_init(socket);
@@ -398,9 +388,7 @@ done_processing:
   char recbuf[sizeof(RVFI_DII_Instruction_Packet) + 1] = {0};
   std::vector<RVFI_DII_Instruction_Packet> instructions;
   std::vector<RVFI_DII_Execution_Packet> returntrace;
-#endif
   while (true) {
-#ifdef DII
     // Routine to fetch a batch of intructions from the Vengine
     if (num_insn == 0) {
       fetchInstructions(instructions, received, socket);
@@ -434,7 +422,6 @@ done_processing:
           inflight = false;
         }
       }
-#endif
       top->clk_i = 0;
       top->eval();
 #if VM_TRACE
