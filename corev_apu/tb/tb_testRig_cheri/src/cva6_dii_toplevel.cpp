@@ -154,7 +154,6 @@ EMULATOR DEBUG OPTIONS (only supported in debug build -- try `make debug`)\n",
   fputs("\
   -v, --vcd=FILE,          Write vcd trace to FILE (or '-' for stdout)\n\
   -f, --fst=FILE,          Write fst trace to FILE\n\
-  -p,                      Print performance statistic at end of test\n\
 ", stdout);
   // fputs("\n" PLUSARG_USAGE_OPTIONS, stdout);
   printf("\n"
@@ -176,19 +175,12 @@ int main(int argc, char **argv) {
   std::clock_t c_start = std::clock();
   auto t_start = std::chrono::high_resolution_clock::now();
   bool verbose;
-  bool perf;
-  unsigned random_seed = (unsigned)time(NULL) ^ (unsigned)getpid();
-  uint64_t max_cycles = -1;
   int ret = 0;
-  bool print_cycles = false;
-  // Port numbers are 16 bit unsigned integers.
-  uint16_t rbb_port = 0;
 #if VM_TRACE
   FILE * vcdfile = NULL;
   char * fst_fname = NULL;
   uint64_t start = 0;
 #endif
-  char ** htif_argv = NULL;
   int verilog_plusargs_legal = 1;
 
   char* socket_name = NULL;
@@ -196,11 +188,7 @@ int main(int argc, char **argv) {
 
   while (1) {
     static struct option long_options[] = {
-      {"cycle-count", no_argument,       0, 'c' },
       {"help",        no_argument,       0, 'h' },
-      {"max-cycles",  required_argument, 0, 'm' },
-      {"seed",        required_argument, 0, 's' },
-      {"rbb-port",    required_argument, 0, 'r' },
       {"verbose",     no_argument,       0, 'V' },
 #if VM_TRACE
       {"vcd",         required_argument, 0, 'v' },
@@ -212,22 +200,17 @@ int main(int argc, char **argv) {
     };
     int option_index = 0;
 #if VM_TRACE
-    int c = getopt_long(argc, argv, "-chpm:s:r:v:f:Vx:q:w:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "-hv:f:Vx:q:w:", long_options, &option_index);
 #else
-    int c = getopt_long(argc, argv, "-chpm:s:r:V:q:w:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "-hV:q:w:", long_options, &option_index);
 #endif
     if (c == -1) break;
  retry:
     switch (c) {
       // Process long and short EMULATOR options
       case '?': usage(argv[0]);             return 1;
-      case 'c': print_cycles = true;        break;
       case 'h': usage(argv[0]);             return 0;
-      case 'm': max_cycles = atoll(optarg); break;
-      case 's': random_seed = atoi(optarg); break;
-      case 'r': rbb_port = atoi(optarg);    break;
       case 'V': verbose = true;             break;
-      case 'p': perf = true;                break;
       case 'q': {
         socket_name = (char*) malloc(strlen(optarg));
         strcpy(socket_name,optarg);
@@ -259,18 +242,12 @@ int main(int argc, char **argv) {
         }
         if (arg == "+verbose")
           c = 'V';
-        else if (arg.substr(0, 12) == "+max-cycles=") {
-          c = 'm';
-          optarg = optarg+12;
-        }
 #if VM_TRACE
         else if (arg.substr(0, 12) == "+dump-start=") {
           c = 'x';
           optarg = optarg+12;
         }
 #endif
-        else if (arg.substr(0, 12) == "+cycle-count")
-          c = 'c';
         // If we don't find a legacy '+' EMULATOR argument, it still could be
         // a VERILOG_PLUSARG and not an error.
         else if (verilog_plusargs_legal) {
@@ -304,15 +281,6 @@ int main(int argc, char **argv) {
   }
 
 done_processing:
-  /* if (optind == argc) {
-    std::cerr << "No binary specified for emulator\n";
-    usage(argv[0]);
-    return 1;
-  } */
-  int htif_argc = 1 + argc - optind;
-  htif_argv = (char **) malloc((htif_argc) * sizeof (char *));
-  htif_argv[0] = argv[0];
-  for (int i = 1; optind < argc;) htif_argv[i++] = argv[optind++];
   std::cout << "start" << std::endl;
 
   const char *vcd_file = NULL;
@@ -493,14 +461,6 @@ done_processing:
 
   std::clock_t c_end = std::clock();
   auto t_end = std::chrono::high_resolution_clock::now();
-
-  if (perf) {
-    std::cout << std::fixed << std::setprecision(2) << "CPU time used: "
-              << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n"
-              << "Wall clock time passed: "
-              << std::chrono::duration<double, std::milli>(t_end-t_start).count()
-              << " ms\n";
-  }
 
   return ret;
 }
