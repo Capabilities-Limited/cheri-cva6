@@ -583,9 +583,6 @@ void returnTrace(std::vector<RVFI_DII_Execution_Packet> &returntrace, unsigned l
       } else {
         returntrace.erase(returntrace.begin());
       }
-      for (int i = 0; i < tosend; i++) {
-        PrintExecTrace(&sendarr[i]);
-      }
       // loop to make sure that the packet has been properly sent
       while(!serv_socket_putN(socket, sizeof(RVFI_DII_Execution_Packet) * tosend, (unsigned int *) sendarr));
     }
@@ -598,6 +595,7 @@ bool readTrace(std::vector<RVFI_DII_Execution_Packet> &returntrace, Variane_test
   // this deals with counting instructions that the core has finished executing
   if (top->rvfi_valid_o || top->rvfi_trap_o) {
     RVFI_DII_Execution_Packet execpacket = readRVFI(top);
+    PrintExecTrace(&execpacket);
     returntrace.push_back(execpacket);
     return true;
   }
