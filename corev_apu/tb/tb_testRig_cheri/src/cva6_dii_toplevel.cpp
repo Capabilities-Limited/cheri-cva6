@@ -445,10 +445,11 @@ done_processing:
         returntrace.push_back(rstpack);
         instructions.clear();
       }
-    }
-    // Routine to return trace to Vengine
-    while (!returntrace.empty()) {
-      returnTrace(returntrace, socket);
+
+      // Routine to return trace to Vengine
+      while (!returntrace.empty()) {
+        returnTrace(returntrace, socket);
+      }
     }
   }
 
