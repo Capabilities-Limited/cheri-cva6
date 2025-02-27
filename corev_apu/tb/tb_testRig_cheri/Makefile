@@ -180,7 +180,6 @@ src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                        
   		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_top.sv                                     \
   		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_reg_wrap.sv                                \
         $(root-dir)/corev_apu/tb/ariane_testharness.sv                                                           \
-        $(root-dir)/corev_apu/tb/tb_testRig_cheri/hdl/ariane_testharness_dii.sv                                  \
 		$(root-dir)/corev_apu/tb/cva6_cheri_tag_mem.sv                                                           \
         $(root-dir)/corev_apu/tb/ariane_peripherals.sv                                                           \
         $(root-dir)/corev_apu/tb/rvfi_tracer.sv                                                                  \
