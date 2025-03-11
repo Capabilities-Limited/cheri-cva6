@@ -30,7 +30,6 @@ module cva6
       logic csr;
       rvfi_probes_instr_t instr;
     },
-    parameter type rvfi_dii_inst_pack_t = `RVFI_DII_INSTR_T(CVA6Cfg),
 
     // branchpredict scoreboard entry
     // this is the struct which we will inject into the pipeline to guide the various
@@ -66,6 +65,8 @@ module cva6
     // I$ data requests
     localparam type icache_dreq_t = struct packed {
       logic                    req;      // we request a new word
+      logic                    dii_flush;
+      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;
       logic                    kill_s1;  // kill the current request
       logic                    kill_s2;  // kill the last request
       logic                    spec;     // request is speculative
@@ -85,6 +86,7 @@ module cva6
     // store the decompressed instruction
     localparam type fetch_entry_t = struct packed {
       logic [CVA6Cfg.PCLEN-1:0] address;  // the address of the instructions from below
+      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;
       logic [31:0] instruction;  // instruction word
       branchpredict_sbe_t     branch_predict; // this field contains branch prediction information regarding the forward branch path
       exception_t             ex;             // this field contains exceptions which might have happened earlier, e.g.: fetch exceptions
@@ -93,6 +95,7 @@ module cva6
     // ID/EX/WB Stage
     localparam type scoreboard_entry_t = struct packed {
       logic [CVA6Cfg.PCLEN-1:0] pc;  // PC of instruction
+      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;  // PC of instruction
       logic [CVA6Cfg.REGLEN-1:0] ddc;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;      // this can potentially be simplified, we could index the scoreboard entry
       // with the transaction id in any case make the width more generic
@@ -130,6 +133,7 @@ module cva6
     localparam type bp_resolve_t = struct packed {
       logic                    valid;           // prediction with all its values is valid
       logic [CVA6Cfg.VLEN-1:0] pc;              // PC of predict or mis-predict
+      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;      // dii id of branch
       logic [CVA6Cfg.PCLEN-1:0] target_address;  // target address at which to jump, or not
       logic                    is_mispredict;   // set if this was a mis-predict
       logic                    is_taken;        // branch is taken
@@ -311,9 +315,6 @@ module cva6
     input logic debug_req_i,
     // Probes to build RVFI, can be left open when not used - RVFI
     output rvfi_probes_t rvfi_probes_o,
-    input  logic         rvfi_dii_rtrn_vld_i,
-    input  rvfi_dii_inst_pack_t rvfi_dii_inst_pack_i,
-    output logic         rvfi_dii_data_ready_o,
     // CVXIF request - SUBSYSTEM
     output cvxif_req_t cvxif_req_o,
     // CVXIF response - SUBSYSTEM
@@ -396,6 +397,7 @@ module cva6
 
   fu_data_t fu_data_id_ex;
   logic [CVA6Cfg.PCLEN-1:0] pc_id_ex;
+  logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_id_ex;
   logic is_compressed_instr_id_ex;
   logic [31:0] tinst_ex;
   // fixed latency units
@@ -564,6 +566,7 @@ module cva6
   logic flush_csr_ctrl;
   logic flush_unissued_instr_ctrl_id;
   logic flush_ctrl_if;
+  logic [CVA6Cfg.DIIIDLEN-1:0] flush_ctrl_dii_id_if;
   logic flush_ctrl_id;
   logic flush_ctrl_ex;
   logic flush_ctrl_bp;
@@ -625,6 +628,7 @@ module cva6
       .exception_t(exception_t)
   ) i_frontend (
       .flush_i            (flush_ctrl_if),                  // not entirely correct
+      .flush_dii_id_i     (flush_ctrl_dii_id_if),
       .flush_bp_i         (1'b0),
       .halt_i             (halt_ctrl),
       .debug_mode_i       (debug_mode),
@@ -785,6 +789,7 @@ module cva6
       .rs2_forwarding_o      (rs2_forwarding_id_ex),
       .fu_data_o             (fu_data_id_ex),
       .pc_o                  (pc_id_ex),
+      .dii_id_o              (dii_id_id_ex),
       .is_compressed_instr_o (is_compressed_instr_id_ex),
       .tinst_o               (tinst_ex),
       // fixed latency unit ready
@@ -866,6 +871,7 @@ module cva6
       .rs2_forwarding_i(rs2_forwarding_id_ex),
       .fu_data_i(fu_data_id_ex),
       .pc_i(pc_id_ex),
+      .dii_id_i(dii_id_id_ex),
       .is_compressed_instr_i(is_compressed_instr_id_ex),
       .tinst_i(tinst_ex),
       // fixed latency units
@@ -1176,6 +1182,7 @@ module cva6
       .set_pc_commit_o       (set_pc_ctrl_pcgen),
       .flush_unissued_instr_o(flush_unissued_instr_ctrl_id),
       .flush_if_o            (flush_ctrl_if),
+      .flush_if_dii_id_o     (flush_ctrl_dii_id_if),
       .flush_id_o            (flush_ctrl_id),
       .flush_ex_o            (flush_ctrl_ex),
       .flush_bp_o            (flush_ctrl_bp),
@@ -1248,7 +1255,6 @@ module cva6
         .dcache_req_i_t(dcache_req_i_t),
         .dcache_req_o_t(dcache_req_o_t),
         .exception_t (exception_t),
-        .rvfi_dii_inst_pack_t(rvfi_dii_inst_pack_t),
         .NumPorts  (NumPorts),
         .noc_req_t (noc_req_t),
         .noc_resp_t(noc_resp_t)
@@ -1284,10 +1290,7 @@ module cva6
         .noc_resp_i        (noc_resp_i),
         .inval_addr_i      (inval_addr),
         .inval_valid_i     (inval_valid),
-        .inval_ready_o     (inval_ready),
-        .rvfi_dii_rtrn_vld_i (rvfi_dii_rtrn_vld_i),
-        .rvfi_dii_inst_pack_i (rvfi_dii_inst_pack_i),
-        .rvfi_dii_data_ready_o (rvfi_dii_data_ready_o)
+        .inval_ready_o     (inval_ready)
     );
   end else if (CVA6Cfg.DCacheType == config_pkg::HPDCACHE) begin : gen_cache_hpd
     cva6_hpdcache_subsystem #(

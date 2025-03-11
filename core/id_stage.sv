@@ -186,6 +186,7 @@ module id_stage #(
         .irq_ctrl_i,
         .irq_i,
         .pc_i                      (fetch_entry_i[i].address),
+        .dii_id_i                  (fetch_entry_i[i].dii_id),
         .ddc_i                     (ddc_i),
         .is_compressed_i           (is_compressed_cmp[i]),
         .is_macro_instr_i          (is_macro_instr_i[i]),

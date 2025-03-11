@@ -54,6 +54,7 @@ module issue_stage
     output fu_data_t fu_data_o,
     // Program Counter - EX_STAGE
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
+    output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is compressed instruction - EX_STAGE
     output logic is_compressed_instr_o,
     // Transformed trap instruction - EX_STAGE

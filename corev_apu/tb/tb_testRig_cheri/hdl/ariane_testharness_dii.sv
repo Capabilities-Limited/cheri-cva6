@@ -48,12 +48,12 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   output logic [ 1:0]                  rvfi_mode_o,
   output logic [ 4:0]                  rvfi_rs1_addr_o,
   output logic [ 4:0]                  rvfi_rs2_addr_o,
-  output logic [CVA6Cfg.XLEN-1:0]    rvfi_rs1_rdata_o,
-  output logic [CVA6Cfg.XLEN-1:0]    rvfi_rs2_rdata_o,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs1_rdata_o,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs2_rdata_o,
   output logic [ 4:0]                  rvfi_rd_addr_o,
-  output logic [CVA6Cfg.XLEN-1:0]    rvfi_rd_wdata_o,
-  output logic [CVA6Cfg.VLEN-1:0]     rvfi_pc_rdata_o,
-  output logic [CVA6Cfg.VLEN-1:0]     rvfi_pc_wdata_o,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rd_wdata_o,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_rdata_o,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_wdata_o,
   output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_addr_o,
   output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_rmask_o,
   output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_wmask_o,
@@ -61,11 +61,6 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_wdata_o,
 `endif
 
-`ifdef DII
-    input logic [31:0]                   dii_insn_i,
-    output logic                         dii_ready_o,
-    input logic                          dii_valid_i,
-`endif
   output logic [31:0]                    exit_o
 );
 
@@ -83,7 +78,6 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     rvfi_probes_csr_t csr;
     rvfi_probes_instr_t instr;
   };
-  localparam type rvfi_dii_inst_pack_t = `RVFI_DII_INSTR_T(CVA6Cfg);
 
   // disable test-enable
   logic        test_en;
@@ -96,9 +90,6 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   logic        debug_req_ready;
   logic        debug_resp_valid;
   logic        debug_resp_ready;
-
-  logic [31:0] dii_insn;
-  logic dii_ready;
 
   assign test_en = 1'b0;
 
@@ -643,19 +634,12 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     else
       boot_cap.addr = ariane_soc::ROMBase;
   end
-  rvfi_dii_inst_pack_t rvfi_dii_inst_pack;
-
-  always_comb begin : gen_rvfi_dii
-    rvfi_dii_inst_pack = '0;
-    rvfi_dii_inst_pack.rvfi_insn = dii_insn;
-  end
 
   ariane #(
     .CVA6Cfg              ( CVA6Cfg             ),
     .rvfi_probes_instr_t  ( rvfi_probes_instr_t ),
     .rvfi_probes_csr_t    ( rvfi_probes_csr_t   ),
     .rvfi_probes_t        ( rvfi_probes_t       ),
-    .rvfi_dii_inst_pack_t ( rvfi_dii_inst_pack_t ),
     .noc_req_t            ( ariane_axi::req_t   ),
     .noc_resp_t           ( ariane_axi::resp_t  )
   ) i_ariane (
@@ -667,9 +651,6 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     .ipi_i                ( ipi                 ),
     .time_irq_i           ( timer_irq           ),
     .rvfi_probes_o        ( rvfi_probes         ),
-    .rvfi_dii_rtrn_vld_i  ( dii_valid_i         ),
-    .rvfi_dii_inst_pack_i ( dii_insn_i          ),
-    .rvfi_dii_data_ready_o ( dii_ready_o        ),
 // Disable Debug when simulating with Spike
 `ifdef SPIKE_TANDEM
     .debug_req_i          ( 1'b0                ),

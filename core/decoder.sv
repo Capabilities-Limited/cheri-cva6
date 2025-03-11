@@ -36,6 +36,7 @@ module decoder
     // PC from fetch stage - FRONTEND
     // TODO-cheri: make cheri optional
     input logic [CVA6Cfg.PCLEN-1:0] pc_i,
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Is a compressed instruction - compressed_decoder
     input logic is_compressed_i,
     // Compressed form of instruction - FRONTEND
@@ -191,6 +192,7 @@ module decoder
     instruction_o.use_zimm                 = 1'b0;
     instruction_o.bp                       = branch_predict_i;
     instruction_o.vfp                      = 1'b0;
+    if (CVA6Cfg.RVFI_DII) instruction_o.dii_id = dii_id_i;
     if (CVA6Cfg.CheriPresent) begin
       instruction_o.ddc     = ddc_i;
       instruction_o.use_ddc = 1'b0;

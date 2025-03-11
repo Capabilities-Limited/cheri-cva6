@@ -29,6 +29,7 @@ module controller
     output logic set_pc_commit_o,
     // Flush the IF stage - FRONTEND
     output logic flush_if_o,
+    output logic [CVA6Cfg.DIIIDLEN-1:0] flush_if_dii_id_o,
     // Flush un-issued instructions of the scoreboard - FRONTEND
     output logic flush_unissued_instr_o,
     // Flush ID stage - ID_STAGE
@@ -81,6 +82,12 @@ module controller
   logic fence_active_d, fence_active_q;
   logic flush_dcache;
 
+  always_ff @(negedge clk_i) begin
+    if (flush_if_o) begin
+        $display("flush, dii_id = %x", flush_if_dii_id_o);
+    end
+  end
+
   // ------------
   // Flush CTRL
   // ------------
@@ -97,6 +104,7 @@ module controller
     flush_tlb_vvma_o       = 1'b0;
     flush_tlb_gvma_o       = 1'b0;
     flush_bp_o             = 1'b0;
+    flush_if_dii_id_o      = resolved_branch_i.dii_id + 1;
     // ------------
     // Mis-predict
     // ------------

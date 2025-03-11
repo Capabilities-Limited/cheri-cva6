@@ -196,6 +196,8 @@ package config_pkg;
     int unsigned                 CheriCapTagWidth;
     // Enable RVDI_DII interface
     int unsigned                 RVFI_DII;
+    // DII ID Length
+    int unsigned                 DIIIDLEN;
   } cva6_user_cfg_t;
 
   typedef struct packed {
@@ -332,6 +334,7 @@ package config_pkg;
 
     int unsigned CheriCapTagWidth;
     bit RVFI_DII;
+    int unsigned DIIIDLEN;
 
     int unsigned ModeW;
     int unsigned ASIDW;

@@ -35,6 +35,7 @@ module frontend
     input logic flush_bp_i,
     // Flush requested by FENCE, mis-predict and exception - CONTROLLER
     input logic flush_i,
+    input logic [CVA6Cfg.DIIIDLEN-1:0] flush_dii_id_i,
     // Halt requested by WFI and Accelerate port - CONTROLLER
     input logic halt_i,
     input logic v_i,
@@ -95,6 +96,7 @@ module frontend
   logic                                                          icache_valid_q;
   ariane_pkg::frontend_exception_t                               icache_ex_valid_q;
   logic                            [           CVA6Cfg.VLEN-1:0] icache_vaddr_q;
+  logic                            [       CVA6Cfg.DIIIDLEN-1:0] icache_dii_id_q;
   logic                            [           CVA6Cfg.XLEN-1:0] icache_tval_q;
   logic                            [          CVA6Cfg.GPLEN-1:0] icache_gpaddr_q;
   logic                            [                       31:0] icache_tinst_q;
@@ -113,6 +115,7 @@ module frontend
 
   logic                                       replay;
   logic [                   CVA6Cfg.VLEN-1:0] replay_addr;
+  logic [               CVA6Cfg.DIIIDLEN-1:0] replay_dii_id;
 
   // shift amount
   logic [$clog2(CVA6Cfg.INSTR_PER_FETCH)-1:0] shamt;
@@ -299,15 +302,13 @@ module frontend
   // or reduce struct
   always_comb begin
     bp_valid = 1'b0;
-    //if (!CVA6Cfg.RVFI_DII) begin
     // BP cannot be valid if we have a return instruction and the RAS is not giving a valid address
     // Check that we encountered a control flow and that for a return the RAS
     // contains a valid prediction.
     for (int i = 0; i < CVA6Cfg.INSTR_PER_FETCH; i++)
     bp_valid |= ((cf_type[i] != NoCF & cf_type[i] != Return) | ((cf_type[i] == Return) & ras_predict.valid));
-    //end
   end
-  assign is_mispredict = resolved_branch_i.valid & (resolved_branch_i.is_mispredict | CVA6Cfg.RVFI_DII);
+  assign is_mispredict = resolved_branch_i.valid & resolved_branch_i.is_mispredict;
 
   // Cache interface
   assign icache_dreq_o.req = instr_queue_ready;
@@ -320,6 +321,9 @@ module frontend
   // if we have a valid branch-prediction we need to only kill the last cache request
   // also if we killed the first stage we also need to kill the second stage (inclusive flush)
   assign icache_dreq_o.kill_s2 = icache_dreq_o.kill_s1 | bp_valid;
+
+  assign icache_dreq_o.dii_flush = flush_i;
+  assign icache_dreq_o.dii_id = flush_dii_id_i;
 
   // Update Control Flow Predictions
   bht_update_t bht_update;
@@ -637,6 +641,7 @@ end
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .flush_i            (flush_i),
+      .flush_dii_id_i     (flush_dii_id_i),
       .instr_i            (instr),                 // from re-aligner
       .addr_i             (addr),                  // from re-aligner
       .pc_i(npc_q),

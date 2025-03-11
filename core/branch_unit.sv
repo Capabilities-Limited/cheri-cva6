@@ -32,6 +32,7 @@ module branch_unit #(
     input fu_data_t fu_data_i,
     // Instruction PC - ISSUE_STAGE
     input logic [CVA6Cfg.PCLEN-1:0] pc_i,
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Instruction is compressed - ISSUE_STAGE
     input logic is_compressed_instr_i,
     // any functional unit is valid, check that there is no accidental mis-predict - TO_BE_COMPLETED
@@ -144,6 +145,7 @@ module branch_unit #(
       branch_result_o = next_pc;
     end
     resolved_branch_o.pc = pc_i[CVA6Cfg.VLEN-1:0];
+    if (CVA6Cfg.RVFI_DII) resolved_branch_o.dii_id = dii_id_i;
     // There are only two sources of mispredicts:
     // 1. Branches
     // 2. Jumps to register addresses

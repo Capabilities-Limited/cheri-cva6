@@ -33,7 +33,6 @@ module wt_cache_subsystem
     parameter type                   dcache_req_o_t = logic,
     parameter type                   icache_req_t   = logic,
     parameter type                   icache_rtrn_t  = logic,
-    parameter type                   rvfi_dii_inst_pack_t = logic,
     parameter int unsigned           NumPorts       = 4,
     parameter type                   noc_req_t      = logic,
     parameter type                   noc_resp_t     = logic
@@ -73,11 +72,7 @@ module wt_cache_subsystem
     // Invalidations
     input logic [63:0] inval_addr_i,
     input logic inval_valid_i,
-    output logic inval_ready_o,
-    // RVFI_DII Interface
-    input  logic         rvfi_dii_rtrn_vld_i,
-    input  rvfi_dii_inst_pack_t rvfi_dii_inst_pack_i,
-    output logic         rvfi_dii_data_ready_o
+    output logic inval_ready_o
     // TODO: interrupt interface
 );
 
@@ -122,16 +117,12 @@ module wt_cache_subsystem
       .CVA6Cfg(CVA6Cfg),
       .icache_dreq_t(icache_dreq_t),
       .icache_drsp_t(icache_drsp_t),
-      .exception_t (exception_t),
-      .rvfi_dii_inst_pack_t (rvfi_dii_inst_pack_t)
+      .exception_t (exception_t)
     ) i_cva6_rvfi_dii_generator (
       .clk_i         (clk_i),
       .rst_ni        (rst_ni),
       .dreq_i        (icache_dreq_i),
-      .dreq_o        (icache_dreq_o),
-      .rvfi_dii_rtrn_vld_i (rvfi_dii_rtrn_vld_i),
-      .rvfi_dii_inst_pack_i (rvfi_dii_inst_pack_i),
-      .rvfi_dii_data_ready_o (rvfi_dii_data_ready_o)
+      .dreq_o        (icache_dreq_o)
     );
     assign icache_areq_o = '0;
     assign icache_adapter_data_req = '0;
@@ -163,6 +154,24 @@ module wt_cache_subsystem
         .mem_data_ack_i(adapter_icache_data_ack),
         .mem_data_o    (icache_adapter)
     );
+  end
+
+  always_ff @(negedge clk_i) begin
+      $display("icache_req_req: ", icache_dreq_i.req);
+      $display("icache_req_dii_flush: ", icache_dreq_i.dii_flush);
+      $display("icache_req_dii_id: %x", icache_dreq_i.dii_id);
+      $display("icache_req_kill_s1: ", icache_dreq_i.kill_s1);
+      $display("icache_req_kill_s2: ", icache_dreq_i.kill_s2);
+      $display("icache_req_spec: ", icache_dreq_i.spec);
+      $display("icache_req_vaddr: %x", icache_dreq_i.vaddr);
+      $display("icache_req_ex: %x", icache_dreq_i.ex);
+      $display("");
+      $display("icache_rsp_ready: ", icache_dreq_o.ready);
+      $display("icache_rsp_valid: ", icache_dreq_o.valid);
+      $display("icache_rsp_data: %x", icache_dreq_o.data);
+      $display("icache_rsp_user: %x", icache_dreq_o.user);
+      $display("icache_rsp_vaddr: %x", icache_dreq_o.vaddr);
+      $display("icache_rsp_ex: %x", icache_dreq_o.ex);
   end
 
 
