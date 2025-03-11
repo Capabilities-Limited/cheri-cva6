@@ -1,4 +1,5 @@
 // Copyright 2018 ETH Zurich and University of Bologna.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -323,6 +324,7 @@ module id_stage #(
         .irq_ctrl_i,
         .irq_i,
         .pc_i                      (fetch_entry_i[i].address),
+        .dii_id_i                  (fetch_entry_i[i].dii_id),
         .ddc_i                     (ddc_i),
         .is_compressed_i           (is_compressed_deco[i]),
         .is_macro_instr_i          (is_macro_instr[i]),

@@ -1,5 +1,6 @@
 // Copyright 2018 ETH Zurich and University of Bologna.
 // Copyright 2025 Bruno Sá and Zero-Day Labs.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -32,6 +33,8 @@ module branch_unit #(
     input fu_data_t fu_data_i,
     // Instruction PC - ISSUE_STAGE
     input logic [CVA6Cfg.PCLEN-1:0] pc_i,
+    // Instruction stream DII ID - ISSUE_STAGE
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Is zcmt instruction - ISSUE_STAGE
     input logic is_zcmt_i,
     // Instruction is compressed - ISSUE_STAGE
@@ -163,6 +166,7 @@ module branch_unit #(
       branch_result_o = next_pc;
     end
     resolved_branch_o.pc = pc_i[CVA6Cfg.VLEN-1:0];
+    if (CVA6Cfg.RVFI_DII) resolved_branch_o.dii_id = dii_id_i;
     // There are only two sources of mispredicts:
     // 1. Branches
     // 2. Jumps to register addresses
@@ -223,11 +227,10 @@ module branch_unit #(
     target_pcc_top        = target_pcc.top;
     target_pcc_address    = target_pcc.addr;
     target_pcc_is_sealed  = (operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP);
-    // TODO-cheri(ninolomata): fix this once we disable compressed instructions without trigering errors
-    min_instr_off = ((CVA6Cfg.RVC && !CVA6Cfg.RVFI_DII) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
+    min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
     // Only throw instruction address misaligned exception if this is indeed a `taken` conditional branch or
     // an unconditional jump
-    if (!CVA6Cfg.RVC || CVA6Cfg.RVFI_DII) begin
+    if (!CVA6Cfg.RVC) begin
       jump_taken = !(ariane_pkg::op_is_branch(fu_data_i.operation)) ||
           ((ariane_pkg::op_is_branch(fu_data_i.operation)) && branch_comp_res_i);
       if (branch_valid_i && (target_address[0] || target_address[1]) && jump_taken) begin

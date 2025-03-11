@@ -30,6 +30,7 @@ package cva6_config_pkg;
   localparam CVA6ConfigRVZcherihybrid = 1;
   localparam CVA6ConfigCheriCapTagWidth = 1;
   localparam CVA6ConfigRVFI_DII = 1;
+  localparam CVA6ConfigDIIIDLEN = 6;
 
   localparam CVA6ConfigAxiIdWidth = 4;
   localparam CVA6ConfigAxiAddrWidth = 64;
@@ -167,7 +168,8 @@ package cva6_config_pkg;
       NrStorePipeRegs: int'(CVA6ConfigNrStorePipeRegs),
       DcacheIdWidth: int'(CVA6ConfigDcacheIdWidth),
       CheriCapTagWidth : int'(CVA6ConfigCheriCapTagWidth),
-      RVFI_DII : int'(CVA6ConfigRVFI_DII)
+      RVFI_DII : int'(CVA6ConfigRVFI_DII),
+      DIIIDLEN : int'(CVA6ConfigDIIIDLEN)
   };
 
 endpackage

@@ -1,5 +1,6 @@
 // Copyright 2018 ETH Zurich and University of Bologna.
 // Copyright 2025 Bruno Sá and Zero-Day Labs.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -57,6 +58,8 @@ module issue_read_operands
     output logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs2_forwarding_o,
     // Program Counter - EX_STAGE
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
+    // Instruction DII ID - EX_STAGE
+    output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is zcmt - EX_STAGE
     output logic is_zcmt_o,
     // Is compressed instruction - EX_STAGE
@@ -1074,6 +1077,7 @@ module issue_read_operands
       is_compressed_instr_o    <= 1'b0;
       branch_predict_o         <= {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
       x_transaction_rejected_o <= 1'b0;
+      if (CVA6Cfg.RVFI_DII) dii_id_o <= '0;
     end else begin
       fu_data_q <= fu_data_n;
       if (CVA6Cfg.ZKN) begin
@@ -1087,12 +1091,14 @@ module issue_read_operands
           pc_o                  <= issue_instr_i[1].pc;
           is_compressed_instr_o <= issue_instr_i[1].is_compressed;
           branch_predict_o      <= issue_instr_i[1].bp;
+          if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[1].dii_id;
         end
       end
       if (issue_instr_i[0].fu == CTRL_FLOW) begin
         pc_o                  <= issue_instr_i[0].pc;
         is_compressed_instr_o <= issue_instr_i[0].is_compressed;
         branch_predict_o      <= issue_instr_i[0].bp;
+        if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[0].dii_id;
         if (CVA6Cfg.RVZCMT) is_zcmt_o <= issue_instr_i[0].is_zcmt;
         else is_zcmt_o <= '0;
       end

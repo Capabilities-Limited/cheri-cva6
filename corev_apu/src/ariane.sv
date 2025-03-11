@@ -22,7 +22,6 @@ module ariane import ariane_pkg::*; #(
     logic csr;
     logic instr;
   },
-  parameter type rvfi_dii_inst_pack_t = logic,
   // CVXIF Types
   localparam type readregflags_t      = `READREGFLAGS_T(CVA6Cfg),
   localparam type writeregflags_t     = `WRITEREGFLAGS_T(CVA6Cfg),
@@ -62,9 +61,6 @@ module ariane import ariane_pkg::*; #(
   // RISC-V formal interface port (`rvfi`):
   // Can be left open when formal tracing is not needed.
   output rvfi_probes_t rvfi_probes_o,
-  input  logic         rvfi_dii_rtrn_vld_i,
-  input  rvfi_dii_inst_pack_t rvfi_dii_inst_pack_i,
-  output logic         rvfi_dii_data_ready_o,
   // memory side
   output noc_req_t                     noc_req_o,
   input  noc_resp_t                    noc_resp_i
@@ -106,9 +102,6 @@ module ariane import ariane_pkg::*; #(
     .time_irq_i           ( time_irq_i                ),
     .debug_req_i          ( debug_req_i               ),
     .rvfi_probes_o        ( rvfi_probes_o             ),
-    .rvfi_dii_rtrn_vld_i  (rvfi_dii_rtrn_vld_i        ),
-    .rvfi_dii_inst_pack_i (rvfi_dii_inst_pack_i       ),
-    .rvfi_dii_data_ready_o(rvfi_dii_data_ready_o      ),
     .cvxif_req_o          ( cvxif_req                 ),
     .cvxif_resp_i         ( cvxif_resp                ),
     .noc_req_o            ( noc_req_o                 ),
