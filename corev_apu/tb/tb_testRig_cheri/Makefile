@@ -1,4 +1,5 @@
 # Copyright 2025 Bruno Sá and Zero-Day Labs.
+# Copyright 2025 Capabilities Limited.
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -95,7 +96,7 @@ test_pkg := $(wildcard tb/test/*/*sequence_pkg.sv*) \
 CFLAGS := -I$(QUESTASIM_HOME)/include                                       \
           -I$(VCS_HOME)/include                                             \
           -I$(RISCV)/include                                                \
-          -I$(root-dir)/corev_apu/tb/tb_testRig_cheri/src/SocketPacketUtils \
+          -I$(root-dir)/corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils \
           -I$(root-dir)/corev_apu/tb/dpi -O3
 
 # this list contains the standalone components
@@ -245,7 +246,8 @@ verilate_command := $(verilator) --no-timing $(root-dir)/verilator_config.vlt   
                     $(list_incdir) --top-module ariane_testharness_dii                                           \
 					--threads-dpi none 																			 \
                     --Mdir $(ver-library) -O3                                                                    \
-                    --exe ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/cva6_dii_toplevel.cpp ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/SocketPacketUtils/socket_packet_utils.c
+                    --exe ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/cva6_dii_toplevel.cpp ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils/rvfi_dii_utils.c \
+                        ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils/SocketPacketUtils/socket_packet_utils.c
 
 # User Verilator, at some point in the future this will be auto-generated
 verilate:

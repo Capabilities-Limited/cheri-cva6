@@ -28,13 +28,6 @@
   logic [config_pkg::NRET*Cfg.CLEN-1:0]      mem_wdata; \
 }
 
-`define RVFI_DII_INSTR_T(Cfg) struct packed { \
-  logic [config_pkg::NRET*7:0]       padding; \
-  logic [config_pkg::NRET*7:0]       rvfi_cmd; \
-  logic [config_pkg::NRET*15:0]      rvfi_time; \
-  logic [config_pkg::NRET*31:0]      rvfi_insn; \
-}
-
 `define RVFI_CSR_ELMT_T(Cfg) struct packed { \
   logic [Cfg.REGLEN-1:0] rdata; \
   logic [Cfg.REGLEN-1:0] rmask; \
