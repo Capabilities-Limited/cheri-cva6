@@ -1,4 +1,5 @@
 // Copyright 2018 ETH Zurich and University of Bologna.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -62,6 +63,8 @@ module issue_stage
     output alu_bypass_t alu_bypass_o,
     // Program Counter - EX_STAGE
     output logic [CVA6Cfg.REGLEN-1:0] pc_o,
+    // DII ID - EX_STAGE
+    output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is zcmt instruction - EX_STAGE
     output logic is_zcmt_o,
     // Is compressed instruction - EX_STAGE
@@ -278,6 +281,7 @@ module issue_stage
       .rs1_forwarding_o        (rs1_forwarding_o),
       .rs2_forwarding_o        (rs2_forwarding_o),
       .pc_o,
+      .dii_id_o,
       .is_zcmt_o,
       .is_compressed_instr_o,
       .flu_ready_i             (flu_ready_i),
