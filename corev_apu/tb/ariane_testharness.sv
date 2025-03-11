@@ -58,7 +58,6 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     rvfi_probes_csr_t csr;
     rvfi_probes_instr_t instr;
   };
-  localparam type rvfi_dii_inst_pack_t = `RVFI_DII_INSTR_T(CVA6Cfg);
 
   // disable test-enable
   logic        test_en;
@@ -744,7 +743,6 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     .rvfi_probes_instr_t  ( rvfi_probes_instr_t ),
     .rvfi_probes_csr_t    ( rvfi_probes_csr_t   ),
     .rvfi_probes_t        ( rvfi_probes_t       ),
-    .rvfi_dii_inst_pack_t ( rvfi_dii_inst_pack_t ),
     .noc_req_t            ( ariane_axi::req_t   ),
     .noc_resp_t           ( ariane_axi::resp_t  )
   ) i_ariane (
@@ -756,9 +754,6 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     .ipi_i                ( ipi                 ),
     .time_irq_i           ( timer_irq           ),
     .rvfi_probes_o        ( rvfi_probes         ),
-    .rvfi_dii_rtrn_vld_i   (rvfi_dii_rtrn_vld_i),
-    .rvfi_dii_inst_pack_i  (rvfi_dii_inst_pack_i),
-    .rvfi_dii_data_ready_o (rvfi_dii_data_ready_o),
 // Disable Debug when simulating with Spike
 `ifdef SPIKE_TANDEM
     .debug_req_i          ( 1'b0                ),

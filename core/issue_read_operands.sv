@@ -1,5 +1,6 @@
 // Copyright 2018 ETH Zurich and University of Bologna.
 // Copyright 2025 Bruno Sá and Zero-Day Labs.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -71,6 +72,8 @@ module issue_read_operands
     output logic [CVA6Cfg.REGLEN-1:0] rs2_forwarding_o,
     // Instruction pc - TO_BE_COMPLETED
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
+    // Instruction DII ID - TO_BE_COMPLETED
+    output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is compressed instruction - TO_BE_COMPLETED
     output logic is_compressed_instr_o,
     // Fixed Latency Unit ready to accept new request - TO_BE_COMPLETED
@@ -656,6 +659,7 @@ module issue_read_operands
       pc_o                  <= '0;
       is_compressed_instr_o <= 1'b0;
       branch_predict_o      <= {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
+      if (CVA6Cfg.RVFI_DII) dii_id_o <= '0;
     end else begin
       operand_a_q <= operand_a_n;
       operand_b_q <= operand_b_n;
@@ -674,6 +678,7 @@ module issue_read_operands
       pc_o                  <= issue_instr_i.pc;
       is_compressed_instr_o <= issue_instr_i.is_compressed;
       branch_predict_o      <= issue_instr_i.bp;
+      if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i.dii_id;
     end
   end
 

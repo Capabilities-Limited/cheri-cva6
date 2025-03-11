@@ -1,5 +1,6 @@
 // Copyright 2024 Thales DIS France SAS
 // Copyright 2025 Bruno Sá and Zero-Day Labs.
+// Copyright 2025 Capabilities Limited.
 //
 // Licensed under the Solderpad Hardware Licence, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -270,9 +271,11 @@ module cva6_rvfi
 
   always_ff @(posedge clk_i) begin
     for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
+      logic [31:0] instr;
       logic exception;
       logic [4:0] rd_addr;
       logic [4:0] rs2_addr;
+      instr = mem_q[commit_pointer[i]].instr;
       exception = commit_instr_valid[i][0] && ex_commit_valid;
       rd_addr = commit_instr_rd[i][4:0];
       rs2_addr = (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs2[i][4:0];
@@ -281,7 +284,7 @@ module cva6_rvfi
                   ex_commit_cause == riscv::ENV_CALL_SMODE ||
                   ex_commit_cause == riscv::ENV_CALL_UMODE ||
                   ex_commit_cause == cva6_cheri_pkg::CAP_EXCEPTION));
-      rvfi_instr_o[i].insn <= mem_q[commit_pointer[i]].instr;
+      rvfi_instr_o[i].insn <= instr;
       // when trap, the instruction is not executed
       rvfi_instr_o[i].trap <= exception;
       rvfi_instr_o[i].cause <= ex_commit_cause;
@@ -294,12 +297,12 @@ module cva6_rvfi
           commit_instr_op[i]
       )) ? commit_instr_result[i] : wdata[i];
       rvfi_instr_o[i].pc_rdata <= commit_instr_pc[i];
-      if (mem_q[commit_pointer[i]].instr == 32'h30200073 && !exception) begin
+      if (instr == 32'h30200073 && !exception) begin
         rvfi_instr_o[i].pc_wdata <= csr.mepcc_q[63:0];
-      end else if (mem_q[commit_pointer[i]].instr == 32'h10200073 && !exception) begin
+      end else if (instr == 32'h10200073 && !exception) begin
         rvfi_instr_o[i].pc_wdata <= csr.sepcc_q[63:0];
       end else begin
-        rvfi_instr_o[i].pc_wdata <= (exception) ? {csr.mtcc_q[63:2], 2'b00} : (commit_instr_fu[i] == CTRL_FLOW) ? commit_instr_next_pc[i] : commit_instr_pc[i] + 4;
+        rvfi_instr_o[i].pc_wdata <= (exception) ? {csr.mtcc_q[63:2], 2'b00} : (commit_instr_fu[i] == CTRL_FLOW) ? commit_instr_next_pc[i] : commit_instr_pc[i] + (instr[1:0] == 2'b11 ? 4 : 2);
       end
       rvfi_instr_o[i].mem_addr <= mem_q[commit_pointer[i]].lsu_addr + ((commit_instr_op[i] == ariane_pkg::CLOAD_TAGS) ? 0 : 0);
       // So far, only write paddr is reported. TODO: read paddr

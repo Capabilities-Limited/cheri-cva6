@@ -1,5 +1,6 @@
 // Copyright 2018 ETH Zurich and University of Bologna.
 // Copyright 2025 Bruno Sá and Zero-Day Labs.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -33,6 +34,8 @@ module commit_stage
     output exception_t exception_o,
     // Mark the F state as dirty - CSR_REGFILE
     output logic dirty_fp_state_o,
+    // Last committed DII ID - FRONTEND
+    output logic [CVA6Cfg.DIIIDLEN-1 : 0] dii_id_o,
     // TO_BE_COMPLETED - CSR_REGFILE
     input logic single_step_i,
     // The instruction we want to commit - ISSUE_STAGE
@@ -123,6 +126,7 @@ module commit_stage
   end
 
   assign pc_o = commit_instr_i[0].pc;
+  if (CVA6Cfg.RVFI_DII) assign dii_id_o = commit_instr_i[0].dii_id;
   // Dirty the FP state if we are committing anything related to the FPU
   always_comb begin : dirty_fp_state
     dirty_fp_state_o = 1'b0;

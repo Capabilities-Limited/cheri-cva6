@@ -1,6 +1,7 @@
 
 // Copyright 2018 ETH Zurich and University of Bologna.
 // Copyright 2025 Bruno Sá and Zero-Day Labs.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -47,6 +48,8 @@ module ex_stage
     input fu_data_t fu_data_i,
     // PC of the current instruction - ISSUE_STAGE
     input logic [CVA6Cfg.PCLEN-1:0] pc_i,
+    // DII ID of the current instruction - ISSUE_STAGE
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // DDC of the current instruction - ISSUE_STAGE
     input logic [CVA6Cfg.REGLEN-1:0] ddc_i,
     // Report whether isntruction is compressed - ISSUE_STAGE
@@ -306,6 +309,7 @@ module ex_stage
       .debug_mode_i,
       .fu_data_i,
       .pc_i,
+      .dii_id_i,
       .is_compressed_instr_i,
       // any functional unit is valid, check that there is no accidental mis-predict
       .fu_valid_i ( alu_valid_i || lsu_valid_i || csr_valid_i || mult_valid_i || fpu_valid_i || acc_valid_i ) ,

@@ -1,4 +1,5 @@
 // Copyright 2018 - 2019 ETH Zurich and University of Bologna.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -36,12 +37,16 @@ module instr_realign
     output logic serving_unaligned_o,
     // 32-bit block address - CACHE
     input logic [CVA6Cfg.VLEN-1:0] address_i,
+    // DII ID of requested instruction in block - CACHE
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // 32-bit block - CACHE
     input logic [CVA6Cfg.FETCH_WIDTH-1:0] data_i,
     // instruction is valid - FRONTEND
     output logic [CVA6Cfg.INSTR_PER_FETCH-1:0] valid_o,
     // Instruction address - FRONTEND
     output logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] addr_o,
+    // Instruction DII ID - FRONTEND
+    output logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Instruction - instr_scan&instr_queue
     output logic [CVA6Cfg.INSTR_PER_FETCH-1:0][31:0] instr_o
 );
@@ -59,6 +64,7 @@ module instr_realign
   logic unaligned_d, unaligned_q;
   // register to save the unaligned address
   logic [CVA6Cfg.VLEN-1:0] unaligned_address_d, unaligned_address_q;
+  logic [CVA6Cfg.DIIIDLEN-1:0] unaligned_dii_id_d, unaligned_dii_id_q;
   // we have an unaligned instruction
   assign serving_unaligned_o = unaligned_q;
 
@@ -72,10 +78,15 @@ module instr_realign
       valid_o[0] = valid_i;
       instr_o[0] = unaligned_q ? {data_i[15:0], unaligned_instr_q} : data_i[31:0];
       addr_o[0] = unaligned_q ? unaligned_address_q : address_i;
+      if (CVA6Cfg.RVFI_DII) dii_id_o[0] = unaligned_q ? unaligned_dii_id_q : dii_id_i;
 
       valid_o[1] = 1'b0;
       instr_o[1] = '0;
       addr_o[1] = {address_i[CVA6Cfg.VLEN-1:2], 2'b10};
+      if (CVA6Cfg.RVFI_DII) begin
+        dii_id_o[1] = dii_id_o[0] + 1;
+        unaligned_dii_id_d = dii_id_o[1];
+      end
 
       // this instruction is compressed or the last instruction was unaligned
       if (instr_is_compressed[0] || unaligned_q) begin
@@ -106,6 +117,7 @@ module instr_realign
           unaligned_d = 1'b1;
           unaligned_address_d = {address_i[CVA6Cfg.VLEN-1:2], 2'b10};
           unaligned_instr_d = data_i[15:0];
+          if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[0];
           // the instruction isn't compressed but only the lower is ready
         end else begin
           valid_o = {{CVA6Cfg.INSTR_PER_FETCH - 1{1'b0}}, 1'b1};
@@ -121,12 +133,20 @@ module instr_realign
       valid_o             = '0;
       instr_o[0]          = '0;
       addr_o[0]           = '0;
+      if (CVA6Cfg.RVFI_DII) dii_id_o[0]         = '0;
       instr_o[1]          = '0;
       addr_o[1]           = '0;
       instr_o[2]          = '0;
       addr_o[2]           = '0;
       instr_o[3]          = {16'b0, data_i[63:48]};
       addr_o[3]           = {address_i[riscv::VLEN-1:3], 3'b110};
+
+      if (CVA6Cfg.RVFI_DII) begin
+        dii_id_o[0] = unaligned_q ? unaligned_dii_id_q : dii_id_i;
+        dii_id_o[1] = dii_id_o[0] + 1;
+        dii_id_o[2] = dii_id_o[0] + 2;
+        dii_id_o[3] = dii_id_o[0] + 3;
+      end
 
       case (address_i[2:1])
         2'b00: begin
@@ -166,6 +186,7 @@ module instr_realign
                 end else begin
                   unaligned_instr_d   = instr_o[3];
                   unaligned_address_d = addr_o[3];
+                  if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[3];
                 end
               end else begin
                 unaligned_d = 1'b0;
@@ -180,11 +201,13 @@ module instr_realign
               end else begin
                 unaligned_instr_d   = instr_o[3];
                 unaligned_address_d = addr_o[3];
+                if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[3];
               end
             end
           end else begin
             instr_o[0] = data_i[31:0];
             addr_o[0]  = address_i;
+            if (CVA6Cfg.RVFI_DII) dii_id_o[0] = dii_id_i;
 
             if (instr_is_compressed[0]) begin
               instr_o[1] = data_i[47:16];
@@ -209,6 +232,7 @@ module instr_realign
                     unaligned_d         = 1'b1;
                     unaligned_instr_d   = instr_o[3];
                     unaligned_address_d = addr_o[3];
+                    if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[3];
                   end
                 end
               end else begin
@@ -221,6 +245,7 @@ module instr_realign
                   unaligned_d         = 1'b1;
                   unaligned_instr_d   = instr_o[3];
                   unaligned_address_d = addr_o[3];
+                  if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[3];
                 end
               end
             end else begin
@@ -242,6 +267,7 @@ module instr_realign
                   unaligned_d         = 1'b1;
                   unaligned_instr_d   = instr_o[3];
                   unaligned_address_d = addr_o[3];
+                  if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[3];
                 end
               end
             end
@@ -279,6 +305,7 @@ module instr_realign
                 unaligned_d         = 1'b1;
                 unaligned_instr_d   = instr_o[2];
                 unaligned_address_d = addr_o[2];
+                if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[2];
               end
             end
           end else begin
@@ -291,6 +318,7 @@ module instr_realign
               unaligned_d         = 1'b1;
               unaligned_instr_d   = instr_o[2];
               unaligned_address_d = addr_o[2];
+              if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[2];
             end
           end
         end
@@ -316,6 +344,7 @@ module instr_realign
               unaligned_d         = 1'b1;
               unaligned_instr_d   = instr_o[1];
               unaligned_address_d = addr_o[1];
+              if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[1];
             end
           end
         end
@@ -337,6 +366,7 @@ module instr_realign
             unaligned_d         = 1'b1;
             unaligned_instr_d   = instr_o[0];
             unaligned_address_d = addr_o[0];
+            if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[0];
           end
         end
       endcase
@@ -348,9 +378,11 @@ module instr_realign
       unaligned_q         <= 1'b0;
       unaligned_address_q <= '0;
       unaligned_instr_q   <= '0;
+      if (CVA6Cfg.RVFI_DII) unaligned_dii_id_q  <= '0;
     end else begin
       if (valid_i) begin
         unaligned_address_q <= unaligned_address_d;
+        if (CVA6Cfg.RVFI_DII) unaligned_dii_id_q  <= unaligned_dii_id_d;
         unaligned_instr_q   <= unaligned_instr_d;
       end
 
