@@ -47,6 +47,9 @@
 #define exclude_dii_getters
 #include <rvfi_dii_utils.h>
 
+#define DII_ID_WIDTH 6
+#define DII_ID_COUNT (1 << DII_ID_WIDTH)
+
 // This software is heavily based on Rocket Chip
 // Checkout this awesome project:
 // https://github.com/freechipsproject/rocket-chip/
@@ -249,7 +252,7 @@ done_processing:
 #endif
 
 
-  rvfi_dii_bridge_rst(6);
+  rvfi_dii_bridge_rst(DII_ID_WIDTH);
   std::cout << "Reset DII bridge" << std::endl;
 
   for (int i = 0; i < 10; i++) {
@@ -288,13 +291,14 @@ done_processing:
   bool eof_trace = false;
   while (true) {
     std::cout << "toplevel loop begin" << std::endl;
-    if (get_dii_cmd(traces_count) == 0) {
-      eof_trace = true;
-    }
     if (readTrace(top, traces_count)) {
       printf("traces_count: %i\n", traces_count);
       std::cout << "Successful read trace" << std::endl;
       traces_count++;
+      traces_count %= DII_ID_COUNT;
+    }
+    if (get_dii_cmd(traces_count) == 0) {
+      eof_trace = true;
     }
     top->clk_i = 0;
     top->eval();
@@ -337,6 +341,7 @@ done_processing:
       top->rst_ni = 1;
       eof_trace = false;
       traces_count++;
+      traces_count %= DII_ID_COUNT;
       current_test_dii_start = traces_count;
       // Clear memory
       for (int i = 0; i < (sizeof(MEM)/sizeof(MEM[0])); i++) {
