@@ -17,11 +17,8 @@
 //
 // Copyright 2025 Capabilities Limited
 
-import "DPI-C" function byte get_dii_pad(int idx);
 import "DPI-C" function byte get_dii_cmd(int idx);
-import "DPI-C" function shortint get_dii_time(int idx);
 import "DPI-C" function int get_dii_insn(int idx);
-import "DPI-C" function void rvfi_dii_bridge_rst(int log_buff_size);
 import "DPI-C" function int test_dii_start();
 
 `include "common_cells/registers.svh"
