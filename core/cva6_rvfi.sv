@@ -271,7 +271,11 @@ module cva6_rvfi
   always_ff @(posedge clk_i) begin
     for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
       logic exception;
+      logic [4:0] rd_addr;
+      logic [4:0] rs2_addr;
       exception = commit_instr_valid[i][0] && ex_commit_valid;
+      rd_addr = commit_instr_rd[i][4:0];
+      rs2_addr = (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs2[i][4:0];
       rvfi_instr_o[i].valid    <= (commit_ack[i] && !ex_commit_valid) ||
         (exception && (ex_commit_cause == riscv::ENV_CALL_MMODE ||
                   ex_commit_cause == riscv::ENV_CALL_SMODE ||
@@ -284,9 +288,9 @@ module cva6_rvfi
       rvfi_instr_o[i].mode <= (CVA6Cfg.DebugEn && debug_mode) ? 2'b10 : priv_lvl;
       rvfi_instr_o[i].ixl <= CVA6Cfg.XLEN == 64 ? 2 : 1;
       rvfi_instr_o[i].rs1_addr <= (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs1[i][4:0];
-      rvfi_instr_o[i].rs2_addr <= (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs2[i][4:0];
-      rvfi_instr_o[i].rd_addr <= commit_instr_rd[i][4:0];
-      rvfi_instr_o[i].rd_wdata <= (rvfi_instr_o[i].rd_addr == 0) ? '0 : (CVA6Cfg.FpPresent && is_rd_fpr(
+      rvfi_instr_o[i].rs2_addr <= rs2_addr;
+      rvfi_instr_o[i].rd_addr <= rd_addr;
+      rvfi_instr_o[i].rd_wdata <= (rd_addr == 0) ? '0 : (CVA6Cfg.FpPresent && is_rd_fpr(
           commit_instr_op[i]
       )) ? commit_instr_result[i] : wdata[i];
       rvfi_instr_o[i].pc_rdata <= commit_instr_pc[i];
@@ -305,7 +309,7 @@ module cva6_rvfi
       rvfi_instr_o[i].mem_rmask <= /* (mem_q[commit_pointer[i]].lsu_wmask == 16'hFFFF) ? '0 :  */mem_q[commit_pointer[i]].lsu_rmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
       rvfi_instr_o[i].mem_rdata <= commit_instr_result[i];
       rvfi_instr_o[i].rs1_rdata <= mem_q[commit_pointer[i]].rs1_rdata;
-      rvfi_instr_o[i].rs2_rdata <= (rvfi_instr_o[i].rs2_addr == 0) ? '0 : mem_q[commit_pointer[i]].rs2_rdata;
+      rvfi_instr_o[i].rs2_rdata <= (rs2_addr == 0) ? '0 : mem_q[commit_pointer[i]].rs2_rdata;
     end
   end
 
