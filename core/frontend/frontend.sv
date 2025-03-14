@@ -35,7 +35,6 @@ module frontend
     input logic flush_bp_i,
     // Flush requested by FENCE, mis-predict and exception - CONTROLLER
     input logic flush_i,
-    input logic [CVA6Cfg.DIIIDLEN-1:0] flush_dii_id_i,
     // Halt requested by WFI and Accelerate port - CONTROLLER
     input logic halt_i,
     input logic v_i,
@@ -43,6 +42,7 @@ module frontend
     input logic set_pc_commit_i,
     // COMMIT PC - COMMIT
     input logic [CVA6Cfg.PCLEN-1:0] pc_commit_i,
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_commit_i,
     // Exception event - COMMIT
     input logic ex_valid_i,
     // Mispredict event and next PC - EXECUTE
@@ -109,6 +109,7 @@ module frontend
   // instruction fetch is ready
   logic                                                          if_ready;
   logic [CVA6Cfg.PCLEN-1:0] npc_d, npc_q;  // next PC
+  logic [CVA6Cfg.DIIIDLEN-1:0] ndii_id_d, ndii_id_q;
 
   // indicates whether we come out of reset (then we need to load boot_addr_i)
   logic                                       npc_rst_load_q;
@@ -322,9 +323,6 @@ module frontend
   // also if we killed the first stage we also need to kill the second stage (inclusive flush)
   assign icache_dreq_o.kill_s2 = icache_dreq_o.kill_s1 | bp_valid;
 
-  assign icache_dreq_o.dii_flush = flush_i;
-  assign icache_dreq_o.dii_id = flush_dii_id_i;
-
   // Update Control Flow Predictions
   bht_update_t bht_update;
   btb_update_t btb_update;
@@ -358,6 +356,7 @@ module frontend
   // Mis-predict handling is a little bit different
   // select PC a.k.a PC Gen
   logic [CVA6Cfg.VLEN-1:0] fetch_address;
+  logic [CVA6Cfg.DIIIDLEN-1:0] fetch_dii_id;
 
   always_comb begin : npc_select
     automatic cva6_cheri_pkg::cap_pcc_t debug_pcc;
@@ -374,10 +373,14 @@ module frontend
     if (npc_rst_load_q) begin
       npc_d         = boot_addr_i;
       fetch_address = boot_addr_i[CVA6Cfg.XLEN-1:0];
+      ndii_id_d     = test_dii_start();
+      fetch_dii_id  = test_dii_start();
     end else begin
       fetch_address = npc_q[CVA6Cfg.VLEN-1:0];
       // keep stable by default
       npc_d         = npc_q;
+      fetch_dii_id  = ndii_id_q;
+      ndii_id_d     = ndii_id_q;
     end
     // 0. Branch Prediction
     if (bp_valid) begin
@@ -406,6 +409,7 @@ module frontend
     // 3. Control flow change request
     if (is_mispredict) begin
       npc_d = resolved_branch_i.target_address;
+      ndii_id_d = resolved_branch_i.dii_id + 1;
     end
     // 4. Return from environment call
     if (eret_i) begin
@@ -413,6 +417,7 @@ module frontend
         npc_d = cva6_cheri_pkg::cap_reg_to_cap_pcc(epc_i);
       else
         npc_d = epc_i;
+      ndii_id_d = dii_id_commit_i + 1;
     end
     // 5. Exception/Interrupt
     if (ex_valid_i) begin
@@ -420,6 +425,7 @@ module frontend
         npc_d = cva6_cheri_pkg::cap_reg_to_cap_pcc(trap_vector_base_i);
       else
         npc_d = trap_vector_base_i;
+      ndii_id_d = dii_id_commit_i + 1;
     end
     // 6. Pipeline Flush because of CSR side effects
     // On a pipeline flush start fetching from the next address
@@ -435,6 +441,7 @@ module frontend
         npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(pc_commit_i, pc_commit_i + (halt_i ? '0 : {{CVA6Cfg.VLEN - 3{1'b0}}, 3'b100}));
       else
         npc_d = pc_commit_i + (halt_i ? '0 : {{CVA6Cfg.VLEN - 3{1'b0}}, 3'b100});
+      ndii_id_d = dii_id_commit_i + 1;
     end
     // 7. Debug
     // enter debug on a hard-coded base-address
@@ -445,6 +452,7 @@ module frontend
         npc_d = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0];
       end
     icache_dreq_o.vaddr = fetch_address;
+    icache_dreq_o.dii_id = fetch_dii_id;
     if (CVA6Cfg.CheriPresent) begin
       icache_dreq_o.ex    = cheri_ex;
     end
@@ -502,6 +510,7 @@ end
     if (!rst_ni) begin
       npc_rst_load_q    <= 1'b1;
       npc_q             <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::PCC_ROOT_CAP : '0;
+      ndii_id_q         <= '0;
       speculative_q     <= '0;
       icache_data_q     <= '0;
       icache_valid_q    <= 1'b0;
@@ -516,6 +525,7 @@ end
     end else begin
       npc_rst_load_q <= 1'b0;
       npc_q          <= npc_d;
+      ndii_id_q      <= ndii_id_d;
       speculative_q  <= speculative_d;
       icache_valid_q <= icache_dreq_i.valid;
       if (icache_dreq_i.valid) begin
@@ -641,7 +651,7 @@ end
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .flush_i            (flush_i),
-      .flush_dii_id_i     (flush_dii_id_i),
+      .dii_id_i           (fetch_dii_id),
       .instr_i            (instr),                 // from re-aligner
       .addr_i             (addr),                  // from re-aligner
       .pc_i(npc_q),

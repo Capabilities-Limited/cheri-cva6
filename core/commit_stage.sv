@@ -33,6 +33,8 @@ module commit_stage
     output exception_t exception_o,
     // Mark the F state as dirty - CSR_REGFILE
     output logic dirty_fp_state_o,
+    // Last executed DII ID
+    output logic [CVA6Cfg.DIIIDLEN-1 : 0] dii_id_o,
     // TO_BE_COMPLETED - CSR_REGFILE
     input logic single_step_i,
     // The instruction we want to commit - ISSUE_STAGE
@@ -123,6 +125,7 @@ module commit_stage
   end
 
   assign pc_o = commit_instr_i[0].pc;
+  assign dii_id_o = commit_instr_i[0].dii_id;
   // Dirty the FP state if we are committing anything related to the FPU
   always_comb begin : dirty_fp_state
     dirty_fp_state_o = 1'b0;

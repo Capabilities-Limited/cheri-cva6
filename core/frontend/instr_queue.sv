@@ -55,7 +55,7 @@ module instr_queue
     input logic rst_ni,
     // Fetch flush request - CONTROLLER
     input logic flush_i,
-    input logic [CVA6Cfg.DIIIDLEN-1:0] flush_dii_id_i,
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Instruction - instr_realign
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][31:0] instr_i,
     // Instruction address - instr_realign
@@ -84,6 +84,7 @@ module instr_queue
     output logic replay_o,
     // Address at which to replay the fetch - FRONTEND
     output logic [CVA6Cfg.VLEN-1:0] replay_addr_o,
+    //output logic [CVA6Cfg.DIIIDLEN-1:0] replay_dii_id_o,
     // Handshake’s data with ID_STAGE - ID_STAGE
     output fetch_entry_t [ariane_pkg::SUPERSCALAR:0] fetch_entry_o,
     // Handshake’s valid with ID_STAGE - ID_STAGE
@@ -138,7 +139,6 @@ ariane_pkg::FETCH_FIFO_DEPTH
   logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_d, dii_id_q;
   logic [ariane_pkg::SUPERSCALAR+1:0][CVA6Cfg.PCLEN-1:0] pc_j;
   logic reset_address_d, reset_address_q;  // we need to re-set the address because of a flush
-  logic [CVA6Cfg.DIIIDLEN-1:0] reset_dii_id_d, reset_dii_id_q;
 
   logic [ariane_pkg::SUPERSCALAR:0] fetch_entry_is_cf, fetch_entry_fire;
 
@@ -339,7 +339,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
       for (int unsigned i = 0; i <= ariane_pkg::SUPERSCALAR; i++) begin
         fetch_entry_o[i].instruction = '0;
         fetch_entry_o[i].address = pc_j[i];
-        fetch_entry_o[i].dii_id = dii_id_d + i;
+        fetch_entry_o[i].dii_id = dii_id_q + i;
         fetch_entry_o[i].ex.valid = 1'b0;
         fetch_entry_o[i].ex.cause = '0;
 
@@ -486,7 +486,6 @@ ariane_pkg::FETCH_FIFO_DEPTH
     pc_d = pc_q;
     if (CVA6Cfg.RVFI_DII) dii_id_d = dii_id_q;
     reset_address_d = flush_i ? 1'b1 : reset_address_q;
-    reset_dii_id_d = flush_i ? flush_dii_id_i : reset_dii_id_q;
 
     if (fetch_entry_fire[0]) begin
       pc_d = pc_j[1];
@@ -494,7 +493,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
       if (ariane_pkg::SUPERSCALAR > 0) begin
         if (fetch_entry_fire[NID]) begin
           pc_d = pc_j[2];
-          if (CVA6Cfg.RVFI_DII) dii_id_d = dii_id_d + 2;
+          if (CVA6Cfg.RVFI_DII) dii_id_d = dii_id_d + 1;
         end
       end
     end
@@ -507,7 +506,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
       end else begin
         pc_d = addr_i[0];
       end
-      if (CVA6Cfg.RVFI_DII) dii_id_d = reset_dii_id_q;
+      if (CVA6Cfg.RVFI_DII) dii_id_d = dii_id_i;
       reset_address_d = 1'b0;
     end
   end
@@ -575,11 +574,10 @@ ariane_pkg::FETCH_FIFO_DEPTH
         idx_is_q        <= '0;
         pc_q            <= '0;
         reset_address_q <= 1'b1;
-        if (CVA6Cfg.RVFI_DII) dii_id_q <= '0;
+        if (CVA6Cfg.RVFI_DII) dii_id_q <= test_dii_start();
       end else begin
         pc_q            <= pc_d;
         reset_address_q <= reset_address_d;
-        reset_dii_id_q  <= reset_dii_id_d;
         if (CVA6Cfg.RVFI_DII) dii_id_q <= dii_id_d;
         if (flush_i) begin
           // one-hot encoded
@@ -600,11 +598,10 @@ ariane_pkg::FETCH_FIFO_DEPTH
       if (!rst_ni) begin
         pc_q            <= '0;
         reset_address_q <= 1'b1;
-        if (CVA6Cfg.RVFI_DII) dii_id_q <= '0;
+        if (CVA6Cfg.RVFI_DII) dii_id_q <= test_dii_start();
       end else begin
         pc_q            <= pc_d;
         reset_address_q <= reset_address_d;
-        reset_dii_id_q  <= reset_dii_id_d;
         if (CVA6Cfg.RVFI_DII) dii_id_q <= dii_id_d;
         if (flush_i) begin
           reset_address_q <= 1'b1;

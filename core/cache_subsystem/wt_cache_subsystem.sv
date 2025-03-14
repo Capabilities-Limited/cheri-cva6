@@ -156,24 +156,6 @@ module wt_cache_subsystem
     );
   end
 
-  always_ff @(negedge clk_i) begin
-      $display("icache_req_req: ", icache_dreq_i.req);
-      $display("icache_req_dii_flush: ", icache_dreq_i.dii_flush);
-      $display("icache_req_dii_id: %x", icache_dreq_i.dii_id);
-      $display("icache_req_kill_s1: ", icache_dreq_i.kill_s1);
-      $display("icache_req_kill_s2: ", icache_dreq_i.kill_s2);
-      $display("icache_req_spec: ", icache_dreq_i.spec);
-      $display("icache_req_vaddr: %x", icache_dreq_i.vaddr);
-      $display("icache_req_ex: %x", icache_dreq_i.ex);
-      $display("");
-      $display("icache_rsp_ready: ", icache_dreq_o.ready);
-      $display("icache_rsp_valid: ", icache_dreq_o.valid);
-      $display("icache_rsp_data: %x", icache_dreq_o.data);
-      $display("icache_rsp_user: %x", icache_dreq_o.user);
-      $display("icache_rsp_vaddr: %x", icache_dreq_o.vaddr);
-      $display("icache_rsp_ex: %x", icache_dreq_o.ex);
-  end
-
 
   // Note:
   // Ports 0/1 for PTW and LD unit are read only.

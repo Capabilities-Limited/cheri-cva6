@@ -38,91 +38,75 @@ module rvfi_dii_generator
     input  icache_dreq_t dreq_i,
     output icache_drsp_t dreq_o
 );
-    logic [CVA6Cfg.FETCH_ALIGN_BITS:0] fetch_offset;
-    logic [CVA6Cfg.FETCH_WIDTH*2-1:0] fetch_buff;
-    logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;
-
+    logic [CVA6Cfg.FETCH_ALIGN_BITS:0] fetch_offset_q, fetch_offset_d;
+    logic [CVA6Cfg.FETCH_WIDTH*2-1:0] fetch_buff_q, fetch_buff_d;
+    logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_q, dii_id_d;
     logic busy;
     logic flushing;
-    logic [CVA6Cfg.VLEN-1:0] vaddr_buff;    // 1st cycle: 12 bit index is taken for lookup
-    exception_t ex_buff;     // we've encountered an exception
+    logic [CVA6Cfg.VLEN-1:0] vaddr_buff;
+    exception_t ex_buff;
 
-    logic rsp_attempt;
-
-    assign dreq_o.ready = !dreq_i.kill_s1 && dreq_i.req;
-
-    always_ff @(negedge clk_i) begin
-        $display("A new day dawns");
+    logic [31:0] instr;
+    logic [2:0] instr_bytes;
+    logic test_done;
+    always_comb begin
+        dii_id_d = dii_id_q;
+        fetch_offset_d = fetch_offset_q;
+        fetch_buff_d = fetch_buff_q;
+        if (busy && !dreq_i.kill_s2) begin
+            fetch_offset_d = {1'b0, fetch_offset_d[CVA6Cfg.FETCH_ALIGN_BITS-1:0]};
+            fetch_buff_d = fetch_buff_d >> CVA6Cfg.FETCH_WIDTH;
+            instr = '0;
+            instr_bytes = '0;
+            test_done = '0;
+            while (~fetch_offset_d[CVA6Cfg.FETCH_ALIGN_BITS]) begin
+                test_done = get_dii_cmd(dii_id_d) == 0;
+                instr = test_done ? 32'h13 : get_dii_insn(dii_id_d);
+                instr_bytes = instr[1:0] == 2'b11 ? 3'd4 : 3'd2;
+                fetch_buff_d = fetch_buff_d | (instr << ({fetch_offset_d, 3'b0}));
+                fetch_offset_d = fetch_offset_d + instr_bytes;
+                dii_id_d = dii_id_d + (test_done ? 0 : 1);
+            end
+            dreq_o.valid = 1'b1;
+        end else begin
+            dreq_o.valid = 1'b0;
+        end
+        dreq_o.ex = ex_buff;
+        dreq_o.vaddr = vaddr_buff;
+        dreq_o.data = fetch_buff_d;
+        dreq_o.user = '0;
+        dreq_o.ready = !dreq_i.kill_s1 && dreq_i.req;
     end
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
-            dii_id <= test_dii_start();
-            fetch_buff <= '0;
-            fetch_offset <= '0;
+            dii_id_q <= test_dii_start();
+            fetch_buff_q <= '0;
+            fetch_offset_q <= '0;
             flushing <= '0;
-            rsp_attempt <= '0;
-            dreq_o.ex <= '0;
-            dreq_o.vaddr <= '0;
             busy <= '0;
         end else begin
-            if (dreq_i.dii_flush) begin
-                dii_id = dreq_i.dii_id;
-                fetch_buff = 0;
-                flushing = 1;
-                $display("dii_flush, dii_id = %x", dii_id);
-            end
             if (dreq_i.kill_s1) begin
-                $display("kill_s1");
+                fetch_buff_q <= 0;
+                flushing <= 1;
                 busy <= '0;
-                vaddr_buff <= 'h123123ab;
-                rsp_attempt <= 1'b0;
             end else begin
+                dii_id_q <= dii_id_d;
+                fetch_buff_q <= fetch_buff_d;
+                fetch_offset_q <= fetch_offset_d;
                 if (dreq_i.req) begin
-                    $display("req. Addr = %x", dreq_i.vaddr);
                     busy <= 1;
                     vaddr_buff <= dreq_i.vaddr;
                     ex_buff <= dreq_i.ex;
                     if (flushing) begin
-                        fetch_offset <= {1'b0, dreq_i.vaddr[CVA6Cfg.FETCH_ALIGN_BITS-1:0]};
+                        dii_id_q <= dreq_i.dii_id;
+                        fetch_offset_q <= {1'b0, dreq_i.vaddr[CVA6Cfg.FETCH_ALIGN_BITS-1:0]};
                     end
                     flushing <= 0;
-                end
-                if (busy && !dreq_i.kill_s2) begin
-                    automatic logic [31:0] instr;
-                    automatic logic [2:0] instr_bytes;
-                    automatic logic test_done;
-                    rsp_attempt <= 1'b1;
-                    dreq_o.ex <= ex_buff;
-                    dreq_o.vaddr <= vaddr_buff;
-                    fetch_buff = fetch_buff >> CVA6Cfg.FETCH_WIDTH;
-                    fetch_offset = {1'b0, fetch_offset[CVA6Cfg.FETCH_ALIGN_BITS-1:0]};
-                    $display("fetch_offset: ");
-                    $display(fetch_offset);
-                    $display("fetch_align_bits: ");
-                    $display(CVA6Cfg.FETCH_ALIGN_BITS);
-                    while (~fetch_offset[CVA6Cfg.FETCH_ALIGN_BITS]) begin
-                        $display("Hello from always_ff");
-                        $display(dii_id);
-                        test_done = get_dii_cmd(dii_id) == 0;
-                        if (test_done) begin
-                            $display("test done");
-                        end
-                        instr = test_done ? 32'h13 : get_dii_insn(dii_id);
-                        instr_bytes = instr[1:0] == 2'b11 ? 3'd4 : 3'd2;
-                        fetch_buff = fetch_buff | (instr << (fetch_offset << 3));
-                        fetch_offset = fetch_offset + instr_bytes;
-                        dii_id = dii_id + (test_done ? 0 : 1);
-                    end
-                    dreq_o.data <= fetch_buff[CVA6Cfg.FETCH_WIDTH-1:0];
-                    $display("%h", fetch_buff);
                 end else begin
-                    rsp_attempt <= 1'b0;
+                    busy <= 0;
                 end
             end
         end
     end
-
-    assign dreq_o.valid = rsp_attempt & ~dreq_i.kill_s1;
-
 endmodule

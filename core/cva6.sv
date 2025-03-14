@@ -65,7 +65,6 @@ module cva6
     // I$ data requests
     localparam type icache_dreq_t = struct packed {
       logic                    req;      // we request a new word
-      logic                    dii_flush;
       logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;
       logic                    kill_s1;  // kill the current request
       logic                    kill_s2;  // kill the last request
@@ -360,6 +359,7 @@ module cva6
   exception_t                                   ex_commit;  // exception from commit stage
   bp_resolve_t                                  resolved_branch;
   logic             [         CVA6Cfg.PCLEN-1:0] pc_commit;
+  logic             [      CVA6Cfg.DIIIDLEN-1:0] dii_id_commit;
   logic                                         eret;
   logic             [CVA6Cfg.NrCommitPorts-1:0] commit_ack;
   logic             [CVA6Cfg.NrCommitPorts-1:0] commit_macro_ack;
@@ -628,7 +628,6 @@ module cva6
       .exception_t(exception_t)
   ) i_frontend (
       .flush_i            (flush_ctrl_if),                  // not entirely correct
-      .flush_dii_id_i     (flush_ctrl_dii_id_if),
       .flush_bp_i         (1'b0),
       .halt_i             (halt_ctrl),
       .debug_mode_i       (debug_mode),
@@ -638,6 +637,7 @@ module cva6
       .icache_dreq_o      (icache_dreq_if_cache),
       .resolved_branch_i  (resolved_branch),
       .pc_commit_i        (pc_commit),
+      .dii_id_commit_i    (dii_id_commit),
       .set_pc_commit_i    (set_pc_ctrl_pcgen),
       .set_debug_pc_i     (set_debug_pc),
       .epc_i              (epc_commit_pcgen),
@@ -1021,6 +1021,7 @@ module cva6
       .amo_resp_i        (amo_resp),
       .commit_csr_o      (csr_commit_commit_ex),
       .pc_o              (pc_commit),
+      .dii_id_o          (dii_id_commit),
       .csr_op_o          (csr_op_commit_csr),
       .csr_wdata_o       (csr_wdata_commit_csr),
       .csr_rdata_i       (csr_rdata_csr_commit),
@@ -1182,7 +1183,6 @@ module cva6
       .set_pc_commit_o       (set_pc_ctrl_pcgen),
       .flush_unissued_instr_o(flush_unissued_instr_ctrl_id),
       .flush_if_o            (flush_ctrl_if),
-      .flush_if_dii_id_o     (flush_ctrl_dii_id_if),
       .flush_id_o            (flush_ctrl_id),
       .flush_ex_o            (flush_ctrl_ex),
       .flush_bp_o            (flush_ctrl_bp),
