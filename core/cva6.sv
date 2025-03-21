@@ -178,6 +178,7 @@ module cva6
       logic                             is_speculative_load_miss;
       logic [REG_ADDR_SIZE-1:0]         rs1;
       logic                             use_ddc;
+      logic                             clr_tag;
     },
 
 
@@ -223,11 +224,12 @@ module cva6
       logic                                  data_req;
       logic                                  data_we;
       logic [(CVA6Cfg.CLEN/8)-1:0]           data_be;
-      logic [CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0]                            data_size;
+      logic [CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0] data_size;
       logic [CVA6Cfg.DcacheIdWidth-1:0]      data_id;
       logic                                  kill_req;
       logic                                  tag_valid;
       cbo_t                                  cbo_op;
+      logic                                  strip_tag;
     },
 
     localparam type dcache_req_o_t = struct packed {
@@ -236,6 +238,7 @@ module cva6
       logic [CVA6Cfg.DcacheIdWidth-1:0]     data_rid;
       logic [CVA6Cfg.CLEN-1:0]    data_rdata;
       logic [CVA6Cfg.DCACHE_USER_WIDTH-1:0] data_ruser;
+      logic                                 data_strip_tag;
     },
 
     // Accelerator - CVA6

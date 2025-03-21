@@ -231,7 +231,8 @@ localparam NumWords = (24 * 1024 * 1024) / 8;
 localparam int unsigned CapSize = 128;
 localparam int unsigned DRAMMemBase = {64'h80000000};
 localparam int unsigned DRAMMemLength = {64'h40000000};
-localparam int unsigned TagCacheMemBase = {64'hA0000000};
+//localparam int unsigned TagCacheMemBase = {64'hA0000000};
+localparam int unsigned TagCacheMemBase = {64'hB0000000};
 localparam int unsigned TagCacheMemLength = {64'h00010000};
 localparam int unsigned AxiIdWidth = 64'd6;
 localparam int unsigned SetAssociativity = 32'd8;
@@ -811,7 +812,7 @@ ariane #(
     .rvfi_dii_rtrn_vld_i   ('0),
     .rvfi_dii_inst_pack_i  ('0),
     .rvfi_dii_data_ready_o (/* open */ ),
-    .debug_req_i  ( 1'b0                ),
+    .debug_req_i  ( debug_req_irq       ),
     .noc_req_o    ( axi_ariane_req      ),
     .noc_resp_i   ( axi_ariane_resp     )
 );

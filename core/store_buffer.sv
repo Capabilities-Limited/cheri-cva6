@@ -158,6 +158,7 @@ module store_buffer
   assign req_port_o.data_wuser = commit_queue_q[commit_read_pointer_q].cap_tag;
   assign req_port_o.data_be = commit_queue_q[commit_read_pointer_q].be;
   assign req_port_o.data_size = commit_queue_q[commit_read_pointer_q].data_size;
+  assign req_port_o.strip_tag = '0;
 
   assign rvfi_mem_paddr_o = speculative_queue_q[speculative_read_pointer_q].address;
 
