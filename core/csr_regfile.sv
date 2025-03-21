@@ -210,6 +210,7 @@ module csr_regfile
   logic        scr_we;
   logic        scr_read;
   cva6_cheri_pkg::cap_reg_t scr_wdata, scr_rdata;
+  logic [CVA6Cfg.REGLEN-1:0] dbg_wdata, dbg_rdata;
   cva6_cheri_pkg::addrw_t cap_offset;
   cva6_cheri_pkg::cap_pcc_t pcc;
   riscv::priv_lvl_t trap_to_priv_lvl;
@@ -243,9 +244,11 @@ module csr_regfile
   logic debug_mode_q, debug_mode_d;
   logic mtvec_rst_load_q;  // used to determine whether we came out of reset
 
+  // TODO-cheri(ninolomata): There should be the CHERI extended registers for debug module
   logic [CVA6Cfg.XLEN-1:0] dpc_q, dpc_d;
-  logic [CVA6Cfg.XLEN-1:0] dscratch0_q, dscratch0_d;
-  logic [CVA6Cfg.XLEN-1:0] dscratch1_q, dscratch1_d;
+  logic [CVA6Cfg.REGLEN-1:0] dscratch0_q, dscratch0_d;
+  logic [CVA6Cfg.REGLEN-1:0] dscratch1_q, dscratch1_d;
+  logic [CVA6Cfg.REGLEN-1:0] dscratch2_q, dscratch2_d;
   logic [CVA6Cfg.XLEN-1:0] mtvec_q, mtvec_d;
   logic [CVA6Cfg.XLEN-1:0] medeleg_q, medeleg_d;
   logic [CVA6Cfg.XLEN-1:0] mideleg_q, mideleg_d;
@@ -413,6 +416,7 @@ if (CVA6Cfg.CheriPresent) begin
                 end
                 riscv::CSR_SEPC: begin
                   wr_cap = sepcc_q;
+                  wr_cap_addr  = {csr_wdata[riscv::XLEN-1:1], 1'b0};
                   // TODO-ninolomata(cheri): fix this
                   if (CVA6Cfg.RVFI_DII)
                     wr_cap_addr  = {csr_wdata[riscv::XLEN-1:2], 2'b0};
@@ -467,6 +471,7 @@ end
     read_access_exception = 1'b0;
     virtual_read_access_exception = 1'b0;
     csr_rdata = '0;
+    dbg_rdata = '0;
     perf_addr_o = csr_addr.address[11:0];
     index = '0;
 
@@ -509,10 +514,13 @@ end
         if (CVA6Cfg.DebugEn) csr_rdata = dpc_q;
         else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
-        if (CVA6Cfg.DebugEn) csr_rdata = dscratch0_q;
+        if (CVA6Cfg.DebugEn) dbg_rdata = dscratch0_q;
         else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH1:
-        if (CVA6Cfg.DebugEn) csr_rdata = dscratch1_q;
+        if (CVA6Cfg.DebugEn) dbg_rdata = dscratch1_q;
+        else read_access_exception = 1'b1;
+        riscv::CSR_DSCRATCH2:
+        if (CVA6Cfg.DebugEn) dbg_rdata = dscratch2_q;
         else read_access_exception = 1'b1;
         // trigger module registers
         riscv::CSR_TSELECT: read_access_exception = 1'b1;  // not implemented
@@ -1077,6 +1085,7 @@ end
     dpc_cap_d                       = dpc_cap_q;
     dscratch0_d                     = dscratch0_q;
     dscratch1_d                     = dscratch1_q;
+    dscratch2_d                     = dscratch2_q;
     mstatus_d                       = mstatus_q;
     hstatus_d                       = hstatus_q;
     vsstatus_d                      = vsstatus_q;
@@ -1145,13 +1154,15 @@ end
         // a read access exception can only occur if we attempt to read a CSR which does not exist
         cheri_update_access_exception = 1'b0;
         ddc_d       = ddc_q;
-        // utcc_d      = utcc_q;
-        // utdc_d      = utdc_q;
-        // uscratchc_d = uscratchc_q;
         sepcc_d     = sepcc_q;
         stcc_d      = stcc_q;
         stdc_d      = stdc_q;
         sscratchc_d = sscratchc_q;
+
+        vsepcc_d     = vsepcc_q;
+        vstcc_d      = vstcc_q;
+        vstdc_d      = vstdc_q;
+        vsscratchc_d = vsscratchc_q;
 
         if (mtvec_rst_load_q) begin
           if (CVA6Cfg.RVFI_DII) begin
@@ -1173,12 +1184,13 @@ end
                         ddc_d = scr_wdata;
                     end
                     cva6_cheri_pkg::SCR_VSTCC: begin
+                      vstcc_d = scr_wdata;
                         if (scr_wdata[1])
                           vstcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00});
                         /* stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00}); */
                         // we are in vector mode, this implementation requires the additional
                         // alignment constraint of 64 * 4 bytes
-                        /* if (scr_wdata[0] && !CVA6Cfg.RVFI_DII) stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]}); */
+                        if (scr_wdata[0] && !CVA6Cfg.RVFI_DII) vstcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]});
                     end
                     cva6_cheri_pkg::SCR_VSTDC: begin
                         vstdc_d = scr_wdata;
@@ -1191,12 +1203,13 @@ end
                         vsepcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:1], 1'b0});
                     end
                     cva6_cheri_pkg::SCR_STCC: begin
+                        stcc_d = scr_wdata;
                         if (scr_wdata[1])
                           stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00});
                         /* stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00}); */
                         // we are in vector mode, this implementation requires the additional
                         // alignment constraint of 64 * 4 bytes
-                        /* if (scr_wdata[0] && !CVA6Cfg.RVFI_DII) stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]}); */
+                        if (scr_wdata[0] && !CVA6Cfg.RVFI_DII) stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]});
                     end
                     cva6_cheri_pkg::SCR_STDC: begin
                         stdc_d = scr_wdata;
@@ -1215,7 +1228,7 @@ end
                         /* mtcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00}); */
                         // we are in vector mode, this implementation requires the additional
                         // alignment constraint of 64 * 4 bytes
-                        /* if (scr_wdata[0] && !CVA6Cfg.RVFI_DII) mtcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]}); */
+                        if (scr_wdata[0] && !CVA6Cfg.RVFI_DII) mtcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]});
                     end
                     cva6_cheri_pkg::SCR_MTDC: begin
                         mtdc_d = scr_wdata;
@@ -1225,7 +1238,8 @@ end
                     end
                     cva6_cheri_pkg::SCR_MEPCC: begin
                       // TODO-cheri(ninolomata):fix this it should clear bit 1 only
-                      mepcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00});
+                      //mepcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00});
+                      mepcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:1], 1'b0});
                     end
                     default: begin
                         cheri_update_access_exception = 1'b1;
@@ -1295,10 +1309,13 @@ end
         if (CVA6Cfg.DebugEn) dpc_d = csr_wdata;
         else update_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
-        if (CVA6Cfg.DebugEn) dscratch0_d = csr_wdata;
+        if (CVA6Cfg.DebugEn) dscratch0_d = CVA6Cfg.CheriPresent ? scr_wdata : csr_wdata;
         else update_access_exception = 1'b1;
         riscv::CSR_DSCRATCH1:
-        if (CVA6Cfg.DebugEn) dscratch1_d = csr_wdata;
+        if (CVA6Cfg.DebugEn) dscratch1_d = CVA6Cfg.CheriPresent ? scr_wdata : csr_wdata;
+        else update_access_exception = 1'b1;
+        riscv::CSR_DSCRATCH2:
+        if (CVA6Cfg.DebugEn) dscratch2_d = CVA6Cfg.CheriPresent ? scr_wdata : csr_wdata;
         else update_access_exception = 1'b1;
         // trigger module CSRs
         riscv::CSR_TSELECT: update_access_exception = 1'b1;  // not implemented
@@ -1335,7 +1352,11 @@ end
         end
         riscv::CSR_VSTVEC: begin
           if (CVA6Cfg.RVH) begin
-            vstvec_d = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
+            if (CVA6Cfg.CheriPresent) begin
+              vstcc_d =  wr_cap_csr_result;
+            end else begin
+              vstvec_d = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
+            end
           end else begin
             update_access_exception = 1'b1;
           end
@@ -1349,8 +1370,13 @@ end
           end
         end else update_access_exception = 1'b1;
         riscv::CSR_VSEPC:
-        if (CVA6Cfg.RVH) vsepc_d = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
-        else update_access_exception = 1'b1;
+        if (CVA6Cfg.RVS) begin
+          if (CVA6Cfg.CheriPresent) begin
+            vsepcc_d =  wr_cap_csr_result;
+          end else begin
+            vsepc_d = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
+          end
+        end else update_access_exception = 1'b1;
         riscv::CSR_VSCAUSE:
         if (CVA6Cfg.RVH) vscause_d = csr_wdata;
         else update_access_exception = 1'b1;
@@ -1513,7 +1539,10 @@ end
                (1 << riscv::ENV_CALL_UMODE) |
                (1 << riscv::INSTR_PAGE_FAULT) |
                (1 << riscv::LOAD_PAGE_FAULT) |
-               (1 << riscv::STORE_PAGE_FAULT);
+               (1 << riscv::STORE_PAGE_FAULT) |
+               ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_LOAD_PAGE_FAULT) |
+               ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT) |
+               ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_EXCEPTION);
             hedeleg_d = (hedeleg_q & ~mask) | (csr_wdata & mask);
           end else begin
             update_access_exception = 1'b1;
@@ -1649,7 +1678,10 @@ end
                              ((CVA6Cfg.RVH ? 1 : 0)  << riscv::INSTR_GUEST_PAGE_FAULT) |
                              ((CVA6Cfg.RVH ? 1 : 0)  << riscv::LOAD_GUEST_PAGE_FAULT) |
                              ((CVA6Cfg.RVH ? 1 : 0)  << riscv::VIRTUAL_INSTRUCTION) |
-                             ((CVA6Cfg.RVH ? 1 : 0)  << riscv::STORE_GUEST_PAGE_FAULT);
+                             ((CVA6Cfg.RVH ? 1 : 0)  << riscv::STORE_GUEST_PAGE_FAULT) |
+                             ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_LOAD_PAGE_FAULT) |
+                             ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT) |
+                             ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_EXCEPTION);
             medeleg_d = (medeleg_q & ~mask) | (csr_wdata & mask);
           end else begin
             update_access_exception = 1'b1;
@@ -2233,6 +2265,7 @@ end
             {CVA6Cfg.XLEN - CVA6Cfg.VLEN{commit_instr_i[0].bp.predict_address}},
             commit_instr_i[0].bp.predict_address
           };
+          dpc_cap_d =  cap_pcc_to_cap_reg(pcc);
           // exception valid
         end else if (ex_i.valid) begin
           dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, trap_vector_base_o[CVA6Cfg.VLEN-1:0]};
@@ -2657,6 +2690,9 @@ end
   // output assignments dependent on privilege mode
   always_comb begin : priv_output
     automatic logic mvecmode, svecmode, vsvecmode;
+    automatic cap_reg_t epc;
+
+    epc = cva6_cheri_pkg::REG_NULL_CAP;
 
     mvecmode = (CVA6Cfg.CheriPresent) ? mtcc_q[0] : mtvec_q[0];
     svecmode = (CVA6Cfg.CheriPresent) ? stcc_q[0] : stvec_q[0];
@@ -2670,7 +2706,7 @@ end
     // output user mode stvec
     if (CVA6Cfg.RVS && trap_to_priv_lvl == riscv::PRIV_LVL_S) begin
       if (CVA6Cfg.CheriPresent) begin
-        trap_vector_base_o = (CVA6Cfg.RVH && trap_to_v) ? cva6_cheri_pkg::set_cap_reg_addr(vstcc_q, {stcc_q[CVA6Cfg.XLEN-1:2],2'b0}) : cva6_cheri_pkg::set_cap_reg_addr(stcc_q, {stcc_q[CVA6Cfg.XLEN-1:2],2'b0});
+        trap_vector_base_o = (CVA6Cfg.RVH && trap_to_v) ? cva6_cheri_pkg::set_cap_reg_addr(vstcc_q, {vstcc_q[CVA6Cfg.XLEN-1:2],2'b0}) : cva6_cheri_pkg::set_cap_reg_addr(stcc_q, {stcc_q[CVA6Cfg.XLEN-1:2],2'b0});
       end else begin
         trap_vector_base_o = (CVA6Cfg.RVH && trap_to_v) ? {vstvec_q[CVA6Cfg.VLEN-1:2], 2'b0} : {stvec_q[CVA6Cfg.VLEN-1:2], 2'b0};
       end
@@ -2678,7 +2714,11 @@ end
 
     // if we are in debug mode jump to a specific address
     if (CVA6Cfg.DebugEn && debug_mode_q) begin
-      trap_vector_base_o[CVA6Cfg.VLEN-1:0] = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0];
+      if (CVA6Cfg.CheriPresent) begin
+        trap_vector_base_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_ROOT_CAP, CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0]);
+      end else begin
+        trap_vector_base_o = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0];
+      end
     end
 
     // check if we are in vectored mode, if yes then do BASE + 4 * cause we
@@ -2696,21 +2736,32 @@ end
       trap_vector_base_o[7:2] = {ex_i.cause[5:2], 2'b01};
     end
 
-    epc_o = (CVA6Cfg.CheriPresent) ? mepcc_q : mepc_q[CVA6Cfg.VLEN-1:0];
+    if (CVA6Cfg.CheriPresent) begin
+      epc = mepcc_q;
+    end else begin
+      epc_o[CVA6Cfg.VLEN-1:0] = mepc_q[CVA6Cfg.VLEN-1:0];
+    end
     // we are returning from supervisor or virtual supervisor mode, so take the sepc register
     if (CVA6Cfg.RVS && sret) begin
       if (CVA6Cfg.CheriPresent) begin
-        epc_o = (CVA6Cfg.RVH && v_q) ? vsepcc_q : sepcc_q;
+        epc = (CVA6Cfg.RVH && v_q) ? vsepcc_q : sepcc_q;
       end else begin
-        epc_o = (CVA6Cfg.RVH && v_q) ? vsepc_q[CVA6Cfg.VLEN-1:0] : sepc_q[CVA6Cfg.VLEN-1:0];
+        epc_o[CVA6Cfg.VLEN-1:0] = (CVA6Cfg.RVH && v_q) ? vsepc_q[CVA6Cfg.VLEN-1:0] : sepc_q[CVA6Cfg.VLEN-1:0];
       end
     end
     // we are returning from debug mode, to take the dpc register
     if (CVA6Cfg.DebugEn && dret) begin
       if (CVA6Cfg.CheriPresent) begin
-        epc_o =  set_cap_reg_address(dpc_cap_q, dpc_q, dpc_cap_meta_data);
+        epc =  set_cap_reg_address(dpc_cap_q, dpc_q, dpc_cap_meta_data);
       end else begin
-        epc_o = dpc_q[CVA6Cfg.VLEN-1:0];
+        epc_o[CVA6Cfg.VLEN-1:0] = dpc_q[CVA6Cfg.VLEN-1:0];
+      end
+    end
+    if (CVA6Cfg.CheriPresent) begin
+      epc_o = epc;
+      // Unseal cap if it is a SEAL ENTRY object type
+      if (epc.otype == cva6_cheri_pkg::SENTRY_CAP) begin
+        epc_o[116:99] = cva6_cheri_pkg::UNSEALED_CAP;
       end
     end
   end
@@ -2723,7 +2774,9 @@ end
     // returned in the rd destination register contains the logical-OR of the software-writable
     // bit and the interrupt signal from the interrupt controller.
     csr_rdata_o = (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : '0;
-    if(CVA6Cfg.CheriPresent && csr_op_i inside {SCR_READ, SCR_READWRITE}) begin
+    if (CVA6Cfg.CheriPresent && csr_addr inside {riscv::CSR_DSCRATCH0,riscv::CSR_DSCRATCH1,riscv::CSR_DSCRATCH2}) begin
+        csr_rdata_o = dbg_rdata;
+    end else if (CVA6Cfg.CheriPresent && csr_op_i inside {SCR_READ, SCR_READWRITE}) begin
         csr_rdata_o = scr_rdata;
     end else begin
         csr_rdata_o[CVA6Cfg.XLEN-1:0] = csr_rdata;
@@ -2815,6 +2868,7 @@ end
         dpc_cap_q        <= cva6_cheri_pkg::REG_ROOT_CAP;
         dscratch0_q      <= {CVA6Cfg.XLEN{1'b0}};
         dscratch1_q      <= {CVA6Cfg.XLEN{1'b0}};
+        dscratch2_q      <= {CVA6Cfg.XLEN{1'b0}};
       end
       // machine mode registers
       mstatus_q        <= 64'b0;
@@ -2919,6 +2973,7 @@ end
         dpc_cap_q    <= dpc_cap_d;
         dscratch0_q  <= dscratch0_d;
         dscratch1_q  <= dscratch1_d;
+        dscratch2_q  <= dscratch1_d;
       end
       // machine mode registers
       mstatus_q        <= mstatus_d;
@@ -2984,10 +3039,10 @@ end
       if (CVA6Cfg.CheriPresent) begin
         ddc_q                  <= ddc_d;
         if (CVA6Cfg.RVH) begin
-          vstcc_q                 <= stcc_d;
-          vstdc_q                 <= stdc_d;
-          vsscratchc_q            <= sscratchc_d;
-          vsepcc_q                <= sepcc_d;
+          vstcc_q                 <= vstcc_d;
+          vstdc_q                 <= vstdc_d;
+          vsscratchc_q            <= vsscratchc_d;
+          vsepcc_q                <= vsepcc_d;
           vsccsr_q                <= vsccsr_d;
         end
         if (CVA6Cfg.RVS) begin

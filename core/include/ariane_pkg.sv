@@ -363,9 +363,13 @@ package ariane_pkg;
     HLV_D,
     HSV_D,
     // Atomic Memory Operations
+    AMO_LRB,
+    AMO_LRH,
     AMO_LRW,
     AMO_LRD,
     AMO_LRC,
+    AMO_SCB,
+    AMO_SCH,
     AMO_SCW,
     AMO_SCD,
     AMO_SCC,
@@ -601,7 +605,16 @@ package ariane_pkg;
 
   function automatic logic is_amo(fu_op op);
     case (op) inside
-      [AMO_LRW : AMO_MINDU]: begin
+      [AMO_LRB : AMO_SWAPC]: begin
+        return 1'b1;
+      end
+      default: return 1'b0;
+    endcase
+  endfunction
+
+  function automatic logic is_amo_sc(fu_op op);
+    case (op) inside
+      [AMO_SCB : AMO_SCC]: begin
         return 1'b1;
       end
       default: return 1'b0;
@@ -679,7 +692,7 @@ package ariane_pkg;
 
   function automatic logic is_cap (fu_op op);
         case (op) inside
-            LC, SC, CLOAD_TAGS: begin
+            LC, SC, CLOAD_TAGS, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
                 return 1'b1;
             end
             default: return 1'b0;
@@ -857,7 +870,7 @@ package ariane_pkg;
   // ----------------------
   function automatic logic [2:0] extract_transfer_size(fu_op op);
     case (op)
-      AMO_LRC, AMO_SCC, LC, SC, CLOAD_TAGS: begin
+      AMO_LRC, AMO_SCC, LC, SC, CLOAD_TAGS, AMO_SWAPC: begin
         return 3'b100;
       end
       LD, HLV_D, SD, HSV_D, FLD, FSD,
@@ -879,8 +892,8 @@ package ariane_pkg;
       AMO_MINWU: begin
         return 3'b010;
       end
-      LH, LHU, HLV_H, HLV_HU, HLVX_HU, SH, HSV_H, FLH, FSH: return 3'b001;
-      LB, LBU, HLV_B, HLV_BU, SB, HSV_B, FLB, FSB:          return 3'b000;
+      LH, LHU, HLV_H, HLV_HU, HLVX_HU, SH, HSV_H, FLH, FSH, AMO_LRH, AMO_SCH: return 3'b001;
+      LB, LBU, HLV_B, HLV_BU, SB, HSV_B, FLB, FSB, AMO_LRB, AMO_SCB:          return 3'b000;
       default:                                              return 3'b000;
     endcase
   endfunction

@@ -549,11 +549,13 @@ module wt_axi_adapter
       dcache_rd_shift_d[0][amo_off_q*8] = (wr_exokay) ? '0 : 1'b1;
       dcache_rd_shift_user_d[0][amo_off_q*8] = (wr_exokay) ? '0 : 1'b1;
       // replicate also the second word
-        if (CVA6Cfg.CheriPresent) begin
-          for(int i = 1; i < CVA6Cfg.DCACHE_LINE_WIDTH/CVA6Cfg.AxiDataWidth; i++) begin
-            dcache_rd_shift_d[i][amo_off_q*8] = (wr_exokay) ? '0 : 1'b1;
-            dcache_rd_shift_user_d[i][amo_off_q*8] = (wr_exokay) ? '0 : 1'b1;
-          end
+      if (CVA6Cfg.CheriPresent) begin
+        for(int i = 1; i < CVA6Cfg.DCACHE_LINE_WIDTH/CVA6Cfg.AxiDataWidth; i++) begin
+          dcache_rd_shift_d[i] = '0;
+          dcache_rd_shift_user_d[i] = '0;
+          dcache_rd_shift_d[i][amo_off_q*8] = (wr_exokay) ? '0 : 1'b1;
+          dcache_rd_shift_user_d[i][amo_off_q*8] = (wr_exokay) ? '0 : 1'b1;
+        end
       end
     end
   end

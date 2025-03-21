@@ -354,7 +354,9 @@ module frontend
   // Mis-predict handling is a little bit different
   // select PC a.k.a PC Gen
   logic [CVA6Cfg.VLEN-1:0] fetch_address;
+
   always_comb begin : npc_select
+    automatic cva6_cheri_pkg::cap_pcc_t debug_pcc;
     //automatic logic [CVA6Cfg.VLEN-1:0] fetch_address;
     // check whether we come out of reset
     // this is a workaround. some tools have issues
@@ -362,6 +364,9 @@ module frontend
     // reset assignment to npc_q, even though
     // boot_addr_i will be assigned a constant
     // on the top-level.
+
+    debug_pcc = cva6_cheri_pkg::PCC_ROOT_CAP;
+    debug_pcc.flags.cap_mode = 1'b0;
     if (npc_rst_load_q) begin
       npc_d         = boot_addr_i;
       fetch_address = boot_addr_i[CVA6Cfg.XLEN-1:0];
@@ -430,10 +435,11 @@ module frontend
     // 7. Debug
     // enter debug on a hard-coded base-address
     if (CVA6Cfg.DebugEn && set_debug_pc_i)
-      if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(cva6_cheri_pkg::PCC_ROOT_CAP,CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0]);
-      else
+      if (CVA6Cfg.CheriPresent) begin
+        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(debug_pcc,CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0]);
+      end else begin
         npc_d = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0];
+      end
     icache_dreq_o.vaddr = fetch_address;
     if (CVA6Cfg.CheriPresent) begin
       icache_dreq_o.ex    = cheri_ex;

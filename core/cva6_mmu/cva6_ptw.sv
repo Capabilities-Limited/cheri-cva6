@@ -40,7 +40,6 @@ module cva6_ptw
     output logic ptw_error_o,  // set when an error occurred
     output logic ptw_error_at_g_st_o,  // set when an error occurred at the G-Stage
     output logic ptw_err_at_g_int_st_o,  // set when an error occurred at the G-Stage during S-Stage translation
-    output logic                    ptw_cap_err_o,          // capability error occured during walk
     output logic ptw_access_exception_o,  // set when an PMP access exception occured
     input logic enable_translation_i,  // CSRs indicate to enable SV39 VS-Stage translation
     input logic enable_g_translation_i,  // CSRs indicate to enable SV39  G-Stage translation
@@ -51,7 +50,6 @@ module cva6_ptw
     input logic hlvx_inst_i,  // is a HLVX load/store instruction
 
     input  logic          lsu_is_store_i,  // this translation was triggered by a store
-        input  logic                    lsu_is_cap_i,            // is a capability load/store instruction
 
     // PTW memory interface
     input  dcache_req_o_t req_port_i,
@@ -101,7 +99,7 @@ module cva6_ptw
   pte_cva6_t pte;
   // register to perform context switch between stages
   pte_cva6_t gpte_q, gpte_d;
-  assign pte = pte_cva6_t'(data_rdata_q[CVA6Cfg.PPNW+9:0]);
+  assign pte = pte_cva6_t'(data_rdata_q[CVA6Cfg.XLEN-1:0]);
 
   enum logic [2:0] {
     IDLE,
@@ -146,8 +144,6 @@ module cva6_ptw
   // 4 byte aligned physical pointer
   logic [CVA6Cfg.PLEN-1:0] ptw_pptr_q, ptw_pptr_n;
   logic [CVA6Cfg.PLEN-1:0] gptw_pptr_q, gptw_pptr_n;
-  // capability exception during walk?
-    logic cap_ex_q,   cap_ex_n;
 
   // Assignments
   assign update_vaddr_o = vaddr_q;
@@ -253,10 +249,13 @@ module cva6_ptw
       .allow_o      (allow_access)
   );
 
-
-  assign req_port_o.data_be = CVA6Cfg.XLEN == 32 ? be_gen_32(
-      req_port_o.address_index[1:0], req_port_o.data_size
-  ) : '1;
+  if (CVA6Cfg.CheriPresent && CVA6Cfg.IS_XLEN64) begin : gen_16b_be
+    assign req_port_o.data_be = be_gen_128(req_port_o.address_index[3:0], req_port_o.data_size);
+  end else if (CVA6Cfg.IS_XLEN64 || CVA6Cfg.CheriPresent && CVA6Cfg.IS_XLEN32) begin : gen_8b_be
+    assign req_port_o.data_be = be_gen(req_port_o.address_index[2:0], req_port_o.data_size);
+  end else begin : gen_4b_be
+    assign req_port_o.data_be = be_gen_32(req_port_o.address_index[1:0], req_port_o.data_size);
+  end
 
 
 
@@ -291,7 +290,7 @@ module cva6_ptw
     // PTW memory interface
     tag_valid_n               = 1'b0;
     req_port_o.data_req       = 1'b0;
-    req_port_o.data_size      = 2'(CVA6Cfg.PtLevels);
+    req_port_o.data_size      = CVA6Cfg.DCACHE_DATA_SIZE_WIDTH'(CVA6Cfg.PtLevels);
     req_port_o.data_we        = 1'b0;
     ptw_error_o               = 1'b0;
     ptw_error_at_g_st_o       = 1'b0;
@@ -316,8 +315,6 @@ module cva6_ptw
       gpte_d = gpte_q;
     end
 
-    cap_ex_n              = cap_ex_q;
-
     shared_tlb_miss_o = 1'b0;
 
 
@@ -334,8 +331,6 @@ module cva6_ptw
           gpte_d   = '0;
           gpaddr_n = '0;
         end
-        cap_ex_n         = 1'b0;
-
 
         // if we got an ITLB miss
         if (((enable_translation_i | enable_g_translation_i) || (en_ld_st_translation_i || en_ld_st_g_translation_i)  || !CVA6Cfg.RVH) && shared_tlb_access_i && ~shared_tlb_hit_i) begin
@@ -470,12 +465,6 @@ module cva6_ptw
                 // ------------
                 // Update DTLB
                 // ------------
-                if (!lsu_is_store_i && lsu_is_cap_i && !(pte.cr && !pte.crm && !pte.crg)) begin
-                                    cap_ex_n = 1'b1;
-                                    shared_tlb_update_o.valid = 1'b0;
-                                    state_d   = PROPAGATE_ERROR;
-                                    ptw_stage_d = ptw_stage_q;
-                                end
                 // Check if the access flag has been set, otherwise throw a page-fault
                 // and let the software handle those bits.
                 // If page is not readable (there are no write-only pages)
@@ -487,12 +476,6 @@ module cva6_ptw
                 end else begin
                   state_d = PROPAGATE_ERROR;
                   if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
-                end
-                if (lsu_is_store_i && lsu_is_cap_i && (!pte.cw || !pte.cd)) begin
-                  cap_ex_n = 1'b1;
-                  shared_tlb_update_o.valid = 1'b0;
-                  state_d   = PROPAGATE_ERROR;
-                  ptw_stage_d = ptw_stage_q;
                 end
                 // Request is a store: perform some additional checks
                 // If the request was a store and the page is not write-able, raise an error
@@ -601,7 +584,6 @@ module cva6_ptw
           ptw_error_at_g_st_o   = (ptw_stage_q != S_STAGE) ? 1'b1 : 1'b0;
           ptw_err_at_g_int_st_o = (ptw_stage_q == G_INTERMED_STAGE) ? 1'b1 : 1'b0;
         end
-        ptw_cap_err_o = cap_ex_q;
       end
       PROPAGATE_ACCESS_ERROR: begin
         state_d = LATENCY;
@@ -655,7 +637,6 @@ module cva6_ptw
       global_mapping_q  <= 1'b0;
       data_rdata_q      <= '0;
       data_rvalid_q     <= 1'b0;
-      cap_ex_q        <= 1'b0;
       if (CVA6Cfg.RVH) begin
         gpaddr_q    <= '0;
         gptw_pptr_q <= '0;
@@ -673,8 +654,6 @@ module cva6_ptw
       global_mapping_q  <= global_mapping_n;
       data_rdata_q      <= shifted_rdata[CVA6Cfg.XLEN-1:0];
       data_rvalid_q     <= req_port_i.data_rvalid;
-      cap_ex_q          <= cap_ex_n;
-
       if (CVA6Cfg.RVH) begin
         gpaddr_q          <= gpaddr_n;
         gptw_pptr_q       <= gptw_pptr_n;

@@ -249,7 +249,17 @@ module wt_dcache_missunit
 
   if (CVA6Cfg.RVA) begin
     if (CVA6Cfg.IS_XLEN64 && CVA6Cfg.CheriPresent) begin : gen_amo_128b_data
-      assign amo_data_a = {amo_req_i.operand_b[0+:32], amo_req_i.operand_b[0+:32],amo_req_i.operand_b[0+:32], amo_req_i.operand_b[0+:32]};
+      always_comb begin : gen_replicate_amo_data_a
+        case(amo_req_i.size)
+        3'b000: amo_data_a = {amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8],amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8],amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8],amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8],amo_req_i.operand_b[0+:8], amo_req_i.operand_b[0+:8]};
+        3'b001: amo_data_a = {amo_req_i.operand_b[0+:16],amo_req_i.operand_b[0+:16], amo_req_i.operand_b[0+:16],amo_req_i.operand_b[0+:16], amo_req_i.operand_b[0+:16],amo_req_i.operand_b[0+:16], amo_req_i.operand_b[0+:16],amo_req_i.operand_b[0+:16]};
+        3'b010: amo_data_a = {amo_req_i.operand_b[0+:32], amo_req_i.operand_b[0+:32],amo_req_i.operand_b[0+:32], amo_req_i.operand_b[0+:32]};
+        3'b011: amo_data_a = {amo_req_i.operand_b[0+:64], amo_req_i.operand_b[0+:64]};
+        default: amo_data_a = amo_req_i.operand_b;
+
+        endcase
+      end
+      //assign amo_data_a = {amo_req_i.operand_b[0+:32], amo_req_i.operand_b[0+:32],amo_req_i.operand_b[0+:32], amo_req_i.operand_b[0+:32]};
       assign amo_data_b = amo_req_i.operand_b;
     end else if (CVA6Cfg.IS_XLEN64 || (!CVA6Cfg.IS_XLEN64 && CVA6Cfg.CheriPresent)) begin : gen_amo_64b_data
       assign amo_data_a = {amo_req_i.operand_b[0+:32], amo_req_i.operand_b[0+:32]};
@@ -261,15 +271,15 @@ module wt_dcache_missunit
 
   always_comb begin
     if (CVA6Cfg.RVA) begin
-      if (CVA6Cfg.IS_XLEN64) begin
+      /* if (CVA6Cfg.IS_XLEN64) begin
         if (amo_req_i.size == 3'b010) begin
           amo_data = amo_data_a;
         end else begin
           amo_data = amo_data_b;
         end
-      end else begin
+      end else begin */
         amo_data = amo_data_a;
-      end
+      /* end */
       if (CVA6Cfg.DATA_USER_EN) begin
         amo_user = (CVA6Cfg.CheriPresent) ? amo_req_i.cap_vld : amo_data;
       end else begin
@@ -278,6 +288,29 @@ module wt_dcache_missunit
     end
   end
 
+  logic [CVA6Cfg.CLEN-1:0] amo_result;
+  logic [CVA6Cfg.CLEN-1:0] amo_shifted_data;
+  logic [(CVA6Cfg.CLEN/8)-1:0] amo_sign_bits;
+  logic amo_sign_bit;
+  logic [CVA6Cfg.CLEN_ALIGN_BYTES-1:0] amo_offset;
+
+  if (CVA6Cfg.CheriPresent) begin
+    assign amo_offset = ((amo_req_i.size==3'b011) & CVA6Cfg.IS_XLEN64 & CVA6Cfg.CheriPresent) ? amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0] + 7 : 
+                        ((amo_req_i.size==3'b010) & CVA6Cfg.IS_XLEN64) ? amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0] + 3 :
+                        ((amo_req_i.size==3'b001))  ? amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0] + 1 :
+                                                      amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0];
+    for (genvar i = 0; i < (CVA6Cfg.CLEN / 8); i++) begin : gen_sign_bits
+      assign amo_sign_bits[i] = amo_rtrn_mux[(i+1)*8-1];
+    end
+    assign amo_sign_bit = amo_sign_bits[amo_offset];
+    assign amo_shifted_data = amo_rtrn_mux >> {amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0], 3'b000};
+  end else begin
+    assign amo_result = '0;
+    assign amo_offset = '0;
+    assign amo_sign_bits = '0;
+    assign amo_sign_bit = '0;
+    assign amo_shifted_data = '0;
+  end
   if (CVA6Cfg.RVA) begin
     // note: openpiton returns a full cacheline!
     if (CVA6Cfg.NOCType == config_pkg::NOC_TYPE_AXI4_ATOP) begin : gen_axi_rtrn_mux
@@ -286,16 +319,32 @@ module wt_dcache_missunit
             CVA6Cfg.AxiDataWidth/8
         )-1:3]*64+:64];
       end else begin
-        assign amo_rtrn_mux = mem_rtrn_i.data[0+:CVA6Cfg.CLEN];
+        if (CVA6Cfg.CheriPresent) begin
+          assign amo_rtrn_mux = (amo_req_i.size == 3'b100) ? mem_rtrn_i.data[CVA6Cfg.CLEN+:CVA6Cfg.CLEN] : mem_rtrn_i.data[0+:CVA6Cfg.CLEN];
+        end else begin
+          assign amo_rtrn_mux = mem_rtrn_i.data[0+:CVA6Cfg.CLEN];
+        end
       end
     end else begin : gen_piton_rtrn_mux
       assign amo_rtrn_mux = mem_rtrn_i.data[amo_req_i.operand_a[CVA6Cfg.DCACHE_OFFSET_WIDTH-1:3]*64+:64];
     end
-
-    // always sign extend 32bit values
-    assign amo_resp_o.result = (amo_req_i.size==3'b010) ? {{(CVA6Cfg.CLEN-32){amo_rtrn_mux[amo_req_i.operand_a[2]*32 + 31]}},amo_rtrn_mux[amo_req_i.operand_a[2]*32 +: 32]} :
-                                                       amo_rtrn_mux ;
-    assign amo_resp_o.cap_vld = mem_rtrn_i.user;
+    if (CVA6Cfg.CheriPresent) begin
+      always_comb begin : gen_cheri_amo_resp
+        amo_result = cva6_cheri_pkg::MEM_NULL_CAP;
+        unique case (amo_req_i.size)
+        3'b000: amo_result = {{CVA6Cfg.CLEN - 32 + 24{amo_sign_bit}}, amo_shifted_data[7:0]};
+        3'b001: amo_result = {{CVA6Cfg.CLEN - 32 + 16{amo_sign_bit}}, amo_shifted_data[15:0]};
+        3'b010: amo_result = {{CVA6Cfg.CLEN - 32{amo_sign_bit}}, amo_shifted_data[31:0]};
+        default: amo_result = amo_shifted_data[CVA6Cfg.CLEN-1:0];
+        endcase
+      end
+      assign amo_resp_o.result = amo_result;
+    end else begin
+      // always sign extend 32bit values
+      assign amo_resp_o.result = (amo_req_i.size==3'b010) ? {{(CVA6Cfg.CLEN-32){amo_rtrn_mux[amo_req_i.operand_a[2]*32 + 31]}},amo_rtrn_mux[amo_req_i.operand_a[2]*32 +: 32]} :
+                                                         amo_rtrn_mux ;
+    end
+    assign amo_resp_o.cap_vld = (amo_req_i.size==3'b100) ? mem_rtrn_i.user : 1'b0;
     assign amo_req_d = amo_req_i.req;
   end
 

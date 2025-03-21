@@ -57,8 +57,6 @@ module store_unit
     output exception_t ex_o,
     // Address translation request - TO_BE_COMPLETED
     output logic translation_req_o,
-    // Capability translation request - TO_BE_COMPLETED
-    output logic cap_translation_req_o,
     // Virtual address - TO_BE_COMPLETED
     output logic [CVA6Cfg.VLEN-1:0] vaddr_o,
     // RVFI information - RVFI
@@ -162,9 +160,11 @@ module store_unit
   logic instr_is_amo;
   logic instr_is_cap;
   logic cap_translation_req;
+  logic cap_tanslation_req_q, cap_tanslation_req_d;
   assign instr_is_amo = is_amo(lsu_ctrl_i.operation);
   assign instr_is_cap = (CVA6Cfg.CheriPresent) ? is_cap(lsu_ctrl_i.operation) : 1'b0;
-  assign cap_translation_req = lsu_ctrl_i.operation inside {ariane_pkg::SC} ? 1'b1 : 1'b0;
+  // check if we are storing a valid cap
+  assign cap_translation_req = (lsu_ctrl_i.operation inside {SC, AMO_SCC, AMO_LRC, AMO_SWAPC} && lsu_ctrl_i.data[CVA6Cfg.REGLEN-1] && CVA6Cfg.CheriPresent)  ? 1'b1 : 1'b0;
   // keep the data and the byte enable for the second cycle (after address translation)
   logic [CVA6Cfg.CLEN-1:0] st_data_n, st_data_q;
   logic [CVA6Cfg.CheriCapTagWidth-1:0] st_cap_tag_n, st_cap_tag_q;
@@ -188,25 +188,28 @@ module store_unit
     st_valid_without_flush = 1'b0;
     pop_st_o               = 1'b0;
     ex_o                   = ex_i;
+    cap_tanslation_req_d   = cap_tanslation_req_q;
     if (CVA6Cfg.RVFI_DII && amo_op_q == AMO_SC && ex_i.cause == riscv::ST_ACCESS_FAULT) begin
       ex_o.valid = 1'b0;
     end
     trans_id_n             = lsu_ctrl_i.trans_id;
     state_d                = state_q;
     if (CVA6Cfg.CheriPresent) begin
-      cap_translation_req_o  = 1'b0;
+      if (!cap_tanslation_req_q && ex_i.valid && ex_i.cause == cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT && CVA6Cfg.CheriPresent) begin
+        ex_o.valid = 1'b0;
+      end
     end
 
     case (state_q)
       // we got a valid store
       IDLE: begin
+        if (CVA6Cfg.CheriPresent) cap_tanslation_req_d = 1'b0;
         if (valid_i) begin
           state_d = VALID_STORE;
           translation_req_o = 1'b1;
-          if (CVA6Cfg.CheriPresent) begin
-            cap_translation_req_o = cap_translation_req;
-          end
+
           pop_st_o = 1'b1;
+          if (CVA6Cfg.CheriPresent) cap_tanslation_req_d = cap_translation_req;
           // check if translation was valid and we have space in the store buffer
           // otherwise simply stall
           if (CVA6Cfg.MmuPresent && !dtlb_hit_i) begin
@@ -230,11 +233,8 @@ module store_unit
 
         // we have another request and its not an AMO (the AMO buffer only has depth 1)
         if ((valid_i && CVA6Cfg.RVA && !instr_is_amo) || (valid_i && !CVA6Cfg.RVA)) begin
-
+          if (CVA6Cfg.CheriPresent) cap_tanslation_req_d = cap_translation_req;
           translation_req_o = 1'b1;
-          if (CVA6Cfg.CheriPresent) begin
-            cap_translation_req_o = cap_translation_req;
-          end
           state_d = VALID_STORE;
           pop_st_o = 1'b1;
 
@@ -257,9 +257,6 @@ module store_unit
       WAIT_STORE_READY: begin
         // keep the translation request high
         translation_req_o = 1'b1;
-        if (CVA6Cfg.CheriPresent) begin
-          cap_translation_req_o = cap_translation_req;
-        end
 
         if (st_ready && dtlb_hit_i) begin
           state_d = IDLE;
@@ -272,9 +269,6 @@ module store_unit
         // it wasn't full
         if (state_q == WAIT_TRANSLATION && CVA6Cfg.MmuPresent) begin
           translation_req_o = 1'b1;
-          if (CVA6Cfg.CheriPresent) begin
-            cap_translation_req_o = cap_translation_req;
-          end
 
           if (dtlb_hit_i) begin
             state_d = IDLE;
@@ -287,12 +281,12 @@ module store_unit
     // Access Exception
     // -----------------
     // we got an address translation exception (access rights, misaligned or page fault)
-    if (ex_i.valid && (state_q != IDLE) && !(amo_op_q == AMO_SC && ex_i.cause == riscv::ST_ACCESS_FAULT)) begin
-      // the only difference is that we do not want to store this request
-      pop_st_o = 1'b1;
-      st_valid = 1'b0;
-      state_d  = IDLE;
-      valid_o  = 1'b1;
+    if (ex_i.valid && (state_q != IDLE) && !(amo_op_q == AMO_SC && ex_i.cause == riscv::ST_ACCESS_FAULT) && !(!cap_tanslation_req_q && ex_i.cause == cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT && CVA6Cfg.CheriPresent)) begin
+        // the only difference is that we do not want to store this request
+        pop_st_o = 1'b1;
+        st_valid = 1'b0;
+        state_d  = IDLE;
+        valid_o  = 1'b1;
     end
 
     if (flush_i) state_d = IDLE;
@@ -325,8 +319,8 @@ module store_unit
     // save AMO op for next cycle
     if (CVA6Cfg.RVA) begin
       case (lsu_ctrl_i.operation)
-        AMO_LRW, AMO_LRD, AMO_LRC:     amo_op_d = AMO_LR;
-        AMO_SCW, AMO_SCD, AMO_SCC:     amo_op_d = AMO_SC;
+        AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRC:     amo_op_d = AMO_LR;
+        AMO_SCB, AMO_SCH, AMO_SCW, AMO_SCD, AMO_SCC:     amo_op_d = AMO_SC;
         AMO_SWAPW, AMO_SWAPD, AMO_SWAPC: amo_op_d = AMO_SWAP;
         AMO_ADDW, AMO_ADDD:   amo_op_d = AMO_ADD;
         AMO_ANDW, AMO_ANDD:   amo_op_d = AMO_AND;
@@ -425,6 +419,7 @@ module store_unit
       amo_op_q       <= AMO_NONE;
       if (CVA6Cfg.CheriPresent) begin
         st_cap_tag_q   <= '0;
+        cap_tanslation_req_q <= '0;
       end
     end else begin
       state_q        <= state_d;
@@ -435,6 +430,7 @@ module store_unit
       amo_op_q       <= amo_op_d;
       if (CVA6Cfg.CheriPresent) begin
         st_cap_tag_q   <= st_cap_tag_n;
+        cap_tanslation_req_q <= cap_tanslation_req_d;
       end
     end
   end
