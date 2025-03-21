@@ -15,7 +15,7 @@
         // URL
         url: "https://github.com/ninolomata/axi_riscv_atomics.git",
         // revision
-        rev: "05ba290a4b4dca92fa44017329b28e56e803646a",
+        rev: "6b4a997cb92148d7d94b4692731dfa1495b4c72d",
     }
 
     // Patch dir for local changes
