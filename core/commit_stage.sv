@@ -161,11 +161,8 @@ module commit_stage
     commit_lsu_o = 1'b0;
     commit_csr_o = 1'b0;
     // amos will commit on port 0
-    if (CVA6Cfg.CheriPresent && commit_instr_i[0].op == CLOAD_TAGS) begin
-      wdata_o[0] = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, $unsigned(commit_instr_i[0].result[CVA6Cfg.REGLEN-1]));
-    end else begin
-      wdata_o[0] = (CVA6Cfg.RVA && amo_resp_i.ack) ? amo_resp_i.result[CVA6Cfg.XLEN-1:0] : commit_instr_i[0].result;
-    end
+    wdata_o[0] = (CVA6Cfg.RVA && amo_resp_i.ack) ? cva6_cheri_pkg::cap_mem_to_cap_reg({amo_resp_i.cap_vld, amo_resp_i.result[CVA6Cfg.CLEN-1:0]} ^ cva6_cheri_pkg::MEM_NULL_CAP) : commit_instr_i[0].result;
+
     csr_op_o = ADD;  // this corresponds to a CSR NOP
     csr_wdata_o = {CVA6Cfg.REGLEN{1'b0}};
     fence_i_o = 1'b0;
@@ -328,11 +325,7 @@ module commit_stage
       commit_macro_ack[1] = 1'b0;
       commit_ack_o[1]     = 1'b0;
       we_gpr_o[1]         = 1'b0;
-      if (CVA6Cfg.CheriPresent && commit_instr_i[1].op == CLOAD_TAGS) begin
-        wdata_o[1] = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, $unsigned(commit_instr_i[1].result[CVA6Cfg.REGLEN-1]));
-      end else begin
-        wdata_o[1] = commit_instr_i[1].result;
-      end
+      wdata_o[1]          = commit_instr_i[1].result;
 
       // -----------------
       // Commit Port 2
