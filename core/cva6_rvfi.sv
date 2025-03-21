@@ -341,8 +341,8 @@ module cva6_rvfi
       rvfi_instr_o[i].cause <= ex_commit_cause;
       rvfi_instr_o[i].mode <= (CVA6Cfg.DebugEn && debug_mode) ? 2'b10 : priv_lvl;
       rvfi_instr_o[i].ixl <= CVA6Cfg.XLEN == 64 ? 2 : 1;
-      rvfi_instr_o[i].rs1_addr <= (((mem_q[commit_pointer[i]].instr & 32'hF800703F) == 32'h1800402F) && wdata[i] == 1) ? '0 : commit_instr_rs1[i];
-      rvfi_instr_o[i].rs2_addr <= (((mem_q[commit_pointer[i]].instr & 32'hF800703F) == 32'h1800402F) && wdata[i] == 1) ? '0 : commit_instr_rs2[i];
+      rvfi_instr_o[i].rs1_addr <= (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs1[i];
+      rvfi_instr_o[i].rs2_addr <= (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs2[i];
       rvfi_instr_o[i].rd_addr <= commit_instr_rd[i];
       rvfi_instr_o[i].rd_wdata <= (rvfi_instr_o[i].rd_addr == 0) ? '0 : (CVA6Cfg.FpPresent && is_rd_fpr(
           commit_instr_op[i]
@@ -358,8 +358,8 @@ module cva6_rvfi
       rvfi_instr_o[i].mem_addr <= mem_q[commit_pointer[i]].lsu_addr + ((commit_instr_op[i] == ariane_pkg::CLOAD_TAGS) ? 0 : 0);
       // So far, only write paddr is reported. TODO: read paddr
       rvfi_instr_o[i].mem_paddr <= mem_paddr;
-      rvfi_instr_o[i].mem_wmask <= /* (mem_q[commit_pointer[i]].lsu_wmask == 16'hFFFF) ? '0 : */ (((mem_q[commit_pointer[i]].instr & 32'hF800703F) == 32'h1800402F) && wdata[i] == 1) ? '0 : mem_q[commit_pointer[i]].lsu_wmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
-      rvfi_instr_o[i].mem_wdata <= (((mem_q[commit_pointer[i]].instr & 32'hF800703F) == 32'h1800402F) && wdata[i] == 1) ? '0 : mem_q[commit_pointer[i]].lsu_wdata;
+      rvfi_instr_o[i].mem_wmask <= /* (mem_q[commit_pointer[i]].lsu_wmask == 16'hFFFF) ? '0 : */ (is_amo_sc(commit_instr_op[i])  && wdata[i] == 1) ? '0 : mem_q[commit_pointer[i]].lsu_wmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
+      rvfi_instr_o[i].mem_wdata <= (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : mem_q[commit_pointer[i]].lsu_wdata;
       rvfi_instr_o[i].mem_rmask <= /* (mem_q[commit_pointer[i]].lsu_wmask == 16'hFFFF) ? '0 :  */mem_q[commit_pointer[i]].lsu_rmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
       rvfi_instr_o[i].mem_rdata <= commit_instr_result[i];
       rvfi_instr_o[i].rs1_rdata <= mem_q[commit_pointer[i]].rs1_rdata;

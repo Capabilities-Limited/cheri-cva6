@@ -50,9 +50,7 @@ module load_unit
     output exception_t ex_o,
     // Request address translation - MMU
     output logic translation_req_o,
-    // Request capability address translation - MMU
-    output logic cap_translation_req_o,
-    // Virtual address - MMU
+    // Virtual address - TO_BE_COMPLETED
     output logic [CVA6Cfg.VLEN-1:0] vaddr_o,
     // Transformed trap instruction out - MMU
     output logic [31:0] tinst_o,
@@ -104,6 +102,7 @@ module load_unit
     logic [CVA6Cfg.TRANS_ID_BITS-1:0]    trans_id;        // scoreboard identifier
     logic [CVA6Cfg.CLEN_ALIGN_BYTES-1:0] address_offset;  // least significant bits of the address
     fu_op                                operation;       // type of load
+    logic                                clr_tag;
   } ldbuf_t;
 
 
@@ -126,11 +125,12 @@ module load_unit
   logic      ldbuf_w;
   ldbuf_t    ldbuf_wdata;
   ldbuf_id_t ldbuf_windex;
+  ldbuf_id_t ldbuf_cap_ex_windex_q, ldbuf_cap_ex_windex_d;
   logic      ldbuf_r;
   ldbuf_t    ldbuf_rdata;
   ldbuf_id_t ldbuf_rindex;
   ldbuf_id_t ldbuf_last_id_q;
-  logic strip_tag_n, strip_tag_q;
+  exception_t [CVA6Cfg.NrLoadBufEntries-1:0] cheri_ex_q, cheri_ex_d;
 
   assign ldbuf_full = &ldbuf_valid_q;
 
@@ -158,6 +158,8 @@ module load_unit
   always_comb begin : ldbuf_comb
     ldbuf_flushed_d = ldbuf_flushed_q;
     ldbuf_valid_d   = ldbuf_valid_q;
+    if (CVA6Cfg.CheriPresent) ldbuf_cap_ex_windex_d = ldbuf_cap_ex_windex_q;
+    else ldbuf_cap_ex_windex_d = 1'b0;
 
     //  In case of flush, raise the flushed flag in all slots.
     if (flush_i) begin
@@ -172,6 +174,7 @@ module load_unit
     if (ldbuf_w) begin
       ldbuf_flushed_d[ldbuf_windex] = 1'b0;
       ldbuf_valid_d[ldbuf_windex]   = 1'b1;
+      if (CVA6Cfg.CheriPresent) ldbuf_cap_ex_windex_d = ldbuf_windex;
     end
   end
 
@@ -191,6 +194,16 @@ module load_unit
     end
   end
 
+  if (CVA6Cfg.CheriPresent) begin: gen_cheri_ex
+    always_ff @(posedge clk_i or negedge rst_ni) begin : cheri_ff
+      if (!rst_ni) begin
+        cheri_ex_q <= '0;
+      end else begin
+        cheri_ex_q <= cheri_ex_d;
+      end
+    end
+  end
+
   // page offset is defined as the lower 12 bits, feed through for address checker
   assign page_offset_o = lsu_ctrl_i.vaddr[11:0];
   // feed-through the virtual address for VA translation
@@ -204,7 +217,7 @@ module load_unit
   assign req_port_o.data_wdata = '0;
   // compose the load buffer write data, control is handled in the FSM
   assign ldbuf_wdata = {
-    lsu_ctrl_i.trans_id, lsu_ctrl_i.vaddr[CVA6Cfg.CLEN_ALIGN_BYTES-1:0], lsu_ctrl_i.operation
+    lsu_ctrl_i.trans_id, lsu_ctrl_i.vaddr[CVA6Cfg.CLEN_ALIGN_BYTES-1:0], lsu_ctrl_i.operation, lsu_ctrl_i.clr_tag
   };
   // output address
   // we can now output the lower 12 bit as the index to the cache
@@ -217,12 +230,14 @@ module load_unit
   assign req_port_o.data_id = ldbuf_windex;
   // user field not used
   assign req_port_o.data_wuser = '0;
+  // strip tag request
+  assign req_port_o.strip_tag = CVA6Cfg.CheriPresent ? strip_tag_i : 1'b0;
   // directly forward exception fields (valid bit is set below)
-  assign ex_o.cause = ex_i.cause;
-  assign ex_o.tval = ex_i.tval;
-  assign ex_o.tval2 = CVA6Cfg.RVH ? ex_i.tval2 : '0;
-  assign ex_o.tinst = CVA6Cfg.RVH ? ex_i.tinst : '0;
-  assign ex_o.gva = CVA6Cfg.RVH ? ex_i.gva : 1'b0;
+  assign ex_o.cause = (ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].cause : ex_i.cause;
+  assign ex_o.tval = (ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].tval : ex_i.tval;
+  assign ex_o.tval2 = CVA6Cfg.RVH ? ((ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].tval2 : ex_i.tval2) : '0;
+  assign ex_o.tinst = CVA6Cfg.RVH ? ((ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].tinst : ex_i.tinst) : '0;
+  assign ex_o.gva = CVA6Cfg.RVH ? ((ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].gva : ex_i.gva) : 1'b0;
 
   // Check that NI operations follow the necessary conditions
   logic paddr_ni;
@@ -254,11 +269,7 @@ module load_unit
     req_port_o.data_be   = lsu_ctrl_i.be;
     req_port_o.data_size = extract_transfer_size(lsu_ctrl_i.operation);
     pop_ld_o             = 1'b0;
-
-    if (CVA6Cfg.CheriPresent) begin
-      cap_translation_req_o = 1'b0;
-      strip_tag_n          = strip_tag_q;
-    end
+    if (CVA6Cfg.CheriPresent) cheri_ex_d = cheri_ex_q;
 
     // In IDLE and SEND_TAG states, this unit can accept a new load request
     // when the load buffer is not full or if there is a response and the
@@ -271,13 +282,11 @@ module load_unit
           // start the translation process even though we do not know if the addresses match
           // this should ease timing
           translation_req_o = 1'b1;
-          if (CVA6Cfg.CheriPresent) begin
-            cap_translation_req_o = cap_translation_req;
-          end
           // check if the page offset matches with a store, if it does then stall and wait
           if (!page_offset_matches_i) begin
             // make a load request to memory
             req_port_o.data_req = 1'b1;
+            if (CVA6Cfg.CheriPresent) cheri_ex_d[ldbuf_windex] = '0;
             // we got no data grant so wait for the grant before sending the tag
             if (!req_port_i.data_gnt) begin
               state_d = WAIT_GNT;
@@ -285,9 +294,6 @@ module load_unit
               if (CVA6Cfg.MmuPresent && !dtlb_hit_i) begin
                 state_d = ABORT_TRANSACTION;
               end else begin
-                if (CVA6Cfg.CheriPresent) begin
-                  strip_tag_n = strip_tag_i;
-                end
                 if (!stall_ni) begin
                   // we got a grant and a hit on the DTLB so we can send the tag in the next cycle
                   state_d  = SEND_TAG;
@@ -316,11 +322,9 @@ module load_unit
       WAIT_GNT: begin
         // keep the translation request up
         translation_req_o   = 1'b1;
-        if (CVA6Cfg.CheriPresent) begin
-          cap_translation_req_o = cap_translation_req;
-        end
         // keep the request up
         req_port_o.data_req = 1'b1;
+        if (CVA6Cfg.CheriPresent) cheri_ex_d[ldbuf_windex] = '0;
         // we finally got a data grant
         if (req_port_i.data_gnt) begin
           // so we send the tag in the next cycle
@@ -353,6 +357,7 @@ module load_unit
           if (!page_offset_matches_i) begin
             // make a load request to memory
             req_port_o.data_req = 1'b1;
+            if (CVA6Cfg.CheriPresent) cheri_ex_d[ldbuf_windex] = '0;
             // we got no data grant so wait for the grant before sending the tag
             if (!req_port_i.data_gnt) begin
               state_d = WAIT_GNT;
@@ -381,7 +386,11 @@ module load_unit
         // ----------
         // if we got an exception we need to kill the request immediately
         if (ex_i.valid) begin
-          req_port_o.kill_req = 1'b1;
+          if (ex_i.cause == cva6_cheri_pkg::CAP_LOAD_PAGE_FAULT && CVA6Cfg.CheriPresent) begin
+            cheri_ex_d[ldbuf_cap_ex_windex_q] = ex_i;
+          end else begin
+            req_port_o.kill_req = 1'b1;
+          end
         end
       end
 
@@ -414,10 +423,6 @@ module load_unit
           state_d = WAIT_TRANSLATION;
         end else if(state_q == WAIT_TRANSLATION && (CVA6Cfg.MmuPresent || CVA6Cfg.NonIdemPotenceEn)) begin
           translation_req_o = 1'b1;
-          if (CVA6Cfg.CheriPresent) begin
-            cap_translation_req_o = cap_translation_req;
-            strip_tag_n = strip_tag_i;
-          end
           // we've got a hit and we can continue with the request process
           if (dtlb_hit_i) state_d = WAIT_GNT;
 
@@ -460,13 +465,17 @@ module load_unit
     // we got an rvalid and its corresponding request was not flushed
     if (req_port_i.data_rvalid && !ldbuf_flushed_q[ldbuf_rindex]) begin
       // if the response corresponds to the last request, check that we are not killing it
-      if ((ldbuf_last_id_q != ldbuf_rindex) || !req_port_o.kill_req) valid_o = 1'b1;
+      if ((ldbuf_last_id_q != ldbuf_rindex) || !req_port_o.kill_req) begin
+        valid_o = 1'b1;
+        if (ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent)
+          ex_o.valid = 1'b1;
+      end
       // the output is also valid if we got an exception. An exception arrives one cycle after
       // dtlb_hit_i is asserted, i.e. when we are in SEND_TAG. Otherwise, the exception
       // corresponds to the next request that is already being translated (see below).
-      if (ex_i.valid && (state_q == SEND_TAG)) begin
-        valid_o    = 1'b1;
-        ex_o.valid = 1'b1;
+      if (ex_i.valid && (state_q == SEND_TAG) && ex_i.cause != cva6_cheri_pkg::CAP_LOAD_PAGE_FAULT) begin
+          valid_o    = 1'b1;
+          ex_o.valid = 1'b1;
       end
     end
 
@@ -486,10 +495,10 @@ module load_unit
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
       state_q <= IDLE;
-      strip_tag_q <= 1'b0;
+      if (CVA6Cfg.CheriPresent) ldbuf_cap_ex_windex_q <= 1'b0;
     end else begin
       state_q <= state_d;
-      strip_tag_q <= strip_tag_n;
+      if (CVA6Cfg.CheriPresent) ldbuf_cap_ex_windex_q <= ldbuf_cap_ex_windex_d;
     end
   end
 
@@ -585,7 +594,7 @@ module load_unit
           unique case (ldbuf_rdata.operation)
           ariane_pkg::LD, ariane_pkg::FLD, ariane_pkg::HLV_D:    result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, shifted_data[CVA6Cfg.XLEN-1:0]);
           ariane_pkg::CLOAD_TAGS: begin
-            result_o = mem_reg;
+            result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, $unsigned(mem_reg[CVA6Cfg.REGLEN-1]));
           end
           default: begin
             result_o = mem_reg;
@@ -596,7 +605,7 @@ module load_unit
         end
       end
     endcase
-    if(CVA6Cfg.CheriPresent && strip_tag_q) begin
+    if(CVA6Cfg.CheriPresent && (req_port_i.data_strip_tag || ldbuf_rdata.clr_tag)) begin
       result_o[CVA6Cfg.REGLEN-1] = 1'b0;
     end
   end

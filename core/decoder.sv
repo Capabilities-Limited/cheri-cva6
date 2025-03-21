@@ -1602,8 +1602,28 @@ module decoder
             instruction_o.use_ddc = 1'b0;
           end
           // TODO(zarubaf): Ordering
-          // words
-          if (CVA6Cfg.RVA && instr.stype.funct3 == 3'h2) begin
+          if (CVA6Cfg.RVA && instr.stype.funct3 == 3'h0 && CVA6Cfg.CheriPresent) begin
+            unique case (instr.instr[31:27])
+              5'h2: begin
+                instruction_o.op = ariane_pkg::AMO_LRB;
+                if (instr.atype.rs2 != 0) illegal_instr = 1'b1;
+              end
+              5'h3: instruction_o.op = ariane_pkg::AMO_SCB;
+              default: illegal_instr = 1'b1;
+            endcase
+          end
+          else if (CVA6Cfg.RVA && instr.stype.funct3 == 3'h1 && CVA6Cfg.CheriPresent) begin
+            unique case (instr.instr[31:27])
+              5'h2: begin
+                instruction_o.op = ariane_pkg::AMO_LRH;
+                if (instr.atype.rs2 != 0) illegal_instr = 1'b1;
+              end
+              5'h3: instruction_o.op = ariane_pkg::AMO_SCH;
+              default: illegal_instr = 1'b1;
+            endcase
+            // words
+          end
+          else if (CVA6Cfg.RVA && instr.stype.funct3 == 3'h2) begin
             unique case (instr.instr[31:27])
               5'h0: instruction_o.op = ariane_pkg::AMO_ADDW;
               5'h1: instruction_o.op = ariane_pkg::AMO_SWAPW;
@@ -1889,10 +1909,12 @@ module decoder
                                             instruction_o.rs2[4:0] = '0;
                                             instruction_o.rd[4:0] = instr.atype.rd;
                                           end
-                                          unique case (instr.instr[22:20])
-                                            3'b010: instruction_o.op  = ariane_pkg::AMO_LRW;
-                                            3'b011: instruction_o.op  = ariane_pkg::AMO_LRD;
-                                            3'b100: instruction_o.op  = ariane_pkg::AMO_LRC;
+                                          unique case ({instr.instr[24],instr.instr[22:20]})
+                                            4'b1000: instruction_o.op  = ariane_pkg::AMO_LRB;
+                                            4'b1001: instruction_o.op  = ariane_pkg::AMO_LRH;
+                                            4'b1010: instruction_o.op  = ariane_pkg::AMO_LRW;
+                                            4'b1011: instruction_o.op  = ariane_pkg::AMO_LRD;
+                                            4'b1100: instruction_o.op  = ariane_pkg::AMO_LRC;
                                             default:
                                               illegal_instr = 1'b1;
                                           endcase
@@ -1924,10 +1946,12 @@ module decoder
                                         default:
                                         if (CVA6Cfg.RVA) begin
                                           instruction_o.rd[4:0] = instr.atype.rs2;
-                                          unique case (instr.instr[9:7])
-                                            3'b010: instruction_o.op  = ariane_pkg::AMO_SCW;
-                                            3'b011: instruction_o.op  = ariane_pkg::AMO_SCD;
-                                            3'b100: instruction_o.op  = ariane_pkg::AMO_SCC;
+                                          unique case ({instr.instr[11],instr.instr[9:7]})
+                                            4'b1000: instruction_o.op  = ariane_pkg::AMO_SCB;
+                                            4'b1001: instruction_o.op  = ariane_pkg::AMO_SCH;
+                                            4'b1010: instruction_o.op  = ariane_pkg::AMO_SCW;
+                                            4'b1011: instruction_o.op  = ariane_pkg::AMO_SCD;
+                                            4'b1100: instruction_o.op  = ariane_pkg::AMO_SCC;
                                             default:
                                               illegal_instr = 1'b1;
                                           endcase
