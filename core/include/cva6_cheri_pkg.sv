@@ -79,9 +79,12 @@ package cva6_cheri_pkg;
 
     /* Capabilities RISC-V Exception Trap Encoding Extension */
 
-    localparam logic [XLEN-1:0] CAP_LOAD_PAGE_FAULT       = 26;
-    localparam logic [XLEN-1:0] CAP_STORE_AMO_PAGE_FAULT  = 27;
-    localparam logic [XLEN-1:0] CAP_EXCEPTION             = 28;
+    localparam logic [XLEN-1:0] CAP_LOAD_PAGE_FAULT             = 26;
+    localparam logic [XLEN-1:0] CAP_STORE_AMO_PAGE_FAULT        = 27;
+    localparam logic [XLEN-1:0] CAP_EXCEPTION                   = 28;
+    localparam logic [XLEN-1:0] CAP_GUEST_LOAD_PAGE_FAULT       = 29;
+    localparam logic [XLEN-1:0] CAP_GUEST_STORE_AMO_PAGE_FAULT  = 30;
+    localparam logic [XLEN-1:0] CAP_GUEST_EXCEPTION             = 31;
 
     /* Capabilities Exception Codes */
 
@@ -790,7 +793,7 @@ package cva6_cheri_pkg;
 
         // Complete representable bounds check
         // -----------------------------------
-        in_bounds = (in_range && in_limits) || (exp >= (CAP_RESET_EXP - 2));
+        in_bounds = (in_range && in_limits) || (cap.bounds.exp >= (CAP_RESET_EXP - 2));
         // Update return capability
         ret.addr = cursor;
         ret.addr_mid = cursor >> exp;
@@ -812,7 +815,7 @@ package cva6_cheri_pkg;
         mw_t addr_mid = cap.addr_mid;
         bool_t check_addr = inclusive ? addr_mid <= cap.bounds.top_bits
                             : addr_mid <  cap.bounds.top_bits;
-        bool_t check_top  = (meta_data.addr_hi_r  == meta_data.addr_hi_r) ? check_addr : meta_data.addr_hi_r;
+        bool_t check_top  = (meta_data.addr_hi_r  == meta_data.addr_hi_r) ? check_addr : meta_data.top_hi_r;
         bool_t check_base = (meta_data.base_hi_r  == meta_data.addr_hi_r) ? addr_mid >= cap.bounds.base_bits
                                          : meta_data.addr_hi_r;
         return check_top && check_base;
@@ -875,8 +878,10 @@ package cva6_cheri_pkg;
         addrwe2_t lmsk_m_bits = ~(-1 << (exp + 3 + CAP_M_WIDTH - 4)) & ~lmsk_exp_bits;
         //addrwe2_t lmsk_m_less_1_bits = ~(-1 << (exp + 3 + CAP_M_WIDTH - 3)) & ~lmsk_exp_bits;
         addrwe2_t lmsk_m_less_1_bits = (-1 << (exp + 4)) & lmsk_m_bits;
+        addrwe2_t lmsk_exp_bits_over = ~(-1 << (exp + 4));
         // Check if any of the lsb of len, base and top were lost, i.e., [Einitial+2:0]
         // are all non-zero
+        bool_t lost_lsb_top_over = (new_top & lmsk_exp_bits_over) != 0 && int_e;
         bool_t lost_lsb_len = (new_len & lmsk_exp_bits) != 0 && int_e;
         bool_t lost_lsb_base = (new_base & lmsk_exp_bits) != 0 && int_e;
         bool_t lost_lsb_top = (new_top & lmsk_exp_bits) != 0 && int_e;
@@ -903,7 +908,7 @@ package cva6_cheri_pkg;
             // C = , we need to increase the E
             exp = exp + 1;
             // Sum one to T if there was a overflow and we lost the 3 lsb bits of T
-            ret.cap.bounds.top_bits = lost_lsb_top ? new_top_bits_over + 14'b00000000001000
+            ret.cap.bounds.top_bits = lost_lsb_top_over ? new_top_bits_over + 14'b00000000001000
                                                   : new_top_bits_over;
             ret.cap.bounds.base_bits = new_base_bits_over;
         end else begin
