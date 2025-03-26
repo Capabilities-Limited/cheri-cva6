@@ -555,8 +555,6 @@ module cva6_mmu
       if (en_ld_st_translation_i && !lsu_is_store_q && ((!dtlb_pte_q.cr && dtlb_pte_q.crm && !dtlb_pte_q.crg) || (dtlb_pte_q.crg && !dtlb_pte_q.cr ) || (dtlb_pte_q.cr && (dtlb_pte_q.crm || dtlb_pte_q.crg)))) begin
         cheri_cap_err = 1'b1;
       end
-      // Check if strip tag is needed on capability loads
-      lsu_strip_tag_o = !(|({dtlb_pte_q.cr, dtlb_pte_q.crm, dtlb_pte_q.crg}));
       // Check for capability store errors, behaviours goes according to the following table:
       // CW CD Behavior
       // 0  X  Trap on capability stores (exception code 0x1B)
@@ -614,7 +612,10 @@ module cva6_mmu
         lsu_paddr_o[PPNWMin:12] = lsu_vaddr_q[PPNWMin:12];
       end
 
-
+      if (CVA6Cfg.CheriPresent) begin
+        // Check if strip tag is needed on capability loads
+        lsu_strip_tag_o = !(|({dtlb_pte_q.cr, dtlb_pte_q.crm, dtlb_pte_q.crg}));
+      end
 
       // ---------
       // DTLB Hit
