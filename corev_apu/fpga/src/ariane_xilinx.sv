@@ -1040,8 +1040,8 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
   `AXI_TYPEDEF_REQ_T(axi_mst_req_t, axi_mst_aw_t, axi_w_t, axi_mst_ar_t)
   `AXI_TYPEDEF_RESP_T(axi_mst_resp_t, axi_mst_b_t, axi_mst_r_t)
 
-  (* mark_debug = "true" *) ariane_axi_soc::req_slv_t  dram_req;
-  (* mark_debug = "true" *) ariane_axi_soc::resp_slv_t dram_resp;
+  ariane_axi_soc::req_slv_t  dram_req;
+  ariane_axi_soc::resp_slv_t dram_resp;
   axi_mst_req_t axi_tag_req;
   axi_mst_resp_t axi_tag_resp;
   `AXI_ASSIGN_TO_REQ(dram_req,   dram)

@@ -41,12 +41,12 @@ module wt_axi_adapter
     output icache_rtrn_t icache_rtrn_o,
 
     // dcache
-    (* mark_debug = "true" *) input  logic         dcache_data_req_i,
-    (* mark_debug = "true" *) output logic         dcache_data_ack_o,
-    (* mark_debug = "true" *) input  dcache_req_t  dcache_data_i,
+    input  logic         dcache_data_req_i,
+    output logic         dcache_data_ack_o,
+    input  dcache_req_t  dcache_data_i,
     // returning packets must be consumed immediately
-    (* mark_debug = "true" *) output logic         dcache_rtrn_vld_o,
-    (* mark_debug = "true" *) output dcache_rtrn_t dcache_rtrn_o,
+    output logic         dcache_rtrn_vld_o,
+    output dcache_rtrn_t dcache_rtrn_o,
 
     // AXI port
     output axi_req_t axi_req_o,
@@ -468,7 +468,7 @@ module wt_axi_adapter
       dcache_rd_shift_user_d, dcache_rd_shift_user_q;
   logic [CVA6Cfg.ICACHE_LINE_WIDTH/CVA6Cfg.AxiDataWidth-1:0][CVA6Cfg.AxiDataWidth-1:0]
       icache_rd_shift_d, icache_rd_shift_q;
-  (* mark_debug = "true" *) logic [CVA6Cfg.DCACHE_LINE_WIDTH/CVA6Cfg.AxiDataWidth-1:0][CVA6Cfg.AxiDataWidth-1:0]
+  logic [CVA6Cfg.DCACHE_LINE_WIDTH/CVA6Cfg.AxiDataWidth-1:0][CVA6Cfg.AxiDataWidth-1:0]
       dcache_rd_shift_d, dcache_rd_shift_q;
   wt_cache_pkg::dcache_in_t dcache_rtrn_type_d, dcache_rtrn_type_q;
   dcache_inval_t dcache_rtrn_inv_d, dcache_rtrn_inv_q;
