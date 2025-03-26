@@ -927,7 +927,7 @@ module load_store_unit
         cheri_exception.tinst = {32{1'b0}};
         cheri_exception.gva   =  v_i;
 
-        operand_b = fu_data_i.operand_b;
+        operand_b = lsu_ctrl.data;
 
         unique case (lsu_ctrl.operation)
             ariane_pkg::LW, ariane_pkg::SW,
@@ -975,7 +975,7 @@ module load_store_unit
                 cheri_exception.valid     = 1'b1;
             end
 
-            if (!check_cap.hperms.permit_store_cap && fu_data_i.operand_b[CVA6Cfg.REGLEN-1] && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
+            if (!check_cap.hperms.permit_store_cap && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
                 cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_ST_CAP_VIOLATION;
                 cheri_exception.valid     = 1'b1;
             end
