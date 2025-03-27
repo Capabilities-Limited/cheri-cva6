@@ -219,9 +219,6 @@ int main(int argc, char **argv) {
   }
 
 done_processing:
-  std::cout << "start" << std::endl;
-  std::cout << "start2" << std::endl;
-
   const char *vcd_file = NULL;
   Verilated::commandArgs(argc, argv);
 
@@ -253,7 +250,6 @@ done_processing:
 
 
   rvfi_dii_bridge_rst(DII_ID_WIDTH);
-  std::cout << "Reset DII bridge" << std::endl;
 
   for (int i = 0; i < 10; i++) {
     top->rst_ni = 0;
@@ -273,7 +269,6 @@ done_processing:
     main_time++;
   }
   top->rst_ni = 1;
-  std::cout << "Core reset complete" << std::endl;
   // Preload memory.
 #if (VERILATOR_VERSION_INTEGER >= 5000000)
   // Verilator v5: Use rootp pointer and .data() accessor.
@@ -290,10 +285,7 @@ done_processing:
   // instruction
   bool eof_trace = false;
   while (true) {
-    std::cout << "toplevel loop begin" << std::endl;
     if (readTrace(top, traces_count)) {
-      printf("traces_count: %i\n", traces_count);
-      std::cout << "Successful read trace" << std::endl;
       traces_count++;
       traces_count %= DII_ID_COUNT;
     }
