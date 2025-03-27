@@ -139,6 +139,7 @@ module frontend
   // re-aligned instruction and address (coming from cache - combinationally)
   logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][            31:0] instr;
   logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] addr;
+  logic        [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.DIIIDLEN-1:0] dii_id;
   logic            [CVA6Cfg.INSTR_PER_FETCH-1:0]                   instruction_valid;
   // BHT, BTB and RAS prediction
   bht_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                   bht_prediction;
@@ -155,6 +156,7 @@ module frontend
 
   // Instruction FIFO
   logic [           CVA6Cfg.VLEN-1:0] predict_address;
+  logic [       CVA6Cfg.DIIIDLEN-1:0] predict_dii_id;
   cf_t  [CVA6Cfg.INSTR_PER_FETCH-1:0] cf_type;
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0] taken_rvi_cf;
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0] taken_rvc_cf;
@@ -170,9 +172,11 @@ module frontend
       .valid_i            (icache_valid_q),
       .serving_unaligned_o(serving_unaligned),
       .address_i          (icache_vaddr_q),
+      .dii_id_i           (icache_dii_id_q),
       .data_i             (icache_data_q),
       .valid_o            (instruction_valid),
       .addr_o             (addr),
+      .dii_id_o           (dii_id),
       .instr_o            (instr)
   );
   // --------------------
@@ -229,6 +233,7 @@ module frontend
     taken_rvi_cf = '0;
     taken_rvc_cf = '0;
     predict_address = '0;
+    predict_dii_id = '0;
 
     for (int i = 0; i < CVA6Cfg.INSTR_PER_FETCH; i++) cf_type[i] = ariane_pkg::NoCF;
 
@@ -248,6 +253,7 @@ module frontend
           ras_push = 1'b0;
           if (CVA6Cfg.BTBEntries && btb_prediction_shifted[i].valid) begin
             predict_address = btb_prediction_shifted[i].target_address;
+            predict_dii_id = dii_id[i] + 1;
             cf_type[i] = ariane_pkg::JumpR;
           end
         end
@@ -265,6 +271,7 @@ module frontend
           ras_pop = ras_predict.valid & instr_queue_consumed[i];
           ras_push = 1'b0;
           predict_address = ras_predict.ra;
+          predict_dii_id = dii_id[i] + 1;
           cf_type[i] = ariane_pkg::Return;
         end
         // branch prediction
@@ -297,6 +304,7 @@ module frontend
       // calculate the jump target address
       if (taken_rvc_cf[i] || taken_rvi_cf[i]) begin
         predict_address = addr[i] + (taken_rvc_cf[i] ? rvc_imm[i] : rvi_imm[i]);
+        predict_dii_id = dii_id[i] + 1;
       end
     end
   end
@@ -385,10 +393,12 @@ module frontend
     // 0. Branch Prediction
     if (bp_valid) begin
       fetch_address = predict_address;
+      fetch_dii_id = predict_dii_id;
       if (CVA6Cfg.CheriPresent)
         npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(npc_q, predict_address);
       else
         npc_d = predict_address;
+      ndii_id_d = predict_dii_id;
     end
     // 1. Default assignment
     if (if_ready) begin
@@ -405,6 +415,7 @@ module frontend
         npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(npc_q, replay_addr);
       else
         npc_d = replay_addr;
+      ndii_id_d = replay_dii_id;
     end
     // 3. Control flow change request
     if (is_mispredict) begin
@@ -514,6 +525,7 @@ end
       icache_data_q     <= '0;
       icache_valid_q    <= 1'b0;
       icache_vaddr_q    <= 'b0;
+      icache_dii_id_q   <= 'b0;
       icache_gpaddr_q   <= 'b0;
       icache_tval_q     <= 'b0;
       icache_tinst_q    <= 'b0;
@@ -530,6 +542,7 @@ end
       if (icache_dreq_i.valid) begin
         icache_data_q  <= icache_data;
         icache_vaddr_q <= icache_dreq_i.vaddr;
+        icache_dii_id_q <= icache_dreq_i.dii_id;
         icache_tval_q <= icache_dreq_i.ex.tval;
         if (CVA6Cfg.RVH) begin
           icache_gpaddr_q <= icache_dreq_i.ex.tval2[CVA6Cfg.GPLEN-1:0];
@@ -650,9 +663,9 @@ end
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .flush_i            (flush_i),
-      .dii_id_i           (fetch_dii_id),
       .instr_i            (instr),                 // from re-aligner
       .addr_i             (addr),                  // from re-aligner
+      .dii_id_i           (dii_id),
       .pc_i(npc_q),
       .exception_i        (icache_ex_valid_q),     // from I$
       .exception_addr_i   (icache_vaddr_q),
@@ -667,6 +680,7 @@ end
       .ready_o            (instr_queue_ready),
       .replay_o           (replay),
       .replay_addr_o      (replay_addr),
+      .replay_dii_id_o    (replay_dii_id),
       .fetch_entry_o      (fetch_entry_o),         // to back-end
       .fetch_entry_valid_o(fetch_entry_valid_o),   // to back-end
       .fetch_entry_ready_i(fetch_entry_ready_i)    // to back-end

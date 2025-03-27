@@ -78,6 +78,7 @@ module cva6
       logic [CVA6Cfg.FETCH_WIDTH-1:0]      data;   // 2+ cycle out: tag
       logic [CVA6Cfg.FETCH_USER_WIDTH-1:0] user;   // User bits
       logic [CVA6Cfg.VLEN-1:0]             vaddr;  // virtual address out
+      logic [CVA6Cfg.DIIIDLEN-1:0]         dii_id;
       exception_t                          ex;     // we've encountered an exception
     },
 

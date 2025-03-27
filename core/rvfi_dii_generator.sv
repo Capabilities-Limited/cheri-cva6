@@ -46,20 +46,24 @@ module rvfi_dii_generator
     logic [CVA6Cfg.VLEN-1:0] vaddr_buff;
     exception_t ex_buff;
 
-    logic [31:0] instr;
+    logic [CVA6Cfg.FETCH_WIDTH*2-1:0] instr; // Wider than needed to be shifted in
     logic [2:0] instr_bytes;
     logic test_done;
     always_comb begin
         dii_id_d = dii_id_q;
         fetch_offset_d = fetch_offset_q;
         fetch_buff_d = fetch_buff_q;
+        instr = '0;
+        instr_bytes = '0;
+        test_done = '0;
         if (busy && !dreq_i.kill_s2) begin
+            // Assume the pipeline consumed the full buffer
             fetch_offset_d = {1'b0, fetch_offset_d[CVA6Cfg.FETCH_ALIGN_BITS-1:0]};
             fetch_buff_d = fetch_buff_d >> CVA6Cfg.FETCH_WIDTH;
-            instr = '0;
-            instr_bytes = '0;
-            test_done = '0;
-            while (~fetch_offset_d[CVA6Cfg.FETCH_ALIGN_BITS]) begin
+            // Shift the rest of the buffer into the requested slot
+            fetch_offset_d = fetch_offset_d + vaddr_buff[CVA6Cfg.FETCH_ALIGN_BITS-1:0];
+            fetch_buff_d = fetch_buff_d << {vaddr_buff[CVA6Cfg.FETCH_ALIGN_BITS-1:0], 3'b0};
+            while (~fetch_offset_d[CVA6Cfg.FETCH_ALIGN_BITS] & (~fetch_offset_d[CVA6Cfg.FETCH_ALIGN_BITS-1:0] != 0)) begin
                 test_done = get_dii_cmd(dii_id_d) == 0;
                 instr = test_done ? 32'h13 : get_dii_insn(dii_id_d);
                 instr_bytes = instr[1:0] == 2'b11 ? 3'd4 : 3'd2;
@@ -75,7 +79,8 @@ module rvfi_dii_generator
         dreq_o.vaddr = vaddr_buff;
         dreq_o.data = fetch_buff_d;
         dreq_o.user = '0;
-        dreq_o.ready = !dreq_i.kill_s1 && dreq_i.req;
+        dreq_o.ready = !dreq_i.kill_s1 && !dreq_i.kill_s2 && dreq_i.req;
+        dreq_o.dii_id = dii_id_q;
     end
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -86,8 +91,9 @@ module rvfi_dii_generator
             flushing <= '0;
             busy <= '0;
         end else begin
-            if (dreq_i.kill_s1) begin
-                fetch_buff_q <= 0;
+            if (dreq_i.kill_s1 || dreq_i.kill_s2) begin
+                fetch_buff_q <= '0;
+                fetch_offset_q <= '0;
                 flushing <= 1;
                 busy <= '0;
             end else begin
@@ -100,7 +106,6 @@ module rvfi_dii_generator
                     ex_buff <= dreq_i.ex;
                     if (flushing) begin
                         dii_id_q <= dreq_i.dii_id;
-                        fetch_offset_q <= {1'b0, dreq_i.vaddr[CVA6Cfg.FETCH_ALIGN_BITS-1:0]};
                     end
                     flushing <= 0;
                 end else begin
