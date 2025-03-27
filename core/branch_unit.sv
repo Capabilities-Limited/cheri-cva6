@@ -200,11 +200,10 @@ module branch_unit #(
     target_pcc_top        = target_pcc.top;
     target_pcc_address    = target_pcc.addr;
     target_pcc_is_sealed  = (operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP);
-    // TODO-cheri(ninolomata): fix this once we disable compressed instructions without trigering errors
-    min_instr_off = ((CVA6Cfg.RVC && !CVA6Cfg.RVFI_DII) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
+    min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
     // Only throw instruction address misaligned exception if this is indeed a `taken` conditional branch or
     // an unconditional jump
-    if (branch_valid_i && (target_address[0] || ((!CVA6Cfg.RVC || CVA6Cfg.RVFI_DII) && target_address[1])) && jump_taken) begin
+    if (branch_valid_i && (target_address[0] || (!CVA6Cfg.RVC && target_address[1])) && jump_taken) begin
       branch_exception_o.valid = 1'b1;
     end
     if (CVA6Cfg.CheriPresent && branch_valid_i && jump_taken) begin

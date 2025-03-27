@@ -121,7 +121,7 @@ module frontend
   // shift amount
   logic [$clog2(CVA6Cfg.INSTR_PER_FETCH)-1:0] shamt;
   // address will always be 16 bit aligned, make this explicit here
-  if (CVA6Cfg.RVC && !CVA6Cfg.RVFI_DII) begin : gen_shamt
+  if (CVA6Cfg.RVC) begin : gen_shamt
     assign shamt = icache_dreq_i.vaddr[$clog2(CVA6Cfg.INSTR_PER_FETCH):1];
   end else begin
     assign shamt = 1'b0;
@@ -465,8 +465,7 @@ always_comb begin : cheri_pcc_checks
 
         npcc = cva6_cheri_pkg::cap_pcc_t'(npc_q);
 
-        // TODO-cheri(ninolomata): fix this once we disable compressed instructions without trigering errors
-        min_instr_off = ((CVA6Cfg.RVC && !CVA6Cfg.RVFI_DII) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
+        min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
 
         cheri_tval     = {CVA6Cfg.XLEN{1'b0}};
         cheri_ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
