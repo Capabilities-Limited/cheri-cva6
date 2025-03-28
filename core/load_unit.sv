@@ -592,7 +592,7 @@ module load_unit
           unique case (ldbuf_rdata.operation)
           ariane_pkg::LD, ariane_pkg::FLD, ariane_pkg::HLV_D:    result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, shifted_data[CVA6Cfg.XLEN-1:0]);
           ariane_pkg::CLOAD_TAGS: begin
-            result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, $unsigned(mem_reg[CVA6Cfg.REGLEN-1]));
+            result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, {{CVA6Cfg.XLEN - 1{0}}, shifted_data[CVA6Cfg.CLEN]});
           end
           default: begin
             result_o = mem_reg;
