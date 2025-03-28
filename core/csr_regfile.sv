@@ -397,9 +397,6 @@ if (CVA6Cfg.CheriPresent) begin
                 riscv::CSR_MEPC: begin
                   wr_cap = mepcc_q;
                   wr_cap_addr  = {csr_wdata[riscv::XLEN-1:1], 1'b0};
-                  // TODO-ninolomata(cheri): fix this
-                  if (CVA6Cfg.RVFI_DII)
-                    wr_cap_addr  = {csr_wdata[riscv::XLEN-1:2], 2'b0};
                 end
                 riscv::CSR_MTVEC: begin
                   wr_cap = mtcc_q;
@@ -417,9 +414,6 @@ if (CVA6Cfg.CheriPresent) begin
                 riscv::CSR_SEPC: begin
                   wr_cap = sepcc_q;
                   wr_cap_addr  = {csr_wdata[riscv::XLEN-1:1], 1'b0};
-                  // TODO-ninolomata(cheri): fix this
-                  if (CVA6Cfg.RVFI_DII)
-                    wr_cap_addr  = {csr_wdata[riscv::XLEN-1:2], 2'b0};
                 end
                 riscv::CSR_STVEC: begin
                   wr_cap = stcc_q;
