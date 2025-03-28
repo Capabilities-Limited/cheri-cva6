@@ -257,12 +257,14 @@ done_processing:
     top->clk_i = 0;
     top->rtc_i = 0;
     top->eval();
+    fflush(stdout);
 #if VM_TRACE
     if (vcdfile || fst_fname)
       tfp->dump(static_cast<vluint64_t>(main_time * 2));
 #endif
     top->clk_i = 1;
     top->eval();
+    fflush(stdout);
 #if VM_TRACE
     if (vcdfile || fst_fname)
       tfp->dump(static_cast<vluint64_t>(main_time * 2 + 1));
@@ -295,12 +297,14 @@ done_processing:
     }
     top->clk_i = 0;
     top->eval();
+    fflush(stdout);
 #if VM_TRACE
     if (vcdfile || fst_fname)
       tfp->dump(static_cast<vluint64_t>(main_time * 2));
 #endif
     top->clk_i = 1;
     top->eval();
+    fflush(stdout);
 #if VM_TRACE
     if (vcdfile || fst_fname)
       tfp->dump(static_cast<vluint64_t>(main_time * 2 + 1));
@@ -319,12 +323,14 @@ done_processing:
         top->clk_i = 0;
         top->rtc_i = 0;
         top->eval();
+        fflush(stdout);
       #if VM_TRACE
         if (vcdfile || fst_fname)
           tfp->dump(static_cast<vluint64_t>(main_time * 2));
       #endif
         top->clk_i = 1;
         top->eval();
+        fflush(stdout);
       #if VM_TRACE
         if (vcdfile || fst_fname)
           tfp->dump(static_cast<vluint64_t>(main_time * 2 + 1));
