@@ -70,7 +70,7 @@ module issue_read_operands
     // Unregistered version of fu_data_o.operandb - TO_BE_COMPLETED
     output logic [CVA6Cfg.REGLEN-1:0] rs2_forwarding_o,
     // Instruction pc - TO_BE_COMPLETED
-    output logic [CVA6Cfg.PCLEN-1:0] pc_o,
+    output logic [CVA6Cfg.REGLEN-1:0] pc_o,
     // Is compressed instruction - TO_BE_COMPLETED
     output logic is_compressed_instr_o,
     // Fixed Latency Unit ready to accept new request - TO_BE_COMPLETED
@@ -134,6 +134,7 @@ module issue_read_operands
       operand_c_gpr;  // third operand from fp regfile or gp regfile if NR_RGPR_PORTS == 3
   // output flipflop (ID <-> EX)
   logic [CVA6Cfg.REGLEN-1:0] operand_a_n, operand_a_q, operand_b_n, operand_b_q;
+  cva6_cheri_pkg::cap_meta_data_t operand_a_meta_data_n, operand_a_meta_data_q, operand_b_meta_data_n, operand_b_meta_data_q;
   logic [CVA6Cfg.XLEN-1:0]
       imm_n, imm_q, imm_forward_rs3;
   logic [REG_ADDR_SIZE-1:0] rs1_n, rs1_q, rs2_n, rs2_q;
@@ -169,7 +170,9 @@ module issue_read_operands
   assign rs2_forwarding_o = operand_b_n;  //forwarding or unregistered rs2 value
 
   assign fu_data_o.operand_a = operand_a_q;
+  assign fu_data_o.operand_a_meta_data = CVA6Cfg.CheriPresent ? operand_a_meta_data_q : '0;
   assign fu_data_o.operand_b = operand_b_q;
+  assign fu_data_o.operand_b_meta_data = CVA6Cfg.CheriPresent ? operand_b_meta_data_q : '0;
   assign fu_data_o.fu = fu_q;
   assign fu_data_o.operation = operator_q;
   assign fu_data_o.trans_id = trans_id_q;
@@ -335,7 +338,7 @@ module issue_read_operands
       };
 
       if (CVA6Cfg.CheriPresent)
-        operand_a_n = cva6_cheri_pkg::cap_pcc_to_cap_reg(issue_instr_i.pc);
+        operand_a_n = cva6_cheri_pkg::cap_mem_to_cap_reg(issue_instr_i.pc);
     end
 
     // use the zimm as operand a
@@ -356,6 +359,11 @@ module issue_read_operands
         operand_b_n = issue_instr_i.ddc;
       else if (issue_instr_i.op inside{ariane_pkg::CFROM_PTR, ariane_pkg::CTEST_SUBSET, ariane_pkg::CBUILD_CAP})
         operand_a_n = issue_instr_i.ddc;
+    end
+
+    if (CVA6Cfg.CheriPresent) begin
+      operand_a_meta_data_n = cva6_cheri_pkg::get_cap_reg_meta_data(operand_a_n);
+      operand_b_meta_data_n = cva6_cheri_pkg::get_cap_reg_meta_data(operand_b_n);
     end
   end
 
@@ -652,6 +660,8 @@ module issue_read_operands
         rs1_q <= '0;
         rs2_q <= '0;
         use_ddc_q <= '0;
+        operand_a_meta_data_q <= '0;
+        operand_b_meta_data_q <= '0;
       end
       pc_o                  <= '0;
       is_compressed_instr_o <= 1'b0;
@@ -670,8 +680,10 @@ module issue_read_operands
         rs1_q <= rs1_n;
         rs2_q <= rs2_n;
         use_ddc_q <= use_ddc_n;
+        operand_a_meta_data_q <= operand_a_meta_data_n;
+        operand_b_meta_data_q <= operand_b_meta_data_n;
       end
-      pc_o                  <= issue_instr_i.pc;
+      pc_o                  <= cva6_cheri_pkg::cap_mem_to_cap_reg(issue_instr_i.pc);
       is_compressed_instr_o <= issue_instr_i.is_compressed;
       branch_predict_o      <= issue_instr_i.bp;
     end

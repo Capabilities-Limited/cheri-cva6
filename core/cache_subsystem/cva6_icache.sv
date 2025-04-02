@@ -78,7 +78,7 @@ module cva6_icache
 
   // signals
   logic cache_en_d, cache_en_q;  // cache is enabled
-  logic [CVA6Cfg.VLEN-1:0] vaddr_d, vaddr_q;
+  logic [CVA6Cfg.PCLEN-1:0] vaddr_d, vaddr_q;
   exception_t ex_d, ex_q;
   logic paddr_is_nc;  // asserted if physical address is non-cacheable
   logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0] cl_hit;  // hit from tag compare
@@ -120,6 +120,9 @@ module cva6_icache
   logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0] vld_rdata;  // valid bits coming from valid regs
   logic [ICACHE_CL_IDX_WIDTH-1:0] vld_addr;  // valid bit
 
+  // CHERI PCC decoding
+  cva6_cheri_pkg::cap_reg_t pcc_reg_d, pcc_reg_q;
+  cva6_cheri_pkg::cap_meta_data_t pcc_meta_data;
   // cpmtroller FSM
   typedef enum logic [2:0] {
     FLUSH,
@@ -149,8 +152,13 @@ module cva6_icache
   // latch this in case we have to stall later on
   // make sure this is 32bit aligned
   assign vaddr_d = (dreq_o.ready & dreq_i.req) ? dreq_i.vaddr : vaddr_q;
-  assign ex_d    = (dreq_o.ready & dreq_i.req) ? dreq_i.ex : ex_q;
-  assign areq_o.fetch_vaddr = (vaddr_q >> CVA6Cfg.FETCH_ALIGN_BITS) << CVA6Cfg.FETCH_ALIGN_BITS;
+  assign ex_d = (dreq_o.ready & dreq_i.req) ? dreq_i.ex : ex_q;
+  assign pcc_reg_d = (dreq_o.ready & dreq_i.req) ? cva6_cheri_pkg::cap_mem_to_cap_reg(dreq_i.vaddr) : pcc_reg_q;
+  assign pcc_meta_data  = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_reg_q);
+  assign areq_o.fetch_vaddr = (vaddr_q[CVA6Cfg.VLEN-1:0] >> CVA6Cfg.FETCH_ALIGN_BITS) << CVA6Cfg.FETCH_ALIGN_BITS;
+  assign areq_o.fetch_pcc_reg = pcc_reg_q;
+  assign areq_o.fetch_pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_reg_q, pcc_meta_data);
+  assign areq_o.fetch_pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_reg_q, pcc_meta_data);
   assign areq_o.fetch_exception = ex_q;
 
   // split virtual address into index and offset to address cache arrays
@@ -159,7 +167,7 @@ module cva6_icache
 
   if (CVA6Cfg.NOCType == config_pkg::NOC_TYPE_AXI4_ATOP) begin : gen_axi_offset
     // if we generate a noncacheable access, the word will be at offset 0 or 4 in the cl coming from memory
-    assign cl_offset_d = ( dreq_o.ready & dreq_i.req)      ? (dreq_i.vaddr >> CVA6Cfg.FETCH_ALIGN_BITS) << CVA6Cfg.FETCH_ALIGN_BITS :
+    assign cl_offset_d = ( dreq_o.ready & dreq_i.req)      ? (dreq_i.vaddr[CVA6Cfg.VLEN-1:0] >> CVA6Cfg.FETCH_ALIGN_BITS) << CVA6Cfg.FETCH_ALIGN_BITS :
                          ( paddr_is_nc  & mem_data_req_o ) ? {{ICACHE_OFFSET_WIDTH-1{1'b0}}, cl_offset_q[2]}<<2 : // needed since we transfer 32bit over a 64bit AXI bus in this case
         cl_offset_q;
     // request word address instead of cl address in case of NC access
@@ -168,7 +176,7 @@ module cva6_icache
   end else begin : gen_piton_offset
     // icache fills are either cachelines or 4byte fills, depending on whether they go to the Piton I/O space or not.
     // since the piton cache system replicates the data, we can always index the full CL
-    assign cl_offset_d = (dreq_o.ready & dreq_i.req) ? {dreq_i.vaddr >> 2, 2'b0} : cl_offset_q;
+    assign cl_offset_d = (dreq_o.ready & dreq_i.req) ? {dreq_i.vaddr[CVA6Cfg.VLEN-1:0] >> 2, 2'b0} : cl_offset_q;
 
     // request word address instead of cl address in case of NC access
     assign mem_data_o.paddr = (paddr_is_nc) ? {cl_tag_d, vaddr_q[CVA6Cfg.ICACHE_INDEX_WIDTH-1:2], 2'b0} :                                         // align to 32bit
@@ -517,11 +525,13 @@ module cva6_icache
       cl_offset_q   <= '0;
       repl_way_oh_q <= '0;
       inv_q         <= '0;
+      pcc_reg_q     <= cva6_cheri_pkg::REG_NULL_CAP;
     end else begin
       cl_tag_q      <= cl_tag_d;
       flush_cnt_q   <= flush_cnt_d;
       vaddr_q       <= vaddr_d;
       ex_q          <= ex_d;
+      pcc_reg_q     <= pcc_reg_d;
       cmp_en_q      <= cmp_en_d;
       cache_en_q    <= cache_en_d;
       flush_q       <= flush_d;

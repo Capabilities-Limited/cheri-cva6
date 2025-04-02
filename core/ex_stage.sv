@@ -46,7 +46,7 @@ module ex_stage
     // FU data useful to execute instruction - ISSUE_STAGE
     input fu_data_t fu_data_i,
     // PC of the current instruction - ISSUE_STAGE
-    input logic [CVA6Cfg.PCLEN-1:0] pc_i,
+    input logic [CVA6Cfg.REGLEN-1:0] pc_i,
     // DDC of the current instruction - ISSUE_STAGE
     input logic [CVA6Cfg.REGLEN-1:0] ddc_i,
     // Report whether isntruction is compressed - ISSUE_STAGE
@@ -271,8 +271,8 @@ module ex_stage
   exception_t branch_exception, clu_exception;
   assign flu_exception_o = (clu_valid_i) ? clu_exception : branch_exception;
 
-  cva6_cheri_pkg::cap_pcc_t pcc;
-  assign pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);
+  cva6_cheri_pkg::cap_reg_t pcc;
+  assign pcc = cva6_cheri_pkg::cap_reg_t'(pc_i);
 
   // 1. ALU (combinatorial)
   // data silence operation

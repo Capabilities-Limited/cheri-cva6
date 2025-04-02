@@ -201,7 +201,7 @@ module cva6_mmu
       .lu_access_i   (itlb_lu_access),
       .lu_asid_i     (itlb_lu_asid),
       .lu_vmid_i     (vmid_i),
-      .lu_vaddr_i    (icache_areq_i.fetch_vaddr),
+      .lu_vaddr_i    (icache_areq_i.fetch_vaddr[CVA6Cfg.VLEN-1:0]),
       .lu_content_o  (itlb_content),
       .lu_g_content_o(itlb_g_content),
       .lu_gpaddr_o   (itlb_gpaddr),
@@ -497,6 +497,89 @@ module cva6_mmu
         icache_areq_o.fetch_exception.tinst = '0;
         icache_areq_o.fetch_exception.gva   = v_i;
       end
+    end
+
+    if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
+        automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+        automatic cva6_cheri_pkg::cap_reg_t npcc;
+        automatic cva6_cheri_pkg::addrw_t min_instr_off;
+
+        npcc = cva6_cheri_pkg::cap_reg_t'(icache_areq_i.fetch_pcc_reg);
+
+        // TODO-cheri(ninolomata): fix this once we disable compressed instructions without trigering errors
+        min_instr_off = ((CVA6Cfg.RVC && !CVA6Cfg.RVFI_DII) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
+
+        cheri_tval     = {CVA6Cfg.XLEN{1'b0}};
+
+        if(!(icache_areq_i.fetch_pcc_base[0] == 1'b0)) begin
+          icache_areq_o.fetch_exception.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          icache_areq_o.fetch_exception.valid = 1'b1;
+          cheri_tval.cause   = cva6_cheri_pkg::CAP_UNLIGNED_BASE;
+          if (CVA6Cfg.TvalEn) begin  //To confirm this is the right TVAL
+            icache_areq_o.fetch_exception.tval  = cheri_tval;
+          end
+          if (CVA6Cfg.RVH) begin
+            icache_areq_o.fetch_exception.tval2 = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.tinst = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.gva   = v_i;
+          end
+        end
+
+        if(icache_areq_i.fetch_vaddr < icache_areq_i.fetch_pcc_base || ($unsigned(icache_areq_i.fetch_vaddr) + min_instr_off) > icache_areq_i.fetch_pcc_top) begin
+          icache_areq_o.fetch_exception.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          icache_areq_o.fetch_exception.valid = 1'b1;
+          cheri_tval.cause   = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
+          if (CVA6Cfg.TvalEn) begin  //To confirm this is the right TVAL
+            icache_areq_o.fetch_exception.tval  = cheri_tval;
+          end
+          if (CVA6Cfg.RVH) begin
+            icache_areq_o.fetch_exception.tval2 = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.tinst = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.gva   = v_i;
+          end
+        end
+
+        if(!npcc.hperms.permit_execute) begin
+          icache_areq_o.fetch_exception.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          icache_areq_o.fetch_exception.valid = 1'b1;
+          cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
+          if (CVA6Cfg.TvalEn) begin  //To confirm this is the right TVAL
+            icache_areq_o.fetch_exception.tval  = cheri_tval;
+          end
+          if (CVA6Cfg.RVH) begin
+            icache_areq_o.fetch_exception.tval2 = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.tinst = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.gva   = v_i;
+          end
+        end
+        if((npcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && npcc.tag) begin
+          icache_areq_o.fetch_exception.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          icache_areq_o.fetch_exception.valid = 1'b1;
+          cheri_tval.cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+          if (CVA6Cfg.TvalEn) begin  //To confirm this is the right TVAL
+            icache_areq_o.fetch_exception.tval  = cheri_tval;
+          end
+          if (CVA6Cfg.RVH) begin
+            icache_areq_o.fetch_exception.tval2 = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.tinst = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.gva   = v_i;
+          end
+        end
+        if(!npcc.tag) begin
+          icache_areq_o.fetch_exception.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          icache_areq_o.fetch_exception.valid = 1'b1;
+          cheri_tval.cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+          if (CVA6Cfg.TvalEn) begin  //To confirm this is the right TVAL
+            icache_areq_o.fetch_exception.tval  = cheri_tval;
+          end
+          if (CVA6Cfg.RVH) begin
+            icache_areq_o.fetch_exception.tval2 = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.tinst = {CVA6Cfg.XLEN{1'b0}};
+            icache_areq_o.fetch_exception.gva   = v_i;
+          end
+        end
+        // Update tval
+        icache_areq_o.fetch_exception.tval = cheri_tval;
     end
   end
 

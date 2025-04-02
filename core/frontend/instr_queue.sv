@@ -59,8 +59,7 @@ module instr_queue
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][31:0] instr_i,
     // Instruction address - instr_realign
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] addr_i,
-    // Instruction Capability - instr_realign
-    input  logic [CVA6Cfg.PCLEN-1:0] pc_i,
+    input logic [CVA6Cfg.PCLEN-1:0] addr_pcc_i,
     // Instruction is valid - instr_realign
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0] valid_i,
     // Handshake’s ready with CACHE - CACHE
@@ -76,13 +75,13 @@ module instr_queue
     input logic [31:0] exception_tinst_i,
     input logic exception_gva_i,
     // Branch predict - FRONTEND
-    input logic [CVA6Cfg.VLEN-1:0] predict_address_i,
+    input logic [CVA6Cfg.PCLEN-1:0] predict_address_i,
     // Instruction predict address - FRONTEND
     input ariane_pkg::cf_t [CVA6Cfg.INSTR_PER_FETCH-1:0] cf_type_i,
     // Replay instruction because one of the FIFO was  full - FRONTEND
     output logic replay_o,
     // Address at which to replay the fetch - FRONTEND
-    output logic [CVA6Cfg.VLEN-1:0] replay_addr_o,
+    output logic [CVA6Cfg.PCLEN-1:0] replay_addr_o,
     // Handshake’s data with ID_STAGE - ID_STAGE
     output fetch_entry_t [ariane_pkg::SUPERSCALAR:0] fetch_entry_o,
     // Handshake’s valid with ID_STAGE - ID_STAGE
@@ -118,7 +117,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
   logic                                            instr_overflow;
   // address queue
   logic [$clog2(ariane_pkg::FETCH_FIFO_DEPTH)-1:0] address_queue_usage;
-  logic [                        CVA6Cfg.VLEN-1:0] address_out;
+  logic [                        CVA6Cfg.PCLEN-1:0] address_out;
   logic                                            pop_address;
   logic                                            push_address;
   logic                                            full_address;
@@ -226,7 +225,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
       assign instr_data_in[i].instr = instr[CVA6Cfg.INSTR_PER_FETCH+i-idx_is_q];
       assign instr_data_in[i].cf = cf[CVA6Cfg.INSTR_PER_FETCH+i-idx_is_q];
       assign instr_data_in[i].ex = exception_i;  // exceptions hold for the whole fetch packet
-      assign instr_data_in[i].ex_vaddr = exception_addr_i;
+      assign instr_data_in[i].ex_vaddr = exception_addr_i[CVA6Cfg.VLEN-1:0];
       assign instr_data_in[i].ex_tval = exception_tval_i;
       if (CVA6Cfg.RVH) begin : gen_hyp_ex_with_C
         assign instr_data_in[i].ex_gpaddr = exception_gpaddr_i;
@@ -265,7 +264,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
     assign instr_data_in[0].instr = instr_i[0];
     assign instr_data_in[0].cf = cf_type_i[0];
     assign instr_data_in[0].ex = exception_i;  // exceptions hold for the whole fetch packet
-    assign instr_data_in[0].ex_vaddr = exception_addr_i;
+    assign instr_data_in[0].ex_vaddr = exception_addr_i[CVA6Cfg.VLEN-1:0];
     assign instr_data_in[0].ex_tval  = exception_tval_i;
     if (CVA6Cfg.RVH) begin : gen_hyp_ex_without_C
       assign instr_data_in[0].ex_gpaddr = exception_gpaddr_i;
@@ -301,9 +300,12 @@ ariane_pkg::FETCH_FIFO_DEPTH
     // use the base of this package
     // if we successfully pushed some instructions we can output the next instruction
     // which we didn't manage to push
-    assign replay_addr_o = (address_overflow) ? addr_i[0] : addr_i[shamt];
+    if (CVA6Cfg.CheriPresent)
+      assign replay_addr_o = (address_overflow) ? cva6_cheri_pkg::set_cap_mem_addr_unsafe(addr_pcc_i, addr_i[0]) : cva6_cheri_pkg::set_cap_mem_addr_unsafe(addr_pcc_i, addr_i[shamt]);
+    else
+      assign replay_addr_o = (address_overflow) ? addr_i[0] : addr_i[shamt];
   end else begin : gen_replay_addr_o_without_C
-    assign replay_addr_o = addr_i[0];
+    assign replay_addr_o = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_mem_addr_unsafe(addr_pcc_i, addr_i[0]) : addr_i[0];
   end
 
   // ----------------------
@@ -469,7 +471,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
   assign pc_j[0] = pc_q;
   for (genvar i = 0; i <= ariane_pkg::SUPERSCALAR; i++) begin
     if (CVA6Cfg.CheriPresent) begin
-      assign pc_j[i+1] = fetch_entry_is_cf[i] ? cva6_cheri_pkg::set_cap_pcc_cursor(pc_j[i], address_out) : cva6_cheri_pkg::set_cap_pcc_cursor(pc_j[i], pc_j[i][CVA6Cfg.XLEN-1:0] + ((fetch_entry_o[i].instruction[1:0] != 2'b11) ? 'd2 : 'd4));
+      assign pc_j[i+1] = fetch_entry_is_cf[i] ? address_out : cva6_cheri_pkg::set_cap_mem_addr_unsafe(pc_j[i], pc_j[i][CVA6Cfg.XLEN-1:0] + ((fetch_entry_o[i].instruction[1:0] != 2'b11) ? 'd2 : 'd4));
     end else begin 
       assign pc_j[i+1] = fetch_entry_is_cf[i] ? address_out : (
         pc_j[i] + ((fetch_entry_o[i].instruction[1:0] != 2'b11) ? 'd2 : 'd4)
@@ -493,11 +495,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
     // we previously flushed so we need to reset the address
     if (valid_i[0] && reset_address_q) begin
       // this is the base of the first instruction
-      if (CVA6Cfg.CheriPresent) begin
-        pc_d = cva6_cheri_pkg::set_cap_pcc_cursor(pc_i, addr_i[0]);
-      end else begin
-        pc_d = addr_i[0];
-      end
+      pc_d = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_mem_addr_unsafe(addr_pcc_i, addr_i[0]) : addr_i[0];
       reset_address_d = 1'b0;
     end
   end
@@ -536,7 +534,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
 
   cva6_fifo_v3 #(
       .DEPTH     (ariane_pkg::FETCH_FIFO_DEPTH),  // TODO(zarubaf): Fork out to separate param
-      .DATA_WIDTH(CVA6Cfg.VLEN),
+      .DATA_WIDTH(CVA6Cfg.PCLEN),
       .FPGA_EN   (CVA6Cfg.FpgaEn)
   ) i_fifo_address (
       .clk_i     (clk_i),

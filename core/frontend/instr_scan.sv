@@ -28,6 +28,8 @@ module instr_scan #(
     output logic rvi_branch_o,
     // JALR instruction - FRONTEND
     output logic rvi_jalr_o,
+    // CINVOKE instruction - FRONTEND
+    output logic rvcheri_cinvoke_o,
     // Unconditional jump instruction - FRONTEND
     output logic rvi_jump_o,
     // Instruction immediat - FRONTEND
@@ -86,7 +88,19 @@ module instr_scan #(
   // differentiates between JAL and BRANCH opcode, JALR comes from BHT
   assign rvi_imm_o = is_xret ? '0 : (instr_i[3]) ? uj_imm(instr_i) : sb_imm(instr_i);
   assign rvi_branch_o = (instr_i[6:0] == riscv::OpcodeBranch);
-  assign rvi_jalr_o = (instr_i[6:0] == riscv::OpcodeJalr);
+  assign rvi_jalr_o = (instr_i[6:0] == riscv::OpcodeJalr) ||
+                        (CVA6Cfg.CheriPresent &&
+                          instr_i[6:0] == riscv::OpcodeCheri &&
+                          instr_i[14:12] == 3'h0 &&
+                          (instr_i[24:20] == 5'hc || instr_i[24:20] == 5'h14) &&
+                          instr_i[31:25] == 7'h7f
+                        );
+  assign rvcheri_cinvoke_o = CVA6Cfg.CheriPresent &&
+                              (instr_i[6:0] == riscv::OpcodeCheri) &&
+                              (instr_i[11:7] == 5'h1) &&
+                              (instr_i[14:12] == 3'h0) &&
+                              (instr_i[31:25] == 7'h7e);
+
   assign rvi_jump_o = logic'(instr_i[6:0] == riscv::OpcodeJal) | is_xret;
 
   // opcode JAL

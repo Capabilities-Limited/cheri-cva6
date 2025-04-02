@@ -38,7 +38,7 @@ package build_config_pkg;
     cfg.PLEN = (CVA6Cfg.XLEN == 32) ? 34 : 56;
     cfg.GPLEN = (CVA6Cfg.XLEN == 32) ? 34 : 41;
     cfg.REGLEN = CheriPresent ? $bits(cva6_cheri_pkg::cap_reg_t) : cfg.XLEN;
-    cfg.PCLEN = CheriPresent ? $bits(cva6_cheri_pkg::cap_pcc_t) : cfg.VLEN;
+    cfg.PCLEN = CheriPresent ? $bits(cva6_cheri_pkg::cap_mem_t) : cfg.VLEN;
     cfg.IS_XLEN32 = IS_XLEN32;
     cfg.IS_XLEN64 = IS_XLEN64;
     cfg.XLEN_ALIGN_BYTES = $clog2(CVA6Cfg.XLEN / 8);

@@ -763,11 +763,11 @@ end
 // ---------------
 // Core
 // ---------------
-(*mark_debug = "true"*) ariane_axi::req_t    axi_ariane_req;
-(*mark_debug = "true"*) ariane_axi::resp_t   axi_ariane_resp;
-cva6_cheri_pkg::cap_pcc_t boot_cap;
+ariane_axi::req_t    axi_ariane_req;
+ariane_axi::resp_t   axi_ariane_resp;
+cva6_cheri_pkg::cap_reg_t boot_cap;
   always_comb begin : gen_boot_cap
-    boot_cap = cva6_cheri_pkg::PCC_ROOT_CAP;
+    boot_cap = cva6_cheri_pkg::REG_ROOT_CAP;
     boot_cap.addr = ariane_soc::ROMBase;
     boot_cap.flags.cap_mode = 1'b0;
   end
@@ -780,7 +780,7 @@ ariane #(
 ) i_ariane (
     .clk_i        ( clk                 ),
     .rst_ni       ( ndmreset_n          ),
-    .boot_addr_i  ( (CVA6Cfg.CheriPresent) ? boot_cap : ariane_soc::ROMBase ), // start fetching from ROM
+    .boot_addr_i  ( (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::cap_reg_to_cap_mem(boot_cap) : ariane_soc::ROMBase ), // start fetching from ROM
     .hart_id_i    ( '0                  ),
     .irq_i        ( irq                 ),
     .ipi_i        ( ipi                 ),

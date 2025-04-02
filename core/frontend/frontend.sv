@@ -75,26 +75,26 @@ module frontend
   };
 
   localparam type btb_prediction_t = struct packed {
-    logic                    valid;
-    logic [CVA6Cfg.VLEN-1:0] target_address;
+    logic                     valid;
+    logic [CVA6Cfg.PCLEN-1:0] target_address;
   };
 
   localparam type btb_update_t = struct packed {
-    logic                    valid;
-    logic [CVA6Cfg.VLEN-1:0] pc;              // update at PC
-    logic [CVA6Cfg.VLEN-1:0] target_address;
+    logic                     valid;
+    logic [CVA6Cfg.VLEN-1:0]  pc;              // update at PC
+    logic [CVA6Cfg.PCLEN-1:0] target_address;
   };
 
   localparam type ras_t = struct packed {
-    logic                    valid;
-    logic [CVA6Cfg.VLEN-1:0] ra;
+    logic                     valid;
+    logic [CVA6Cfg.PCLEN-1:0] ra;
   };
 
   // Instruction Cache Registers, from I$
   logic                            [    CVA6Cfg.FETCH_WIDTH-1:0] icache_data_q;
   logic                                                          icache_valid_q;
   ariane_pkg::frontend_exception_t                               icache_ex_valid_q;
-  logic                            [           CVA6Cfg.VLEN-1:0] icache_vaddr_q;
+  logic                            [           CVA6Cfg.PCLEN-1:0] icache_vaddr_q;
   logic                            [           CVA6Cfg.XLEN-1:0] icache_tval_q;
   logic                            [          CVA6Cfg.GPLEN-1:0] icache_gpaddr_q;
   logic                            [                       31:0] icache_tinst_q;
@@ -111,8 +111,8 @@ module frontend
   // indicates whether we come out of reset (then we need to load boot_addr_i)
   logic                                       npc_rst_load_q;
 
-  logic                                       replay;
-  logic [                   CVA6Cfg.VLEN-1:0] replay_addr;
+  logic                                        replay;
+  logic [                   CVA6Cfg.PCLEN-1:0] replay_addr;
 
   // shift amount
   logic [$clog2(CVA6Cfg.INSTR_PER_FETCH)-1:0] shamt;
@@ -127,7 +127,7 @@ module frontend
   // Ctrl Flow Speculation
   // -----------------------
   // RVI ctrl flow prediction
-  logic [CVA6Cfg.INSTR_PER_FETCH-1:0] rvi_return, rvi_call, rvi_branch, rvi_jalr, rvi_jump;
+  logic [CVA6Cfg.INSTR_PER_FETCH-1:0] rvi_return, rvi_call, rvi_branch, rvi_jalr, rvi_jump, rvcheri_cinvoke;
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] rvi_imm;
   // RVC branching
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0] rvc_branch, rvc_jump, rvc_jr, rvc_return, rvc_jalr, rvc_call;
@@ -147,15 +147,15 @@ module frontend
   // branch-predict update
   logic                                                            is_mispredict;
   logic ras_push, ras_pop;
-  logic [           CVA6Cfg.VLEN-1:0] ras_update;
+  logic [           CVA6Cfg.PCLEN-1:0] ras_update;
 
   // Instruction FIFO
-  logic [           CVA6Cfg.VLEN-1:0] predict_address;
-  cf_t  [CVA6Cfg.INSTR_PER_FETCH-1:0] cf_type;
-  logic [CVA6Cfg.INSTR_PER_FETCH-1:0] taken_rvi_cf;
-  logic [CVA6Cfg.INSTR_PER_FETCH-1:0] taken_rvc_cf;
+  logic [           CVA6Cfg.PCLEN-1:0] predict_address;
+  cf_t  [CVA6Cfg.INSTR_PER_FETCH-1:0]  cf_type;
+  logic [CVA6Cfg.INSTR_PER_FETCH-1:0]  taken_rvi_cf;
+  logic [CVA6Cfg.INSTR_PER_FETCH-1:0]  taken_rvc_cf;
 
-  logic                               serving_unaligned;
+  logic                                serving_unaligned;
   // Re-align instructions
   instr_realign #(
       .CVA6Cfg(CVA6Cfg)
@@ -165,7 +165,7 @@ module frontend
       .flush_i            (icache_dreq_o.kill_s2),
       .valid_i            (icache_valid_q),
       .serving_unaligned_o(serving_unaligned),
-      .address_i          (icache_vaddr_q),
+      .address_i          (icache_vaddr_q[CVA6Cfg.VLEN-1:0]),
       .data_i             (icache_data_q),
       .valid_o            (instruction_valid),
       .addr_o             (addr),
@@ -217,7 +217,7 @@ module frontend
     // unconditional jumps with known target -> immediately resolved
     assign is_jump[i] = instruction_valid[i] & (rvi_jump[i] | rvc_jump[i]);
     // unconditional jumps with unknown target -> BTB
-    assign is_jalr[i] = instruction_valid[i] & ~is_return[i] & (rvi_jalr[i] | rvc_jalr[i] | rvc_jr[i]);
+    assign is_jalr[i] = instruction_valid[i] & ~is_return[i] & (rvi_jalr[i] | rvc_jalr[i] | rvc_jr[i] | rvcheri_cinvoke[i]);
   end
 
   // taken/not taken
@@ -288,24 +288,28 @@ module frontend
       // but only if we actually consumed the address
       if (is_call[i]) begin
         ras_push   = instr_queue_consumed[i];
-        ras_update = addr[i] + (rvc_call[i] ? 2 : 4);
+        if (CVA6Cfg.CheriPresent)
+          ras_update = cva6_cheri_pkg::set_cap_mem_addr_unsafe(icache_vaddr_q, addr[i][CVA6Cfg.VLEN-1:0] + (rvc_call[i] ? 2 : 4));
+        else
+          ras_update = addr[i] + (rvc_call[i] ? 2 : 4);
       end
       // calculate the jump target address
       if (taken_rvc_cf[i] || taken_rvi_cf[i]) begin
-        predict_address = addr[i] + (taken_rvc_cf[i] ? rvc_imm[i] : rvi_imm[i]);
+        if (CVA6Cfg.CheriPresent)
+          predict_address = cva6_cheri_pkg::set_cap_mem_addr_unsafe(icache_vaddr_q, addr[i][CVA6Cfg.VLEN-1:0] + (taken_rvc_cf[i] ? rvc_imm[i] : rvi_imm[i]));
+        else
+          predict_address = addr[i] + (taken_rvc_cf[i] ? rvc_imm[i] : rvi_imm[i]);
       end
     end
   end
   // or reduce struct
   always_comb begin
     bp_valid = 1'b0;
-    //if (!CVA6Cfg.RVFI_DII) begin
     // BP cannot be valid if we have a return instruction and the RAS is not giving a valid address
     // Check that we encountered a control flow and that for a return the RAS
     // contains a valid prediction.
     for (int i = 0; i < CVA6Cfg.INSTR_PER_FETCH; i++)
     bp_valid |= ((cf_type[i] != NoCF & cf_type[i] != Return) | ((cf_type[i] == Return) & ras_predict.valid));
-    //end
   end
   assign is_mispredict = resolved_branch_i.valid & (resolved_branch_i.is_mispredict | CVA6Cfg.RVFI_DII);
 
@@ -339,7 +343,7 @@ module frontend
                                 & resolved_branch_i.is_mispredict
                                 & (resolved_branch_i.cf_type == ariane_pkg::JumpR);
   assign btb_update.pc = resolved_branch_i.pc;
-  assign btb_update.target_address = resolved_branch_i.target_address[CVA6Cfg.XLEN-1:0];
+  assign btb_update.target_address = resolved_branch_i.target_address;
   exception_t cheri_ex;
   // -------------------
   // Next PC
@@ -353,11 +357,10 @@ module frontend
   // 5. Pipeline Flush because of CSR side effects
   // Mis-predict handling is a little bit different
   // select PC a.k.a PC Gen
-  logic [CVA6Cfg.VLEN-1:0] fetch_address;
 
   always_comb begin : npc_select
-    automatic cva6_cheri_pkg::cap_pcc_t debug_pcc;
-    //automatic logic [CVA6Cfg.VLEN-1:0] fetch_address;
+    automatic cva6_cheri_pkg::cap_reg_t debug_pcc;
+    automatic logic [CVA6Cfg.PCLEN-1:0] fetch_address;
     // check whether we come out of reset
     // this is a workaround. some tools have issues
     // having boot_addr_i in the asynchronous
@@ -365,28 +368,25 @@ module frontend
     // boot_addr_i will be assigned a constant
     // on the top-level.
 
-    debug_pcc = cva6_cheri_pkg::PCC_ROOT_CAP;
+    debug_pcc = cva6_cheri_pkg::REG_ROOT_CAP;
     debug_pcc.flags.cap_mode = 1'b0;
     if (npc_rst_load_q) begin
       npc_d         = boot_addr_i;
-      fetch_address = boot_addr_i[CVA6Cfg.XLEN-1:0];
+      fetch_address = boot_addr_i;
     end else begin
-      fetch_address = npc_q[CVA6Cfg.VLEN-1:0];
+      fetch_address = npc_q;
       // keep stable by default
       npc_d         = npc_q;
     end
     // 0. Branch Prediction
     if (bp_valid) begin
       fetch_address = predict_address;
-      if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(npc_q, predict_address);
-      else
-        npc_d = predict_address;
+      npc_d = predict_address;
     end
     // 1. Default assignment
     if (if_ready) begin
       if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor((npc_rst_load_q) ? boot_addr_i : npc_q, {fetch_address[CVA6Cfg.VLEN-1:CVA6Cfg.FETCH_ALIGN_BITS] + 1, {CVA6Cfg.FETCH_ALIGN_BITS{1'b0}}});
+        npc_d = cva6_cheri_pkg::set_cap_mem_addr_unsafe(fetch_address, {fetch_address[CVA6Cfg.VLEN-1:CVA6Cfg.FETCH_ALIGN_BITS] + 1, {CVA6Cfg.FETCH_ALIGN_BITS{1'b0}}});
       else
         npc_d = {
         fetch_address[CVA6Cfg.VLEN-1:CVA6Cfg.FETCH_ALIGN_BITS] + 1, {CVA6Cfg.FETCH_ALIGN_BITS{1'b0}}
@@ -394,10 +394,7 @@ module frontend
     end
     // 2. Replay instruction fetch
     if (replay) begin
-      if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(npc_q, replay_addr);
-      else
-        npc_d = replay_addr;
+      npc_d = replay_addr;
     end
     // 3. Control flow change request
     if (is_mispredict) begin
@@ -406,14 +403,14 @@ module frontend
     // 4. Return from environment call
     if (eret_i) begin
       if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::cap_reg_to_cap_pcc(epc_i);
+        npc_d = cva6_cheri_pkg::cap_reg_to_cap_mem(epc_i);
       else
         npc_d = epc_i;
     end
     // 5. Exception/Interrupt
     if (ex_valid_i) begin
       if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::cap_reg_to_cap_pcc(trap_vector_base_i);
+        npc_d = cva6_cheri_pkg::cap_reg_to_cap_mem(trap_vector_base_i);
       else
         npc_d = trap_vector_base_i;
     end
@@ -428,7 +425,7 @@ module frontend
     // TODO(zarubaf) This adder can at least be merged with the one in the csr_regfile stage
     if (set_pc_commit_i) begin
       if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(pc_commit_i, pc_commit_i + (halt_i ? '0 : {{CVA6Cfg.VLEN - 3{1'b0}}, 3'b100}));
+        npc_d = cva6_cheri_pkg::set_cap_mem_addr_unsafe(pc_commit_i, pc_commit_i[CVA6Cfg.VLEN-1:0] + (halt_i ? '0 : {{CVA6Cfg.VLEN - 3{1'b0}}, 3'b100}));
       else
         npc_d = pc_commit_i + (halt_i ? '0 : {{CVA6Cfg.VLEN - 3{1'b0}}, 3'b100});
     end
@@ -436,60 +433,13 @@ module frontend
     // enter debug on a hard-coded base-address
     if (CVA6Cfg.DebugEn && set_debug_pc_i)
       if (CVA6Cfg.CheriPresent) begin
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(debug_pcc,CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0]);
+        npc_d = cva6_cheri_pkg::set_cap_mem_addr_unsafe(cva6_cheri_pkg::cap_reg_to_cap_mem(debug_pcc), CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0]);
       end else begin
         npc_d = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0];
       end
     icache_dreq_o.vaddr = fetch_address;
-    if (CVA6Cfg.CheriPresent) begin
-      icache_dreq_o.ex    = cheri_ex;
-    end
   end
-if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
-always_comb begin : cheri_pcc_checks
-        automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
-        automatic cva6_cheri_pkg::cap_pcc_t npcc;
-        automatic cva6_cheri_pkg::addrw_t min_instr_off;
 
-        npcc = cva6_cheri_pkg::cap_pcc_t'(npc_q);
-
-        // TODO-cheri(ninolomata): fix this once we disable compressed instructions without trigering errors
-        min_instr_off = ((CVA6Cfg.RVC && !CVA6Cfg.RVFI_DII) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
-
-        cheri_tval     = {CVA6Cfg.XLEN{1'b0}};
-        cheri_ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-        cheri_ex.valid = 1'b0;
-        cheri_ex.tval  = {CVA6Cfg.XLEN{1'b0}};
-        cheri_ex.tval2 = {CVA6Cfg.XLEN{1'b0}};
-        cheri_ex.tinst = {CVA6Cfg.XLEN{1'b0}};
-        cheri_ex.gva   = v_i;
-
-        if(!(npcc.base[0] == 1'b0)) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_UNLIGNED_BASE;
-            cheri_ex.valid     = 1'b1;
-        end
-
-        if(fetch_address < npcc.base || ($unsigned(fetch_address) + min_instr_off) > npcc.top) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
-            cheri_ex.valid     = 1'b1;
-        end
-
-        if(!npcc.hperms.permit_execute) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
-            cheri_ex.valid     = 1'b1;
-        end
-        if((npcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && npcc.tag) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
-            cheri_ex.valid     = 1'b1;
-        end
-        if(!npcc.tag) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-            cheri_ex.valid     = 1'b1;
-        end
-        // Update tval
-        cheri_ex.tval = cheri_tval;
-    end
-end
   logic [CVA6Cfg.FETCH_WIDTH-1:0] icache_data;
   // re-align the cache line
   assign icache_data = icache_dreq_i.data >> {shamt, 4'b0};
@@ -497,7 +447,7 @@ end
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       npc_rst_load_q    <= 1'b1;
-      npc_q             <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::PCC_ROOT_CAP : '0;
+      npc_q             <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::cap_reg_to_cap_mem(cva6_cheri_pkg::REG_ROOT_CAP) : '0;
       speculative_q     <= '0;
       icache_data_q     <= '0;
       icache_valid_q    <= 1'b0;
@@ -568,7 +518,7 @@ end
   //For FPGA, BTB is implemented in read synchronous BRAM
   //while for ASIC, BTB is implemented in D flip-flop
   //and can be read at the same cycle.
-  assign vpc_btb = (CVA6Cfg.FpgaEn) ? icache_dreq_i.vaddr : icache_vaddr_q;
+  assign vpc_btb = (CVA6Cfg.FpgaEn) ? icache_dreq_i.vaddr[CVA6Cfg.VLEN-1:0] : icache_vaddr_q[CVA6Cfg.VLEN-1:0];
 
   if (CVA6Cfg.BTBEntries == 0) begin
     assign btb_prediction = '0;
@@ -601,7 +551,7 @@ end
         .rst_ni,
         .flush_bp_i      (flush_bp_i),
         .debug_mode_i,
-        .vpc_i           (icache_vaddr_q),
+        .vpc_i           (icache_vaddr_q[CVA6Cfg.VLEN-1:0]),
         .bht_update_i    (bht_update),
         .bht_prediction_o(bht_prediction)
     );
@@ -618,6 +568,7 @@ end
         .rvi_call_o  (rvi_call[i]),
         .rvi_branch_o(rvi_branch[i]),
         .rvi_jalr_o  (rvi_jalr[i]),
+        .rvcheri_cinvoke_o (rvcheri_cinvoke[i]),
         .rvi_jump_o  (rvi_jump[i]),
         .rvi_imm_o   (rvi_imm[i]),
         .rvc_branch_o(rvc_branch[i]),
@@ -639,9 +590,9 @@ end
       .flush_i            (flush_i),
       .instr_i            (instr),                 // from re-aligner
       .addr_i             (addr),                  // from re-aligner
-      .pc_i(npc_q),
+      .addr_pcc_i         (icache_vaddr_q),        // from I$
       .exception_i        (icache_ex_valid_q),     // from I$
-      .exception_addr_i   (icache_vaddr_q),
+      .exception_addr_i   (icache_vaddr_q[CVA6Cfg.VLEN-1:0]),
       .exception_tval_i   (icache_tval_q),
       .exception_gpaddr_i (icache_gpaddr_q),
       .exception_tinst_i  (icache_tinst_q),

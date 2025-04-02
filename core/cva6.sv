@@ -37,7 +37,7 @@ module cva6
     // units towards the correct branch decision and resolve
     localparam type branchpredict_sbe_t = struct packed {
       cf_t                     cf;               // type of control flow prediction
-      logic [CVA6Cfg.VLEN-1:0] predict_address;  // target address at which to jump, or not
+      logic [CVA6Cfg.PCLEN-1:0] predict_address;  // target address at which to jump, or not
     },
 
     localparam type exception_t = struct packed {
@@ -58,26 +58,29 @@ module cva6
       exception_t              fetch_exception;  // exception occurred during fetch
     },
     localparam type icache_arsp_t = struct packed {
-      logic                    fetch_req;    // address translation request
-      logic [CVA6Cfg.VLEN-1:0] fetch_vaddr;  // virtual address out
-      exception_t              fetch_exception;  // exception occurred during fetch
+      logic                      fetch_req;    // address translation request
+      logic [CVA6Cfg.VLEN-1:0]   fetch_vaddr;  // virtual address out
+      logic [CVA6Cfg.REGLEN-1:0] fetch_pcc_reg;    // program counter capability
+      logic [CVA6Cfg.XLEN-1:0]   fetch_pcc_base;    // program counter capability
+      logic [CVA6Cfg.XLEN:0]     fetch_pcc_top;    // program counter capability
+      exception_t                fetch_exception;  // exception occurred during fetch
     },
 
     // I$ data requests
     localparam type icache_dreq_t = struct packed {
-      logic                    req;      // we request a new word
-      logic                    kill_s1;  // kill the current request
-      logic                    kill_s2;  // kill the last request
-      logic                    spec;     // request is speculative
-      logic [CVA6Cfg.VLEN-1:0] vaddr;    // 1st cycle: 12 bit index is taken for lookup
-      exception_t                          ex;     // we've encountered an exception
+      logic                     req;      // we request a new word
+      logic                     kill_s1;  // kill the current request
+      logic                     kill_s2;  // kill the last request
+      logic                     spec;     // request is speculative
+      logic [CVA6Cfg.PCLEN-1:0] vaddr;    // 1st cycle: 12 bit index is taken for lookup
+      exception_t               ex;       // we've encountered an exception
     },
     localparam type icache_drsp_t = struct packed {
       logic                                ready;  // icache is ready
       logic                                valid;  // signals a valid read
       logic [CVA6Cfg.FETCH_WIDTH-1:0]      data;   // 2+ cycle out: tag
       logic [CVA6Cfg.FETCH_USER_WIDTH-1:0] user;   // User bits
-      logic [CVA6Cfg.VLEN-1:0]             vaddr;  // virtual address out
+      logic [CVA6Cfg.PCLEN-1:0]            vaddr;  // virtual address out
       exception_t                          ex;     // we've encountered an exception
     },
 
@@ -170,7 +173,9 @@ module cva6
       fu_t                              fu;
       fu_op                             operation;
       logic [CVA6Cfg.REGLEN-1:0]        operand_a;
+      cva6_cheri_pkg::cap_meta_data_t   operand_a_meta_data;
       logic [CVA6Cfg.REGLEN-1:0]        operand_b;
+      cva6_cheri_pkg::cap_meta_data_t   operand_b_meta_data;
       logic [CVA6Cfg.XLEN-1:0]          imm;
       logic [REG_ADDR_SIZE-1:0]         rs1;
       logic [REG_ADDR_SIZE-1:0]         rs2;
@@ -395,7 +400,7 @@ module cva6
   logic [CVA6Cfg.REGLEN-1:0] rs2_forwarding_id_ex;  // unregistered version of fu_data_o.operandb
 
   fu_data_t fu_data_id_ex;
-  logic [CVA6Cfg.PCLEN-1:0] pc_id_ex;
+  logic [CVA6Cfg.REGLEN-1:0] pc_id_ex;
   logic is_compressed_instr_id_ex;
   logic [31:0] tinst_ex;
   // fixed latency units

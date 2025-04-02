@@ -25,7 +25,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     input  logic                     rst_ni,        // Asynchronous reset active low
     input  logic                     v_i ,
     input  fu_data_t                 fu_data_i,
-    input  cap_pcc_t                 pcc_i,          // Current PCC
+    input  cap_reg_t                 pcc_i,          // Current PCC
     input  logic                     clu_valid_i,
     input  addrw_t                   alu_result_i,
     output cap_reg_t                 clu_result_o,  // Return resulting cap
@@ -86,7 +86,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     // Output signals
     cap_reg_t clu_result;
 
-    assign pcc = cap_pcc_to_cap_reg(pcc_i);
+    assign pcc = pcc_i;
     // -----------
     // CHERI ALU main logic circuit
     // -----------
@@ -488,7 +488,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     always_comb begin
         // Decode capability operand a fields
         operand_a = fu_data_i.operand_a;
-        op_a_meta_info = get_cap_reg_meta_data(operand_a);
+        op_a_meta_info = fu_data_i.operand_a_meta_data;
         operand_a_address = operand_a.addr;
         operand_a_base   = get_cap_reg_base(operand_a, op_a_meta_info);
         operand_a_top    = get_cap_reg_top(operand_a, op_a_meta_info);
@@ -499,7 +499,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         // Decode capability operand b fields
         operand_b = fu_data_i.operand_b;
         operand_b_address = operand_b.addr;
-        op_b_meta_info = get_cap_reg_meta_data(operand_b);
+        op_b_meta_info = fu_data_i.operand_b_meta_data;
         operand_b_base   = get_cap_reg_base(operand_b, op_b_meta_info);
         operand_b_top    = get_cap_reg_top(operand_b, op_b_meta_info);
         operand_b_length = operand_b_top - {1'b0, operand_b_base}; //get_cap_reg_length(operand_b, op_b_meta_info);

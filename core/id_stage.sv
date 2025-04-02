@@ -104,10 +104,10 @@ module id_stage #(
   logic                                                is_last_macro_instr_o;
   logic                                                is_double_rd_macro_instr_o;
 
-  cva6_cheri_pkg::cap_pcc_t               [ariane_pkg::SUPERSCALAR:0] pcc;
+  cva6_cheri_pkg::cap_mem_t               [ariane_pkg::SUPERSCALAR:0] pcc;
 
   for (genvar i = 0; i <= ariane_pkg::SUPERSCALAR; i++) begin
-    assign pcc[i] = (CVA6Cfg.CheriPresent) ? (cva6_cheri_pkg::cap_pcc_t'(fetch_entry_i[i].address)) : '0;
+    assign pcc[i] = (CVA6Cfg.CheriPresent) ? (cva6_cheri_pkg::cap_mem_t'(fetch_entry_i[i].address)) : '0;
   end
 
   if (CVA6Cfg.RVC) begin

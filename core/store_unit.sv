@@ -189,9 +189,6 @@ module store_unit
     pop_st_o               = 1'b0;
     ex_o                   = ex_i;
     cap_tanslation_req_d   = cap_tanslation_req_q;
-    if (CVA6Cfg.RVFI_DII && amo_op_q == AMO_SC && ex_i.cause == riscv::ST_ACCESS_FAULT) begin
-      ex_o.valid = 1'b0;
-    end
     trans_id_n             = lsu_ctrl_i.trans_id;
     state_d                = state_q;
     if (CVA6Cfg.CheriPresent) begin
@@ -281,7 +278,7 @@ module store_unit
     // Access Exception
     // -----------------
     // we got an address translation exception (access rights, misaligned or page fault)
-    if (ex_i.valid && (state_q != IDLE) && !(amo_op_q == AMO_SC && ex_i.cause == riscv::ST_ACCESS_FAULT) && !(!cap_tanslation_req_q && ex_i.cause == cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT && CVA6Cfg.CheriPresent)) begin
+    if (ex_i.valid && (state_q != IDLE) && !(!cap_tanslation_req_q && ex_i.cause == cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT && CVA6Cfg.CheriPresent)) begin
         // the only difference is that we do not want to store this request
         pop_st_o = 1'b1;
         st_valid = 1'b0;

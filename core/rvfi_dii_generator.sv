@@ -37,14 +37,13 @@ module rvfi_dii_generator
     input  rvfi_dii_inst_pack_t rvfi_dii_inst_pack_i,
     output logic         rvfi_dii_data_ready_o
 );
-    logic [CVA6Cfg.VLEN-1:0] vaddr_d, vaddr_q;
+    logic [CVA6Cfg.PCLEN-1:0] vaddr_d, vaddr_q;
     exception_t ex_d, ex_q;
     logic busy_q, busy_d;
     assign vaddr_d = (~busy_q & dreq_i.req) ? dreq_i.vaddr : vaddr_q;
     assign ex_d    = (~busy_q & dreq_i.req) ? dreq_i.ex : ex_q;
 
     always_comb begin : inject_instr
-        dreq_o.ex = ex_q;
         dreq_o.vaddr = vaddr_q;
         dreq_o.valid = 1'b0;
         dreq_o.ready = 1'b0;
@@ -68,6 +67,58 @@ module rvfi_dii_generator
             if (dreq_i.req && !dreq_i.kill_s1 && !dreq_i.kill_s2)
                 busy_d = 1'b1;
         end
+    end
+
+    if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
+    always_comb begin
+        automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+        automatic cva6_cheri_pkg::cap_reg_t npcc;
+        cva6_cheri_pkg::cap_meta_data_t npcc_meta_data;
+        automatic cva6_cheri_pkg::addrw_t min_instr_off;
+        automatic cva6_cheri_pkg::addrw_t fetch_pcc_base;
+        automatic cva6_cheri_pkg::addrwe_t fetch_pcc_top;
+
+        npcc = cva6_cheri_pkg::cap_mem_to_cap_reg(vaddr_q);
+        npcc_meta_data = cva6_cheri_pkg::get_cap_reg_meta_data(npcc);
+        fetch_pcc_base = cva6_cheri_pkg::get_cap_reg_base(npcc, npcc_meta_data);
+        fetch_pcc_top = cva6_cheri_pkg::get_cap_reg_top(npcc, npcc_meta_data);
+
+        // TODO-cheri(ninolomata): fix this once we disable compressed instructions without trigering errors
+        min_instr_off = ((CVA6Cfg.RVC && !CVA6Cfg.RVFI_DII) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
+
+        cheri_tval     = {CVA6Cfg.XLEN{1'b0}};
+        dreq_o.ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+        dreq_o.ex.valid = 1'b0;
+        dreq_o.ex.tval  = {CVA6Cfg.XLEN{1'b0}};
+        dreq_o.ex.tval2 = {CVA6Cfg.XLEN{1'b0}};
+        dreq_o.ex.tinst = {CVA6Cfg.XLEN{1'b0}};
+        dreq_o.ex.gva   = 1'b0;
+
+        if(!(fetch_pcc_base[0] == 1'b0)) begin
+            cheri_tval.cause   = cva6_cheri_pkg::CAP_UNLIGNED_BASE;
+            dreq_o.ex.valid     = 1'b1;
+        end
+
+        if(vaddr_q[CVA6Cfg.XLEN-1:0] < fetch_pcc_base || ($unsigned(vaddr_q[CVA6Cfg.XLEN-1:0]) + min_instr_off) > fetch_pcc_top) begin
+            cheri_tval.cause   = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
+            dreq_o.ex.valid     = 1'b1;
+        end
+
+        if(!npcc.hperms.permit_execute) begin
+            cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
+            dreq_o.ex.valid     = 1'b1;
+        end
+        if((npcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && npcc.tag) begin
+            cheri_tval.cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+            dreq_o.ex.valid     = 1'b1;
+        end
+        if(!npcc.tag) begin
+            cheri_tval.cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+            dreq_o.ex.valid     = 1'b1;
+        end
+        // Update tval
+        dreq_o.ex.tval = cheri_tval;
+    end
     end
 
     `FFLARN(vaddr_q, vaddr_d, '1, '0, clk_i, rst_ni)

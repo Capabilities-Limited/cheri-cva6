@@ -212,7 +212,7 @@ module csr_regfile
   cva6_cheri_pkg::cap_reg_t scr_wdata, scr_rdata;
   logic [CVA6Cfg.REGLEN-1:0] dbg_wdata, dbg_rdata;
   cva6_cheri_pkg::addrw_t cap_offset;
-  cva6_cheri_pkg::cap_pcc_t pcc;
+  cva6_cheri_pkg::cap_reg_t pcc;
   riscv::priv_lvl_t trap_to_priv_lvl;
   logic             trap_to_v;
   // register for enabling load store address translation, this is critical, hence the register
@@ -291,7 +291,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] acc_cons_q, acc_cons_d;
 
       // Default data capability
-    cap_pcc_t pcc_d, pcc_q;
+    cap_reg_t pcc_d, pcc_q;
     cap_reg_t ddc_d, ddc_q;
 
     // Virtual Supervisor mode SCRs
@@ -345,7 +345,7 @@ module csr_regfile
   assign pmpaddr_o = pmpaddr_q;
 
   assign dpc_cap_meta_data = get_cap_reg_meta_data(dpc_cap_q);
-  assign  pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);
+  assign pcc = cap_mem_to_cap_reg(pc_i);
 
   riscv::fcsr_t fcsr_q, fcsr_d;
   // ----------------
@@ -976,7 +976,7 @@ end
         if (scr_read) begin
             unique case (scr_addr)
                     cva6_cheri_pkg::SCR_PCC: begin
-                      scr_rdata = cap_pcc_to_cap_reg(pcc);
+                      scr_rdata = pcc;
                     end
                     cva6_cheri_pkg::SCR_DDC: begin
                       scr_rdata = ddc_q;
@@ -1168,7 +1168,7 @@ end
           if (CVA6Cfg.RVFI_DII) begin
             mtcc_d = cva6_cheri_pkg::REG_ROOT_CAP;
           end else begin
-            mtcc_d = cap_pcc_to_cap_reg(boot_addr_i);
+            mtcc_d = cva6_cheri_pkg::cap_mem_to_cap_reg(boot_addr_i);
             mtcc_d.addr = boot_addr_i[CVA6Cfg.XLEN-1:0] + 'h40;
           end
         end else begin
@@ -2084,7 +2084,7 @@ end
           vscause_d = ex_i.cause[CVA6Cfg.XLEN-1] ? {ex_i.cause[CVA6Cfg.XLEN-1:2], 2'b01} : ex_i.cause;
           // set epc
           if (CVA6Cfg.CheriPresent) begin
-            vsepcc_d = cap_pcc_to_cap_reg(pcc);
+            vsepcc_d = pcc;
           end else begin
             vsepc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
           end
@@ -2105,7 +2105,7 @@ end
           scause_d = ex_i.cause;
           // set epc
           if (CVA6Cfg.CheriPresent) begin
-            sepcc_d = cap_pcc_to_cap_reg(pcc);
+            sepcc_d = pcc;
           end else begin
             sepc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
           end
@@ -2147,7 +2147,7 @@ end
         mcause_d = ex_i.cause;
         // set epc
         if (CVA6Cfg.CheriPresent) begin
-          mepcc_d = cap_pcc_to_cap_reg(pcc);
+          mepcc_d = pcc;
         end else begin
           mepc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
         end
@@ -2235,7 +2235,7 @@ end
         endcase
         // save PC of next this instruction e.g.: the next one to be executed
         dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
-        dpc_cap_d =  cap_pcc_to_cap_reg(pcc);
+        dpc_cap_d =  pcc;
         dcsr_d.cause = ariane_pkg::CauseBreakpoint;
       end
 
@@ -2245,7 +2245,7 @@ end
         dcsr_d.v = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
         // save the PC
         dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
-        dpc_cap_d = cap_pcc_to_cap_reg(pcc);
+        dpc_cap_d = pcc;
         // enter debug mode
         debug_mode_d = 1'b1;
         // jump to the base address
@@ -2262,10 +2262,10 @@ end
         if (commit_instr_i[0].fu == CTRL_FLOW) begin
           // we saved the correct target address during execute
           dpc_d = {
-            {CVA6Cfg.XLEN - CVA6Cfg.VLEN{commit_instr_i[0].bp.predict_address}},
-            commit_instr_i[0].bp.predict_address
+            {CVA6Cfg.XLEN - CVA6Cfg.VLEN{commit_instr_i[0].bp.predict_address[CVA6Cfg.VLEN-1]}},
+            commit_instr_i[0].bp.predict_address[CVA6Cfg.VLEN-1:0]
           };
-          dpc_cap_d =  cap_pcc_to_cap_reg(pcc);
+          dpc_cap_d = cva6_cheri_pkg::cap_mem_to_cap_reg(commit_instr_i[0].bp.predict_address);
           // exception valid
         end else if (ex_i.valid) begin
           dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, trap_vector_base_o[CVA6Cfg.VLEN-1:0]};
@@ -2278,9 +2278,9 @@ end
         end else begin
           dpc_d = {
             {CVA6Cfg.XLEN - CVA6Cfg.VLEN{commit_instr_i[0].pc[CVA6Cfg.VLEN-1]}},
-            commit_instr_i[0].pc + (commit_instr_i[0].is_compressed ? 'h2 : 'h4)
+            commit_instr_i[0].pc[CVA6Cfg.VLEN-1:0] + (commit_instr_i[0].is_compressed ? 'h2 : 'h4)
           };
-          dpc_cap_d =  cap_pcc_to_cap_reg(commit_instr_i[0].pc);
+          dpc_cap_d =  cva6_cheri_pkg::cap_mem_to_cap_reg(commit_instr_i[0].pc);
         end
         debug_mode_d   = 1'b1;
         set_debug_pc_o = 1'b1;
@@ -2633,6 +2633,20 @@ end
       {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.GPLEN{1'b0}}, {32{1'b0}}, 1'b0, 1'b0
     };
     cheri_tval = '{default: 0};
+    if (cheri_update_access_exception || cheri_read_access_exception ) begin
+      csr_exception_o.cause = riscv::ILLEGAL_INSTR;
+      csr_exception_o.valid = 1'b1;
+    end
+
+    if (cheri_access_violation) begin
+      // Violation of access system registers when accessing SCR sets tval msb bit to 1
+      // and encodes the SCR registers on the LSB [4:0]
+      cheri_tval.cap_idx    = {1'b1, csr_addr_i};
+      cheri_tval.cause      = cva6_cheri_pkg::CAP_PERM_ACCESS_SYS_REGS;
+      csr_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+      csr_exception_o.tval  = cheri_tval;
+      csr_exception_o.valid = 1'b1;
+    end
     // ----------------------------------
     // Illegal Access (decode exception)
     // ----------------------------------
@@ -2640,6 +2654,7 @@ end
     // throw an illegal instruction exception
     if (update_access_exception || read_access_exception) begin
       csr_exception_o.cause = riscv::ILLEGAL_INSTR;
+      csr_exception_o.tval  = '0;
       // we don't set the tval field as this will be set by the commit stage
       // this spares the extra wiring from commit to CSR and back to commit
       csr_exception_o.valid = 1'b1;
@@ -2647,27 +2662,15 @@ end
 
     if (privilege_violation) begin
       csr_exception_o.cause = riscv::ILLEGAL_INSTR;
+      csr_exception_o.tval  = '0;
       csr_exception_o.valid = 1'b1;
     end
 
     if (CVA6Cfg.RVH && (virtual_update_access_exception || virtual_read_access_exception || virtual_privilege_violation)) begin
       csr_exception_o.cause = riscv::VIRTUAL_INSTRUCTION;
+      csr_exception_o.tval  = '0;
       csr_exception_o.valid = 1'b1;
     end
-    if (cheri_update_access_exception || cheri_read_access_exception ) begin
-            csr_exception_o.cause = riscv::ILLEGAL_INSTR;
-            csr_exception_o.valid = 1'b1;
-        end
-
-        if (cheri_access_violation) begin
-            // Violation of access system registers when accessing SCR sets tval msb bit to 1
-            // and encodes the SCR registers on the LSB [4:0]
-            cheri_tval.cap_idx    = {1'b1, csr_addr_i};
-            cheri_tval.cause      = cva6_cheri_pkg::CAP_PERM_ACCESS_SYS_REGS;
-            csr_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-            csr_exception_o.tval  = cheri_tval;
-            csr_exception_o.valid = 1'b1;
-        end
   end
 
   // -------------------
