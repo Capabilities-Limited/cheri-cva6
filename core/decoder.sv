@@ -102,6 +102,7 @@ module decoder
   logic illegal_instr;
   logic illegal_instr_bm;
   logic illegal_instr_zic;
+  logic illegal_instr_cheri;
   logic illegal_instr_non_bm;
   logic virtual_illegal_instr;
   // this instruction is an environment call (ecall), it is handled like an exception
@@ -184,6 +185,7 @@ module decoder
     illegal_instr_non_bm                   = 1'b0;
     illegal_instr_bm                       = 1'b0;
     illegal_instr_zic                      = 1'b0;
+    illegal_instr_cheri                    = 1'b0;
     virtual_illegal_instr                  = 1'b0;
     instruction_o.pc                       = pc_i;
     instruction_o.trans_id                 = '0;
@@ -1020,14 +1022,45 @@ module decoder
                 end
               endcase
             end
+            if (CVA6Cfg.CheriPresent) begin
+              instruction_o.fu  = CLU;
+              //instruction_o.rs1[4:0]  = instr.rtype.rs1;
+              //instruction_o.rs2[4:0]  = instr.rtype.rs2;
+              //instruction_o.rd[4:0]  = instr.rtype.rd;
+              unique case ({
+                instr.rtype.funct7, instr.rtype.funct3
+              })
+                {7'b000_0110, 3'b000} : begin
+                  // ----------------------------------
+                  // Capability-Inspection Instructions
+                  // ----------------------------------
+                  case(instr.rtype.rs2)
+                    // ------------------------------------
+                    // Pointer-Arithmetic Instructions
+                    // ------------------------------------
+                    5'b00000:   instruction_o.op = ariane_pkg::CMV;
+                    default: begin
+                      illegal_instr_cheri = 1'b1;
+                    end
+                  endcase
+                end
+                default: begin
+                  illegal_instr_cheri = 1'b1;
+                end
+              endcase
+            end
             //VCS coverage on
             unique case ({
-              CVA6Cfg.RVB, CVA6Cfg.RVZiCond
+              CVA6Cfg.RVB, CVA6Cfg.RVZiCond, CVA6Cfg.CheriPresent
             })
-              2'b00:   illegal_instr = illegal_instr_non_bm;
-              2'b01:   illegal_instr = illegal_instr_non_bm & illegal_instr_zic;
-              2'b10:   illegal_instr = illegal_instr_non_bm & illegal_instr_bm;
-              2'b11:   illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_zic;
+              3'b000: illegal_instr = illegal_instr_non_bm;
+              3'b001: illegal_instr = illegal_instr_non_bm & illegal_instr_cheri;
+              3'b010: illegal_instr = illegal_instr_non_bm & illegal_instr_zic;
+              3'b011: illegal_instr = illegal_instr_non_bm & illegal_instr_zic & illegal_instr_cheri;
+              3'b100: illegal_instr = illegal_instr_non_bm & illegal_instr_bm;
+              3'b101: illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_cheri;
+              3'b110: illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_zic;
+              3'b111: illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_zic & illegal_instr_cheri;
               default: ;  // TODO: Check that default case is not synthesized.
             endcase
           end
@@ -1781,7 +1814,7 @@ module decoder
                                 // ----------------------------------
                                 // Capability-Inspection Instructions
                                 // ----------------------------------
-                                7'b111_1111: begin
+                                7'b000_0110: begin
                                     case(instr.rtype.rs2)
                                         5'b00000:   instruction_o.op = ariane_pkg::CGET_PERM;
                                         5'b00001:   instruction_o.op = ariane_pkg::CGET_TYPE;
@@ -1799,10 +1832,6 @@ module decoder
                                         // ------------------------------------
                                         5'b01011:   instruction_o.op = ariane_pkg::CCLEAR_TAG;
                                         5'b10001:   instruction_o.op = ariane_pkg::CSEAL_ENTRY;
-                                        // ------------------------------------
-                                        // Pointer-Arithmetic Instructions
-                                        // ------------------------------------
-                                        5'b01010:   instruction_o.op = ariane_pkg::CMOVE;
                                         // ------------------------------------
                                         // Fast Register-Clearing Instructions
                                         // ------------------------------------
