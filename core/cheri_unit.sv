@@ -334,8 +334,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                                              (1 << CAP_PERM_CINVOKE)        |
                                              (1 << CAP_PERM_EXEC_VIOLATION);
             end
-            // CMove
-            ariane_pkg::CMOVE: begin
+            // CMV
+            ariane_pkg::CMV: begin
                 clu_result = operand_a;
             end
             // CSeal

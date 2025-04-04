@@ -323,7 +323,7 @@ package ariane_pkg;
                                //60
                                CSET_BOUNDS_EXACT, CSET_BOUNDS_IMM, CCLEAR_TAG, CBUILD_CAP, CCOPY_TYPE, CCSEAL, CSEAL_ENTRY,
                                // Pointer-Arithmetic Instructions
-                               CTO_PTR, CFROM_PTR, CSUB, CMOVE,
+                               CTO_PTR, CFROM_PTR, CSUB, CMV,
                                // Pointer-Comparison Instructions
                                CTEST_SUBSET, CSET_EQUAL_EXACT,
                                // Control-Flow Instructions
