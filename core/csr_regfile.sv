@@ -1212,7 +1212,6 @@ end
                         sscratchc_d = scr_wdata;
                     end
                     cva6_cheri_pkg::SCR_SEPCC: begin
-                      // TODO-cheri(ninolomata):fix this it should clear bit 1 only
                         sepcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:1], 1'b0});
                     end
                     cva6_cheri_pkg::SCR_MTCC: begin
@@ -1231,8 +1230,6 @@ end
                         mscratchc_d = scr_wdata;
                     end
                     cva6_cheri_pkg::SCR_MEPCC: begin
-                      // TODO-cheri(ninolomata):fix this it should clear bit 1 only
-                      //mepcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00});
                       mepcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:1], 1'b0});
                     end
                     default: begin
