@@ -54,6 +54,20 @@ source scripts/add_sources.tcl
 
 set_property top ${project}_xilinx [current_fileset]
 
+if {$::env(VIVADO_EVAL) eq "area"} {
+    set opt_strat "ExploreArea"
+    set place_strat "Explore"
+    set route_strat "RuntimeOptimized"
+} elseif {$::env(VIVADO_EVAL) eq "timing"} {
+    set opt_strat "RuntimeOptimized"
+    set place_strat "RuntimeOptimized"
+    set route_strat "AggressiveExplore"
+} else {
+    set opt_strat "RuntimeOptimized"
+    set place_strat "RuntimeOptimized"
+    set route_strat "RuntimeOptimized"
+}
+
 if {$::env(BOARD) eq "genesys2"} {
     read_verilog -sv {src/genesysii.svh ../../vendor/pulp-platform/common_cells/include/common_cells/registers.svh}
     set file "src/genesysii.svh"
@@ -100,8 +114,9 @@ report_cdc                                                              -file re
 report_clock_interaction                                                -file reports/$project.clock_interaction.rpt
 
 # set for RuntimeOptimized implementation
-set_property "steps.place_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
-set_property "steps.route_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
+set_property "steps.opt_design.args.directive" "$opt_strat" [get_runs impl_1]
+set_property "steps.place_design.args.directive" "$place_strat" [get_runs impl_1]
+set_property "steps.route_design.args.directive" "$route_strat" [get_runs impl_1]
 
 launch_runs impl_1
 wait_on_run impl_1
