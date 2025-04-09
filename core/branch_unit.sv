@@ -77,7 +77,7 @@ module branch_unit #(
   cva6_cheri_pkg::addrwe_t min_instr_off;
   logic target_pcc_is_sealed;
   assign pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_t'(pc_i) : pc_i;
-  assign cap_mode = CVA6Cfg.CheriPresent ? (pcc.flags.cap_mode || fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) : 1'b0;
+  assign cap_mode = CVA6Cfg.CheriPresent ? (!pcc.flags.int_mode || fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) : 1'b0;
   assign operand_a = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_to_cap_pcc(fu_data_i.operand_a) : fu_data_i.operand_a;
   assign target_pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_t'(target_address) : target_address;
   assign target_pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(target_pcc);

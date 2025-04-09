@@ -114,12 +114,8 @@ package cva6_cheri_pkg;
 
     /* Capabilities OType Encoding */
 
-    localparam logic [CAP_OTYPE_WIDTH-1:0] UNSEALED_CAP     = -1;
-    localparam logic [CAP_OTYPE_WIDTH-1:0] SENTRY_CAP       = -2;
-    localparam logic [CAP_OTYPE_WIDTH-1:0] MEM_TYPE_TOK_CAP = -3;
-    localparam logic [CAP_OTYPE_WIDTH-1:0] IND_ENT_CAP      = -4;
-    localparam logic [CAP_OTYPE_WIDTH-1:0] SEALED_CAP       = -17;
-    localparam logic [CAP_OTYPE_WIDTH-1:0] OTYPE_MAX        = -5;
+    localparam logic [CAP_OTYPE_WIDTH-1:0] UNSEALED_CAP     = 0;
+    localparam logic [CAP_OTYPE_WIDTH-1:0] SENTRY_CAP       = 1;
 
     /* Types definition */
 
@@ -212,7 +208,7 @@ package cva6_cheri_pkg;
           * 1 - CHERI capability encoding mode, in which address operands
           *     to existing RISC-V load and store opcodes contain capabilities.
           */
-        bool_t   cap_mode;
+        bool_t   int_mode;
     } cap_flags_t;
 
     /* Capability bounds definition */
@@ -320,7 +316,7 @@ package cva6_cheri_pkg;
         uperms          : '{default: '1},
         hperms          : '{default: '1},
         //CL              : 0,
-        flags           : 1'b0,
+        flags           : 1'b1,
         res_hi          : '0,
         res_lo          : '0,
         otype           : UNSEALED_CAP,
@@ -379,7 +375,7 @@ package cva6_cheri_pkg;
         return ret.flags;
     endfunction
 
-    function automatic capw_t set_cap_mem_flags(capw_t cap,cap_flags_t flags);
+    function automatic capw_t set_cap_mem_flags(capw_t cap, cap_flags_t flags);
         cap_mem_t ret = cap;
         ret.flags = flags;
         return ret;
@@ -446,17 +442,6 @@ package cva6_cheri_pkg;
         cap_reg_t ret = cap;
         ret.tag = tag;
         return ret;
-    endfunction
-
-    /**
-      * @brief Function checks if the object type is a reserved type .
-      * @param otype object type.
-      * @returns capability 1 if the otypes is a reserved type.
-      */
-    function automatic bool_t is_cap_type_reserv (otypew_t otype);
-        addrw_t type_unsigned       = otype;
-        addrw_t otype_max_unsigned  = $signed(OTYPE_MAX);
-        return type_unsigned > otype_max_unsigned;
     endfunction
 
     /* function automatic bool_t is_cap_reg_derivable (cap_reg_t cap);
@@ -619,8 +604,8 @@ package cva6_cheri_pkg;
       */
     function automatic cap_reg_t set_cap_reg_address(cap_reg_t cap, addrw_t address, cap_meta_data_t cap_meta_data);
         cap_reg_t ret = cap;
-        ew_t exp = (cap.bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : cap.bounds.exp;
-        addrw_t addr_mid = $unsigned(address >> exp);
+        ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
+        addrw_t addr_mid = $unsigned(address >> (CAP_MAX_EXP - exp));
         // compute new
         logic newAddrHi  = addr_mid[CAP_M_WIDTH-1:0] < cap_meta_data.r;
         addrw_t deltaAddrHi = $signed({1'b0,newAddrHi} - {1'b0,cap_meta_data.addr_hi_r}) << (cap.bounds.exp + CAP_M_WIDTH);
@@ -629,7 +614,7 @@ package cva6_cheri_pkg;
         addrw_t deltaAddrUpper = (address & mask) - (cap.addr & mask);
         logic is_rep = deltaAddrHi == deltaAddrUpper;
         ret.addr = address;
-        ret.addr_mid = address >> exp;
+        ret.addr_mid = addr_mid;
         if (!(is_rep)) ret.tag = 1'b0;
         return ret;
     endfunction
@@ -642,9 +627,9 @@ package cva6_cheri_pkg;
       */
     function automatic cap_reg_t set_cap_reg_addr(cap_reg_t cap, addrw_t address);
         cap_reg_t ret = cap;
-        ew_t exp = (cap.bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : cap.bounds.exp;
+        ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
         ret.addr = address;
-        ret.addr_mid = address >> exp;
+        ret.addr_mid = address >> (CAP_MAX_EXP - exp);
         return ret;
     endfunction
 

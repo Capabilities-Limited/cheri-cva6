@@ -41,7 +41,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     addrw_t operand_a_offset;
     addrw_t operand_a_address;
     logic operand_a_is_sealed;
-    logic is_operand_a_rev_otype;
     cap_meta_data_t op_a_meta_info;
 
     // operand b decode fields
@@ -52,7 +51,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     addrw_t operand_b_address;
     addrw_t operand_b_offset;
     logic operand_b_is_sealed;
-    logic is_operand_b_rev_otype;
     cap_meta_data_t op_b_meta_info;
 
     // operand pcc decode meta data
@@ -172,7 +170,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 // Set permission bits
                 tmp_cap.uperms = operand_b.uperms & operand_a.uperms;
                 tmp_cap.hperms = operand_b.hperms & operand_a.hperms;
-                tmp_cap.flags.cap_mode = operand_b.flags.cap_mode;
+                tmp_cap.flags.int_mode = operand_b.flags.int_mode;
                 tmp_cap.otype = (operand_b.otype == SENTRY_CAP) ? SENTRY_CAP : UNSEALED_CAP;
 
                 if( tmp_cap.tag == 1'b1                              &&
@@ -201,53 +199,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 tmp_cap = operand_a;
                 // clear operand_a capability tag bit
                 tmp_cap.tag = 1'b0;
-                clu_result = tmp_cap;
-            end
-            // CCopyType
-            ariane_pkg::CCOPY_TYPE: begin
-                en_ex = 0;
-                op_set_addr = operand_a;
-                op_meta_set_addr = op_a_meta_info;
-                check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
-                check_operand_b_violations = (1 << CAP_TYPE_VIOLATION);
-
-                if(is_operand_b_rev_otype) begin
-                    address = $signed(operand_b.otype);
-                end else begin
-                    address = $unsigned(operand_b.otype);
-                end
-                tmp_cap = res_set_addr;
-                clu_result = tmp_cap;
-            end
-            // CCSeal
-            ariane_pkg::CCSEAL: begin
-                if( operand_b_violations[CAP_TAG_VIOLATION]         ||
-                    operand_a_violations[CAP_SEAL_VIOLATION]        ||
-                    operand_b_violations[CAP_LENGTH_VIOLATION]      ||
-                    ($signed(operand_b_address) == UNSEALED_CAP)) begin
-                    tmp_cap = operand_a;
-                end else begin
-                    check_operand_b_violations = (1 << CAP_SEAL_VIOLATION)      |
-                                                 (1 << CAP_PERM_SEAL)           |
-                                                 (1 << CAP_TYPE_VIOLATION);
-                    tmp_cap       = operand_a;
-                    tmp_cap.otype = operand_b_address[CAP_OTYPE_WIDTH-1:0];
-                end
-                clu_result  = tmp_cap;
-            end
-            // CFromPtr
-            ariane_pkg::CFROM_PTR: begin
-                check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
-                op_set_offset = operand_a;
-                offset = operand_b_address;
-                op_meta_set_offset = op_a_meta_info;
-                set_offset = 1'b1;
-                address = operand_a_base + operand_b_address;
-                if((|operand_b_address)) begin
-                    tmp_cap = res_set_offset;
-                end else begin
-                    tmp_cap = REG_NULL_CAP;
-                end
                 clu_result = tmp_cap;
             end
             // CGetAddr
@@ -295,13 +246,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             ariane_pkg::GCTAG: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a.tag});
             end
-            // CGetType
-            ariane_pkg::GCTYPE: begin
-                if(operand_a.otype >= OTYPE_MAX)
-                    clu_result = set_cap_reg_addr(REG_NULL_CAP, $signed(operand_a.otype));
-                else
-                    clu_result = set_cap_reg_addr(REG_NULL_CAP, $unsigned(operand_a.otype));
-            end
             // CIncOffset and CIncOffsetImm
             // TODO-cheri(ninolomata): use ALU to calculate address
             ariane_pkg::CINC_OFFSET,ariane_pkg::CINC_OFFSET_IMM: begin
@@ -315,35 +259,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 tmp_cap = res_set_offset;
                 clu_result = tmp_cap;
             end
-            // CINVOKE
-            ariane_pkg::CINVOKE: begin
-                en_ex = 1'b1;
-                check_operand_a_violations = (1 << CAP_TAG_VIOLATION)       |
-                                             (1 << CAP_SEAL_VIOLATION)      |
-                                             (1 << CAP_PERM_CINVOKE)        |
-                                             (1 << CAP_PERM_EXEC_VIOLATION) |
-                                             (1 << CAP_UNLIGNED_BASE);
-                check_operand_b_violations = (1 << CAP_TAG_VIOLATION)       |
-                                             (1 << CAP_SEAL_VIOLATION)      |
-                                             (1 << CAP_TYPE_VIOLATION)      |
-                                             (1 << CAP_PERM_CINVOKE)        |
-                                             (1 << CAP_PERM_EXEC_VIOLATION);
-            end
             // CMV
             ariane_pkg::CMV: begin
                 clu_result = operand_a;
-            end
-            // CSeal
-            ariane_pkg::CSEAL: begin
-                clu_result  = operand_a;
-                check_operand_a_violations = (1 << CAP_TAG_VIOLATION)  |
-                                             (1 << CAP_SEAL_VIOLATION);
-                check_operand_b_violations = (1 << CAP_TAG_VIOLATION)  |
-                                             (1 << CAP_SEAL_VIOLATION) |
-                                             (1 << CAP_PERM_SEAL)      |
-                                             (1 << CAP_TYPE_VIOLATION) |
-                                             (1 << CAP_LENGTH_VIOLATION);
-                clu_result.otype = operand_b_address[CAP_OTYPE_WIDTH-1:0];
             end
             // CSealEntry
             ariane_pkg::CSEAL_ENTRY: begin
@@ -399,7 +317,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             ariane_pkg::CSET_FLAGS: begin
                 check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
                 tmp_cap = operand_a;
-                tmp_cap.flags.cap_mode = operand_b.addr[0];
+                tmp_cap.flags.int_mode = operand_b.addr[0];
                 clu_result = tmp_cap;
             end
             // CSetHigh
@@ -467,7 +385,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         operand_a_length = operand_a_top - {1'b0, operand_a_base};
         operand_a_offset = get_cap_reg_offset(operand_a, op_a_meta_info);
         operand_a_is_sealed = (operand_a.otype != UNSEALED_CAP);
-        is_operand_a_rev_otype = operand_a.otype > OTYPE_MAX;
         // Decode capability operand b fields
         operand_b_address = operand_b.addr;
         op_b_meta_info = get_cap_reg_meta_data(operand_b);
@@ -476,7 +393,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         operand_b_length = operand_b_top - {1'b0, operand_b_base}; //get_cap_reg_length(operand_b, op_b_meta_info);
         operand_b_offset = get_cap_reg_offset(operand_b, op_b_meta_info);
         operand_b_is_sealed = (operand_b.otype != UNSEALED_CAP);
-        is_operand_b_rev_otype = operand_b.otype > OTYPE_MAX;
         // Decode pc metadata fields
         op_pc_meta_info = get_cap_reg_meta_data(pcc);
         // Decode bounds from set cap reg bounds, needed for the CBUILDCAP instruction
