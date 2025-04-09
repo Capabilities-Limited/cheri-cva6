@@ -1099,12 +1099,6 @@ module decoder
               endcase
             end
             if (CVA6Cfg.CheriPresent) begin
-              //GCTAG   GCTAG=0001000  GCTAG=00000  GCTAG=000
-              //GCPERM GCPERM=0001000 GCPERM=00001 GCPERM=000
-              //GCTYPE GCTYPE=0001000 GCTYPE=00010 GCTYPE=000
-              //GCBASE GCBASE=0001000 GCBASE=00101 GCBASE=000
-              //GCLEN   GCLEN=0001000  GCLEN=00110  GCLEN=000
-              //GCHI     GCHI=0001000   GCHI=00100   GCHI=000
               unique case ({
                 instr.rtype.funct7, instr.rtype.funct3
               })
@@ -1119,6 +1113,13 @@ module decoder
                     end
                   endcase
                 end
+                //GCTAG   GCTAG=0001000  GCTAG=00000  GCTAG=000
+                //GCPERM GCPERM=0001000 GCPERM=00001 GCPERM=000
+                //GCTYPE GCTYPE=0001000 GCTYPE=00010 GCTYPE=000
+                //GCBASE GCBASE=0001000 GCBASE=00101 GCBASE=000
+                //GCLEN   GCLEN=0001000  GCLEN=00110  GCLEN=000
+                //GCHI     GCHI=0001000   GCHI=00100   GCHI=000
+                //CRAM     CRAM=0001000   CRAM=00111   CRAM=000
                 {7'b000_1000, 3'b000} : begin
                   case(instr.rtype.rs2)
                     // ----------------------------------
@@ -1130,11 +1131,16 @@ module decoder
                     5'b00101:   instruction_o.op = ariane_pkg::GCBASE;
                     5'b00110:   instruction_o.op = ariane_pkg::GCLEN;
                     5'b00100:   instruction_o.op = ariane_pkg::GCHI;
+                    5'b00111:   instruction_o.op = ariane_pkg::CRAM;
                     default: begin
                       illegal_instr_cheri = 1'b1;
                     end
                   endcase
                 end
+                //SCEQ=0000110 SCEQ=100
+                //SCSS=0000110 SCSS=110
+                {7'b000_0110, 3'b100}: instruction_o.op = ariane_pkg::SCEQ;
+                {7'b000_0110, 3'b110}: instruction_o.op = ariane_pkg::SCSS;
                 default: begin
                   illegal_instr_cheri = 1'b1;
                 end
@@ -1946,8 +1952,8 @@ module decoder
                                         // ---------------------------------------------------------
                                         // Adjusting to Compressed Capability Precision Instructions
                                         // ---------------------------------------------------------
-                                        5'b01000:   instruction_o.op = ariane_pkg::CRND_REPRESENTABLE_LEN;
-                                        5'b01001:   instruction_o.op = ariane_pkg::CRND_REPRESENTABLE_ALIGN_MSK;
+                                        5'b01000:   instruction_o.op = ariane_pkg::CRAM;
+                                        5'b01001:   instruction_o.op = ariane_pkg::CRAM;
                                         // ------------------------------------
                                         // Control-Flow Instructions
                                         // ------------------------------------
@@ -2122,9 +2128,9 @@ module decoder
                                 // ------------------------------------
                                 7'b010_0000: begin
                                   instruction_o.use_ddc  = (instr.rtype.rs1 == 0) ? 1'b1 : 1'b0;
-                                  instruction_o.op = ariane_pkg::CTEST_SUBSET;
+                                  instruction_o.op = ariane_pkg::SCSS;
                                 end
-                                7'b010_0001:  instruction_o.op = ariane_pkg::CSET_EQUAL_EXACT;
+                                7'b010_0001:  instruction_o.op = ariane_pkg::SCEQ;
                                 default: illegal_instr = 1'b1;
                             endcase
                         end
