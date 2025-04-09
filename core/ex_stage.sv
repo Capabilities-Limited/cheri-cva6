@@ -583,7 +583,7 @@ module ex_stage
       .no_st_pending_o,
       .fu_data_i             (lsu_data),
       .ddc_i,
-      .cap_mode_i(pcc.flags.cap_mode),
+      .cap_mode_i(!pcc.flags.int_mode),
       .lsu_ready_o           (lsu_ready),
       .lsu_valid_i           (|lsu_valid_i),
       .speculative_load_i    (speculative_load),
