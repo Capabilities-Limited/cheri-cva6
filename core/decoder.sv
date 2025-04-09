@@ -117,7 +117,7 @@ module decoder
   cva6_cheri_pkg::cap_pcc_t pcc;
   // cap mode is equal to PCC.flags.cap_mode
   assign pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_i);
-  assign cap_mode = (CVA6Cfg.CheriPresent) ? pcc.flags.cap_mode : 1'b0;
+  assign cap_mode = (CVA6Cfg.CheriPresent) ? !pcc.flags.int_mode : 1'b0;
   // --------------------
   // Immediate select
   // --------------------
