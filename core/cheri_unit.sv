@@ -256,7 +256,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_address);
             end
             // CGetBase
-            ariane_pkg::CGET_BASE: begin
+            ariane_pkg::GCBASE: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_base);
             end
             // CGetTop
@@ -268,7 +268,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a.flags});
             end
             // CGetFlags
-            ariane_pkg::CGET_LEN: begin
+            ariane_pkg::GCLEN: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, (operand_a_length[CVA6Cfg.XLEN]) ? {CVA6Cfg.XLEN{1'b1}} : operand_a_length[CVA6Cfg.XLEN-1:0]);
             end
             // CGetOffset
@@ -276,7 +276,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_offset);
             end
             // CGetHigh
-            ariane_pkg::CGET_HIGH: begin
+            ariane_pkg::GCHI: begin
                 cap_mem = cap_reg_to_cap_mem(operand_a);
                 cap_mem_dec_bits = cap_mem;
                 cap_mem_dec = cap_mem;
@@ -285,7 +285,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, cap_mem[((CVA6Cfg.XLEN * 2) - 1):CVA6Cfg.XLEN]);
             end
             // CGetPerm
-            ariane_pkg::CGET_PERM: begin
+            ariane_pkg::GCPERM: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-19{1'b0}},
                                       operand_a.uperms,
                                       3'b000,
@@ -297,11 +297,11 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a_is_sealed});
             end
             // CGetTag
-            ariane_pkg::CGET_TAG: begin
+            ariane_pkg::GCTAG: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a.tag});
             end
             // CGetType
-            ariane_pkg::CGET_TYPE: begin
+            ariane_pkg::GCTYPE: begin
                 if(operand_a.otype >= OTYPE_MAX)
                     clu_result = set_cap_reg_addr(REG_NULL_CAP, $signed(operand_a.otype));
                 else

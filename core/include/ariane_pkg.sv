@@ -321,7 +321,7 @@ package ariane_pkg;
     //Special Capabilty Register Access Instructions
     SCR_READ, SCR_READWRITE,
     // Capability-Inspection Instructions
-                               CGET_PERM, CGET_TYPE, CGET_BASE, CGET_TOP, CGET_LEN, CGET_TAG, CGET_SEALED, CGET_OFFSET, CGET_FLAGS, CGET_HIGH, CGET_ADDR,
+                               GCPERM, GCTYPE, GCBASE, CGET_TOP, GCLEN, GCTAG, CGET_SEALED, CGET_OFFSET, CGET_FLAGS, GCHI, CGET_ADDR,
                                // 50 Capability-Modification Instructions
                                CSEAL, CUNSEAL, CAND_PERM, CSET_FLAGS, CSET_HIGH, CSET_OFFSET, CSET_ADDR, CINC_OFFSET, CINC_OFFSET_IMM, CSET_BOUNDS,
                                //60
