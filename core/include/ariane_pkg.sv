@@ -321,24 +321,24 @@ package ariane_pkg;
     // CLU functions
     //Special Capabilty Register Access Instructions
     SCR_READ, SCR_READWRITE,
-    // Capability-Inspection Instructions
-                               GCPERM, GCTYPE, GCBASE, CGET_TOP, GCLEN, GCTAG, CGET_SEALED, CGET_OFFSET, CGET_FLAGS, GCHI, CGET_ADDR,
-                               // 50 Capability-Modification Instructions
-                               CSEAL, CUNSEAL, CAND_PERM, CSET_FLAGS, CSET_HIGH, CSET_OFFSET, CSET_ADDR, CINC_OFFSET, CINC_OFFSET_IMM, CSET_BOUNDS,
-                               //60
-                               CSET_BOUNDS_EXACT, CSET_BOUNDS_IMM, CCLEAR_TAG, CBUILD_CAP, CCOPY_TYPE, CCSEAL, CSEAL_ENTRY,
-                               // Pointer-Arithmetic Instructions
-                               CTO_PTR, CFROM_PTR, CSUB, CMV,
-                               // Pointer-Comparison Instructions
-                               CTEST_SUBSET, CSET_EQUAL_EXACT,
-                               // Control-Flow Instructions
-                               JALR_CAP, JALR_PCC, CINVOKE, CJAL, CJALR,
-                               // Fast Register-Clearing Instructions
-                               CLEAR, CCLEAR, FPCLEAR,
-                               // Adjusting to Compressed Capability Precision Instructions
-                               CRND_REPRESENTABLE_LEN, CRND_REPRESENTABLE_ALIGN_MSK,
-                               // Tag-Memory Access Instructions
-                               CLOAD_TAGS, CCLEAR_TAGS,
+    // 40 Capability-Inspection Instructions
+    GCPERM, GCTYPE, GCBASE, CGET_TOP, GCLEN, GCTAG, CGET_SEALED, CGET_OFFSET, CGET_FLAGS, GCHI, CGET_ADDR,
+    // 50 Capability-Modification Instructions
+    CSEAL, CUNSEAL, CAND_PERM, CSET_FLAGS, CSET_HIGH, CSET_OFFSET, CSET_ADDR, CINC_OFFSET, CINC_OFFSET_IMM, CSET_BOUNDS,
+    // 60
+    CSET_BOUNDS_EXACT, CSET_BOUNDS_IMM, CCLEAR_TAG, CBUILD_CAP, CCOPY_TYPE, CCSEAL, CSEAL_ENTRY,
+    // 68 Pointer-Arithmetic Instructions
+    CTO_PTR, CFROM_PTR, CSUB, CMV,
+    // 72 Pointer-Comparison Instructions
+    SCSS, SCEQ,
+    // 74 Control-Flow Instructions
+    JALR_CAP, JALR_PCC, CINVOKE, CJAL, CJALR,
+    // 79 Fast Register-Clearing Instructions
+    CLEAR, CCLEAR, FPCLEAR,
+    // 82 Adjusting to Compressed Capability Precision Instructions
+    CRND_REPRESENTABLE_LEN, CRAM,
+    // Tag-Memory Access Instructions
+    CLOAD_TAGS, CCLEAR_TAGS,
     // LSU functions
     LC,
     SC,

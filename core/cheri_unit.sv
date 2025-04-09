@@ -118,7 +118,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         offset                     = '{default:0};
 
         // Set bounds operation reset signals
-        op_set_bounds              = fu_data_i.operation inside {ariane_pkg::CRND_REPRESENTABLE_LEN,ariane_pkg::CRND_REPRESENTABLE_ALIGN_MSK} ? REG_NULL_CAP : operand_a;
+        op_set_bounds              = fu_data_i.operation inside {ariane_pkg::CRND_REPRESENTABLE_LEN,ariane_pkg::CRAM} ? REG_NULL_CAP : operand_a;
         set_bounds_base            = '{default:0};
         set_bounds_top             = '{default:0};
         set_bounds_len             = '{default:0};
@@ -372,8 +372,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             ariane_pkg::CSET_BOUNDS_EXACT,
             ariane_pkg::CSET_BOUNDS_IMM,
             ariane_pkg::CRND_REPRESENTABLE_LEN,
-            ariane_pkg::CRND_REPRESENTABLE_ALIGN_MSK: begin
-                if (fu_data_i.operation inside {ariane_pkg::CRND_REPRESENTABLE_LEN,ariane_pkg::CRND_REPRESENTABLE_ALIGN_MSK}) begin
+            ariane_pkg::CRAM: begin
+                if (fu_data_i.operation inside {ariane_pkg::CRND_REPRESENTABLE_LEN,ariane_pkg::CRAM}) begin
                    set_bounds_base = 0;
                    set_bounds_len = $unsigned(operand_a_address);
                    set_bounds_top = set_bounds_len;
@@ -388,7 +388,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 op_set_bounds = operand_a;
                 if (fu_data_i.operation == ariane_pkg::CRND_REPRESENTABLE_LEN)
                     clu_result = set_cap_reg_addr(REG_NULL_CAP, res_set_bounds.length[CAP_ADDR_WIDTH-1:0]);
-                else if (fu_data_i.operation == ariane_pkg::CRND_REPRESENTABLE_ALIGN_MSK)
+                else if (fu_data_i.operation == ariane_pkg::CRAM)
                     clu_result = set_cap_reg_addr(REG_NULL_CAP, res_set_bounds.mask);
                 else
                     clu_result = res_set_bounds.cap;
@@ -397,7 +397,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                     clu_result.tag = 1'b0;
             end
             // CSetEqualExact
-            ariane_pkg::CSET_EQUAL_EXACT: begin
+            ariane_pkg::SCEQ: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}}, (operand_a == operand_b) ? 1'b1 : 1'b0});
             end
             // CSetFlags
@@ -432,7 +432,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result.addr = operand_a_address - operand_b_address;
             end
             // CTestSubset
-            ariane_pkg::CTEST_SUBSET: begin
+            ariane_pkg::SCSS: begin
                 clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b1};
                 if(operand_a.tag != operand_b.tag) begin
                     clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
@@ -490,13 +490,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     always_comb begin
         operand_a = fu_data_i.operand_a;
         operand_b = fu_data_i.operand_b;
-        // use the DDC as operand
-        if (fu_data_i.use_ddc) begin
-            if (fu_data_i.operation == ariane_pkg::CTO_PTR)
-                operand_b = ddc_i;
-            else if (fu_data_i.operation inside{ariane_pkg::CFROM_PTR, ariane_pkg::CTEST_SUBSET, ariane_pkg::CBUILD_CAP})
-                operand_a = ddc_i;
-        end
         // Decode capability operand a fields
         op_a_meta_info = get_cap_reg_meta_data(operand_a);
         operand_a_address = operand_a.addr;
