@@ -492,19 +492,21 @@ module decoder
 
             default: begin
               if (CVA6Cfg.CheriPresent) begin
-                case (instr.stype.funct3)
-                  3'b010: begin
-                    instruction_o.fu  = LOAD;
-                    imm_select = IIMM;
-                    instruction_o.rs1[4:0] = instr.itype.rs1;
-                    instruction_o.rd[4:0]  = instr.itype.rd;
-                    instruction_o.use_ddc  = cap_mode ? 1'b0 : 1'b1;
-                    instruction_o.op  = ariane_pkg::LC;
-                    tinst = {17'b0, instr.itype.funct3, instr.itype.rd, instr.itype.opcode};
-                    tinst[1] = is_compressed_i ? 1'b0 : 'b1;
-                  end
-                default: illegal_instr = 1'b1;
-                endcase
+                if (instruction_o.rs1[4:0] != 0) begin
+                  case (instr.stype.funct3)
+                    3'b100: begin
+                      instruction_o.fu  = LOAD;
+                      imm_select = IIMM;
+                      instruction_o.rs1[4:0] = instr.itype.rs1;
+                      instruction_o.rd[4:0]  = instr.itype.rd;
+                      instruction_o.use_ddc  = cap_mode ? 1'b0 : 1'b1;
+                      instruction_o.op  = ariane_pkg::LC;
+                      tinst = {17'b0, instr.itype.funct3, instr.itype.rd, instr.itype.opcode};
+                      tinst[1] = is_compressed_i ? 1'b0 : 'b1;
+                    end
+                    default: illegal_instr = 1'b1;
+                  endcase
+                end else illegal_instr = 1'b1;
               end else begin
                 illegal_instr = 1'b1;
               end
