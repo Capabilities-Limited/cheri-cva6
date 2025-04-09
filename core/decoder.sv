@@ -1099,21 +1099,37 @@ module decoder
               endcase
             end
             if (CVA6Cfg.CheriPresent) begin
-              //instruction_o.rs1[4:0]  = instr.rtype.rs1;
-              //instruction_o.rs2[4:0]  = instr.rtype.rs2;
-              //instruction_o.rd[4:0]  = instr.rtype.rd;
+              //GCTAG   GCTAG=0001000  GCTAG=00000  GCTAG=000
+              //GCPERM GCPERM=0001000 GCPERM=00001 GCPERM=000
+              //GCTYPE GCTYPE=0001000 GCTYPE=00010 GCTYPE=000
+              //GCBASE GCBASE=0001000 GCBASE=00101 GCBASE=000
+              //GCLEN   GCLEN=0001000  GCLEN=00110  GCLEN=000
+              //GCHI     GCHI=0001000   GCHI=00100   GCHI=000
               unique case ({
                 instr.rtype.funct7, instr.rtype.funct3
               })
                 {7'b000_0110, 3'b000} : begin
-                  // ----------------------------------
-                  // Capability-Inspection Instructions
-                  // ----------------------------------
                   case(instr.rtype.rs2)
                     // ------------------------------------
                     // Pointer-Arithmetic Instructions
                     // ------------------------------------
                     5'b00000:   instruction_o.op = ariane_pkg::CMV;
+                    default: begin
+                      illegal_instr_cheri = 1'b1;
+                    end
+                  endcase
+                end
+                {7'b000_1000, 3'b000} : begin
+                  case(instr.rtype.rs2)
+                    // ----------------------------------
+                    // Capability-Inspection Instructions
+                    // ----------------------------------
+                    5'b00000:   instruction_o.op = ariane_pkg::GCTAG;
+                    5'b00001:   instruction_o.op = ariane_pkg::GCPERM;
+                    5'b00010:   instruction_o.op = ariane_pkg::GCTYPE;
+                    5'b00101:   instruction_o.op = ariane_pkg::GCBASE;
+                    5'b00110:   instruction_o.op = ariane_pkg::GCLEN;
+                    5'b00100:   instruction_o.op = ariane_pkg::GCHI;
                     default: begin
                       illegal_instr_cheri = 1'b1;
                     end
@@ -1892,15 +1908,15 @@ module decoder
                                 // ----------------------------------
                                 7'b000_0110: begin
                                     case(instr.rtype.rs2)
-                                        5'b00000:   instruction_o.op = ariane_pkg::CGET_PERM;
-                                        5'b00001:   instruction_o.op = ariane_pkg::CGET_TYPE;
-                                        5'b00010:   instruction_o.op = ariane_pkg::CGET_BASE;
-                                        5'b00011:   instruction_o.op = ariane_pkg::CGET_LEN;
-                                        5'b00100:   instruction_o.op = ariane_pkg::CGET_TAG;
+                                        5'b00000:   instruction_o.op = ariane_pkg::GCPERM;
+                                        5'b00001:   instruction_o.op = ariane_pkg::GCTYPE;
+                                        5'b00010:   instruction_o.op = ariane_pkg::GCBASE;
+                                        5'b00011:   instruction_o.op = ariane_pkg::GCLEN;
+                                        5'b00100:   instruction_o.op = ariane_pkg::GCTAG;
                                         5'b00101:   instruction_o.op = ariane_pkg::CGET_SEALED;
                                         5'b00110:   instruction_o.op = ariane_pkg::CGET_OFFSET;
                                         5'b00111:   instruction_o.op = ariane_pkg::CGET_FLAGS;
-                                        5'b10111:   instruction_o.op = ariane_pkg::CGET_HIGH;
+                                        5'b10111:   instruction_o.op = ariane_pkg::GCHI;
                                         5'b01111:   instruction_o.op = ariane_pkg::CGET_ADDR;
                                         5'b11000:   instruction_o.op = ariane_pkg::CGET_TOP;
                                         // ------------------------------------
