@@ -9,8 +9,8 @@
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  *
- * File:   cva6_cheri_pkg.sv
- * Author: Bruno Sá <bruno.vilaca.sa@gmail.com>
+ * File:   zcheri_pkg.sv
+ * Authors: Bruno Sá <bruno.vilaca.sa@gmail.com>
  * Date:   01.01.2025
  *
  * Description: Contains CHERI related structures and interfaces
@@ -25,16 +25,18 @@ package cva6_cheri_pkg;
     localparam CLEN                 = 2*XLEN;                // Capability length two times the normal width
     localparam CTLEN                = 2*XLEN + 1;                // Capability + Tag bit
     localparam CAP_ADDR_WIDTH       = XLEN;                      // Capability address width
-    localparam CAP_UPERMS_WIDTH     = (XLEN == 64) ? 4 : 0;      // Capability software permissions width
-    localparam CAP_UPERMS_SHIFT     = (XLEN == 64) ? 15 : 0;
-    localparam CAP_HPERMS_WIDTH     = 12;
+    localparam CAP_UPERMS_WIDTH     = 4;
+    localparam CAP_UPERMS_SHIFT     = 15;
+    localparam CAP_HPERMS_WIDTH     = 9;
     localparam CAP_FLAGS_WIDTH      = 1;
-    localparam CAP_RSERV_WIDTH      = 2;                                // Capability reserved bits width
-    localparam CAP_M_WIDTH          = (XLEN == 64) ? 14 : 8;
+    localparam CAP_RSERV_HI_WIDTH   = 7;
+    localparam CAP_RSERV_LO_WIDTH   = 18;//15;
+    localparam CAP_M_WIDTH          = 14;
     localparam CAP_E_WIDTH          = 6;
     localparam CAP_E_HALF_WIDTH     = CAP_E_WIDTH/2;
-    localparam CAP_OTYPE_WIDTH      = (XLEN == 64) ? 18 : 4;
-    localparam CAP_RESET_EXP        = CAP_ADDR_WIDTH + 2 - CAP_M_WIDTH;
+    localparam CAP_OTYPE_WIDTH      = 1;
+    localparam CAP_RESET_EXP        = 0;
+    localparam CAP_MAX_EXP          = 52;
     localparam CAP_RESET_TOP        = {2'b01,{CAP_M_WIDTH-2{1'b0}}};
     localparam CAP_EXP_NUM          = 29;
 
@@ -128,7 +130,8 @@ package cva6_cheri_pkg;
     typedef logic [CAP_ADDR_WIDTH+1:0]                        addrwe2_t;
     typedef logic [CAP_ADDR_WIDTH - CAP_M_WIDTH -1:0]         addrmw_t;
     typedef logic [CAP_ADDR_WIDTH - (CAP_M_WIDTH - 1) :0]     addrmwm2_t;
-    typedef logic [CAP_RSERV_WIDTH-1:0]                       resw_t;
+    typedef logic [CAP_RSERV_LO_WIDTH-1:0]                    resw_lo_t;
+    typedef logic [CAP_RSERV_HI_WIDTH-1:0]                    resw_hi_t;
     typedef logic [CAP_OTYPE_WIDTH-1:0]                       otypew_t;
     typedef logic [CAP_UPERMS_WIDTH-1:0]                      upermsw_t;
     typedef logic [CAP_M_WIDTH-1:0]                           mw_t;
@@ -165,13 +168,20 @@ package cva6_cheri_pkg;
     /**
       * Capability architectural defined permission bits
       */
+    //typedef struct packed {
+    //  bool_t SL;
+    //  bool_t EL;
+    //  bool_t LM;
+    //  bool_t ASR;
+    //  bool_t X;
+    //  bool_t R;
+    //  bool_t W;
+    //  bool_t C;
+    //  bool_t CL;
+    //} cap_hperms_t;
     typedef struct packed {
-        /**
-          * Allow the architectural compartment ID to be set to this capability’s
-          * base + offset using CSetCID.
-          * NOT IMPLEMENTED FOR RISC-V
-          */
-        bool_t   permit_set_cid;
+        // Allow loading writeable capabilites through unwriteable ones.
+        bool_t permit_load_mutable;
         /**
           * Allows access to privileged processor permitted by the architecture
           * (e.g., by virtue of being in supervisor mode), with architecture-specific
@@ -180,41 +190,19 @@ package cva6_cheri_pkg;
           * can remove this permission to implement constrained compartments within
           * the kernel.
           */
-        bool_t   access_sys_regs;
+        bool_t access_sys_regs;
         /**
-          * Allow this capability to be used to unseal another capability with a
-          * otype equal to this capability’s base + offset.
-          */
-        bool_t   permit_unseal;
-        /// Allow this sealed capability to be used with CInvoke.
-        bool_t   permit_cinvoke;
-        /**
-          * Allow this capability to authorize the sealing of another capability
-          * with a otype equal to this capability’s base + offset.
-          */
-        bool_t   permit_seal;
-        /// Allow this capability to be used to store non-global capabilities.
-        bool_t   permit_store_local_cap;
-        /// Allow this capability to be used to store capabilities with valid tags.
-        bool_t   permit_store_cap;
-        /// Allow this capability to be used to load capabilities with valid tags.
-        bool_t   permit_load_cap;
-        /// Allow this capability to be used to store untagged data
-        bool_t   permit_store;
+        * Allow this capability to be used in the PCC register as a capability
+        * for the program counter, constraining control flow.
+        */
+        bool_t permit_execute;
         /// Allow this capability to be used to load untagged data.
-        bool_t   permit_load;
-        /**
-          * Allow this capability to be used in the PCC register as a capability
-          * for the program counter, constraining control flow.
-          */
-        bool_t   permit_execute;
-        /**
-          * Allow this capability to be stored via capabilities that do not
-          * themselves have PERMIT_STORE_LOCAL_CAPABILITY set.
-          */
-        bool_t   gbl;
+        bool_t permit_load;
+        /// Allow this capability to be used to store untagged data
+        bool_t permit_store;
+        /// Permit capability memory operations (respecting permit_load/store)
+        bool_t permit_cap;
     } cap_hperms_t;
-
     /* Capability flags definition */
     typedef struct packed {
         /**
@@ -236,15 +224,15 @@ package cva6_cheri_pkg;
 
     /* Capability format definition */
     typedef enum logic {
-        EXP0,
-        EMBEDDED_EXP
+        EMBEDDED_EXP = 0,
+        IMPLIED_EXP = 1
     } cap_fmt_t /*verilator public*/;
 
-    /* Capability format EXP0 definition */
+    /* Capability format IMPLIED_EXP definition */
     typedef struct packed {
         cmw_t top;
         mw_t  base;
-    } cap_exp0_fmt_t;
+    } cap_implied_exp_fmt_t;
 
     /* Capability format EMBEDDED_EXP definition */
     typedef struct packed {
@@ -261,13 +249,13 @@ package cva6_cheri_pkg;
             cmw_t  top_bits;
             mw_t   base_bits;
         } cbounds;
-        cap_exp0_fmt_t exp0_fmt;
-        cap_embedded_exp_fmt_t exp_fmt;
+        cap_implied_exp_fmt_t impl_exp_fmt;
+        cap_embedded_exp_fmt_t emb_exp_fmt;
     } cap_cbounds_t;
 
     /* Capability decoding meta fields */
     typedef struct packed {
-        logic [2:0] r;
+        logic [CAP_M_WIDTH-1:0] r;
         bool_t      top_hi_r;
         bool_t      base_hi_r;
         bool_t      addr_hi_r;
@@ -278,12 +266,14 @@ package cva6_cheri_pkg;
     /* Capability definition in memory */
     typedef struct packed {
         bool_t                          tag;
+        resw_hi_t                       res_hi;
         upermsw_t                       uperms;
-        cap_hperms_t                    hperms;
-        resw_t                          res;
         cap_flags_t                     flags;
+        cap_hperms_t                    hperms;
+        //bool_t                          CL;
+        resw_lo_t                       res_lo;
         otypew_t                        otype;
-        cap_fmt_t                       int_e;
+        cap_fmt_t                       EF;
         cap_cbounds_t                   bounds;
         addrw_t                         addr;
     } cap_mem_t;
@@ -292,12 +282,14 @@ package cva6_cheri_pkg;
     typedef struct packed {
         bool_t                          tag;
         mw_t                            addr_mid;
+        resw_hi_t                       res_hi;
         upermsw_t                       uperms;
-        cap_hperms_t                    hperms;
         cap_flags_t                     flags;
-        resw_t                          res;
+        cap_hperms_t                    hperms;
+        //bool_t                          CL;
+        resw_lo_t                       res_lo;
         otypew_t                        otype;
-        cap_fmt_t                       int_e;
+        cap_fmt_t                       EF;
         cap_bounds_t                    bounds;
         addrw_t                         addr;
     } cap_reg_t;
@@ -327,10 +319,12 @@ package cva6_cheri_pkg;
         addr_mid        : '{default: 0},
         uperms          : '{default: '1},
         hperms          : '{default: '1},
+        //CL              : 0,
         flags           : 1'b0,
-        res             : '0,
+        res_hi          : '0,
+        res_lo          : '0,
         otype           : UNSEALED_CAP,
-        int_e           : EMBEDDED_EXP,
+        EF              : EMBEDDED_EXP,
         bounds          : DEFAULT_BOUNDS_CAP
     };
 
@@ -340,10 +334,12 @@ package cva6_cheri_pkg;
         addr_mid        : '{default: 0},
         uperms          : '{default: 0},
         hperms          : '{default: 0},
+        //CL              : 0,
         flags           : 1'b0,
-        res             : '0,
+        res_hi          : '0,
+        res_lo          : '0,
         otype           : UNSEALED_CAP,
-        int_e           : EMBEDDED_EXP,
+        EF              : EMBEDDED_EXP,
         bounds          : DEFAULT_BOUNDS_CAP
     };
 
@@ -353,12 +349,14 @@ package cva6_cheri_pkg;
 
     localparam cap_mem_t MEM_NULL_CAP = '{
         tag             : 1'b0,
+        res_hi          : '0,
         uperms          : '{default: 0},
-        hperms          : '{default: 0},
-        res             : '0,
         flags           : 1'b0,
+        hperms          : '{default: 0},
+        //CL              : 0,
+        res_lo          : '0,
         otype           : UNSEALED_CAP,
-        int_e           : EMBEDDED_EXP,
+        EF              : EMBEDDED_EXP,
         bounds          : encode_bounds(DEFAULT_BOUNDS_CAP, EMBEDDED_EXP),
         addr            : '{default: 0}
     };
@@ -387,9 +385,24 @@ package cva6_cheri_pkg;
         return ret;
     endfunction
 
-    function automatic cap_hperms_t get_cap_mem_reg_hperms (capw_t cap);
-        cap_mem_t ret = cap;
-        return ret.hperms;
+    //function automatic cap_hperms_t legalize_arch_perms (cap_hperms_t p);
+    //    cap_hperms_t ap = p;
+    //    ap.C = (p.R || p.W) ? p.C : 0;
+    //    ap.EL = (p.C && p.R) ? p.EL : 0;
+    //    ap.LM = (p.C && p.R) ? p.LM : 0;
+    //    ap.SL = p.C ? p.SL : 0;
+    //    ap.ASR = p.X ? p.ASR : 0;
+    //    return ap;
+    //endfunction
+
+    function automatic cap_hperms_t legalize_arch_perms (cap_hperms_t p);
+        cap_hperms_t ap = p;
+        ap.permit_cap = (p.permit_load || p.permit_store) ? p.permit_cap : 0;
+        //ap.EL = (p.C && p.R) ? p.EL : 0;
+        ap.permit_load_mutable = (p.permit_cap && p.permit_load) ? p.permit_load_mutable : 0;
+        //ap.SL = p.C ? p.SL : 0;
+        ap.access_sys_regs = p.permit_execute ? p.access_sys_regs : 0;
+        return ap;
     endfunction
 
     function automatic addrw_t get_cap_mem_addr (capw_t cap);
@@ -397,13 +410,13 @@ package cva6_cheri_pkg;
         return ret.addr;
     endfunction
 
-   function automatic addrw_t set_cap_mem_addr_unsafe (capw_t cap, addrw_t addr);
+    function automatic capw_t set_cap_mem_addr_unsafe (capw_t cap, addrw_t addr);
         cap_mem_t ret = cap;
         ret.addr = addr;
-        return ret.addr;
+        return ret;
     endfunction
 
-    function automatic capw_t set_cap_mem_addr_inc (capw_t cap, logic [CAP_M_WIDTH-4:0] inc);
+    function automatic capw_t set_cap_mem_addr_inc (capw_t cap, logic [11:0] inc);
         cap_mem_t ret = cap;
         addrw_t addr = get_cap_mem_addr(cap);
         addrw_t sgn_ext_inc = $signed(inc);
@@ -411,24 +424,24 @@ package cva6_cheri_pkg;
     endfunction
 
     /**
-     * Capability Register Interface
-     */
+      * Capability Register Interface
+      */
 
     /**
-     * @brief Function check if capability valid.
-     * @param cap capability in register format.
-     * @returns 1 if capability is valid and 0 otherwise.
-     */
+      * @brief Function check if capability valid.
+      * @param cap capability in register format.
+      * @returns 1 if capability is valid and 0 otherwise.
+      */
     function automatic bool_t is_cap_reg_valid (cap_reg_t cap);
         return cap.tag;
     endfunction
 
     /**
-     * @brief Function set capability tag bit.
-     * @param cap capability in register format.
-     * @param tag bool type bit to set the capability tag.
-     * @returns capability cap with valid bit set to the input tag.
-     */
+      * @brief Function set capability tag bit.
+      * @param cap capability in register format.
+      * @param tag bool type bit to set the capability tag.
+      * @returns capability cap with valid bit set to the input tag.
+      */
     function automatic cap_reg_t set_cap_reg_valid (cap_reg_t cap, bool_t tag);
         cap_reg_t ret = cap;
         ret.tag = tag;
@@ -436,12 +449,14 @@ package cva6_cheri_pkg;
     endfunction
 
     /**
-     * @brief Function checks if the object type is a reserved type .
-     * @param otype object type.
-     * @returns capability 1 if the otypes is a reserved type.
-     */
+      * @brief Function checks if the object type is a reserved type .
+      * @param otype object type.
+      * @returns capability 1 if the otypes is a reserved type.
+      */
     function automatic bool_t is_cap_type_reserv (otypew_t otype);
-        return otype > OTYPE_MAX;
+        addrw_t type_unsigned       = otype;
+        addrw_t otype_max_unsigned  = $signed(OTYPE_MAX);
+        return type_unsigned > otype_max_unsigned;
     endfunction
 
     /* function automatic bool_t is_cap_reg_derivable (cap_reg_t cap);
@@ -449,10 +464,9 @@ package cva6_cheri_pkg;
             !(cap.bounds.exp == CAP_RESET_EXP && ((cap.bounds.top_bits[CAP_M_WIDTH-1] != 1'b0) ||
                                      (cap.bounds.base_bits[CAP_M_WIDTH-1:CAP_M_WIDTH-2] != 2'b0))) &&
             !(cap.bounds.exp == CAP_RESET_EXP-1 && (cap.bounds.base_bits[CAP_M_WIDTH-1] != 1'b0)) &&
-            (cap.res == 0));
+            (cap.res_lo == 0) && (cap.res_hi == 0));
         return derivable;
     endfunction */
-
 
     function automatic cap_reg_t seal(cap_reg_t cap, otypew_t otype);
         cap_reg_t ret = cap;
@@ -462,10 +476,10 @@ package cva6_cheri_pkg;
     endfunction
 
     /**
-     * @brief Function to unseal the input capabilitu.
-     * @param cap capability in register format.
-     * @returns capability cap with otype field set to UNSEALED_CAP.
-     */
+      * @brief Function to unseal the input capabilitu.
+      * @param cap capability in register format.
+      * @returns capability cap with otype field set to UNSEALED_CAP.
+      */
     function automatic cap_reg_t unseal(cap_reg_t cap);
         cap_reg_t ret = cap;
         ret.otype = UNSEALED_CAP;
@@ -473,29 +487,30 @@ package cva6_cheri_pkg;
     endfunction
 
     /**
-     * @brief Function to get the capability meta data using CHERI concentrate 128-bit decoding.
-     * @param cap capability in register format.
-     * @returns the capability meta data top and base corrections (ct and cb)
-     *          , comparison values of A3 < R, T3 < R and B3 < R and the value
-     *          of the representable region R.
-     */
+      * @brief Function to get the capability meta data using CHERI concentrate 128-bit decoding.
+      * @param cap capability in register format.
+      * @returns the capability meta data top and base corrections (ct and cb)
+      *          , comparison values of A3 < R, T3 < R and B3 < R and the value
+      *          of the representable region R.
+      */
     function automatic cap_meta_data_t get_cap_reg_meta_data (cap_reg_t cap);
 
         cap_meta_data_t ret_info;
-        ew_t exp = (cap.bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : cap.bounds.exp;
-        logic [2:0] t = cap.bounds.top_bits[CAP_M_WIDTH-1:CAP_M_WIDTH-3];
-        logic [2:0] b = cap.bounds.base_bits[CAP_M_WIDTH-1:CAP_M_WIDTH-3];
-        logic [2:0] a = cap.addr >> (exp + CAP_M_WIDTH-3);
-        logic [2:0] r = b - 3'b001;
+        ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
+        logic [CAP_M_WIDTH-1:0] t = cap.bounds.top_bits;
+        logic [CAP_M_WIDTH-1:0] b = cap.bounds.base_bits;
+        logic [XLEN+1:0] addr_ext = {2'b00, cap.addr};
+        logic [CAP_M_WIDTH-1:0] a = addr_ext[XLEN+1-exp -: CAP_M_WIDTH];
+        logic [CAP_M_WIDTH-1:0] r = cap.bounds.base_bits - 14'b01000000000000;
         logic top_hi_r  = t < r;
         logic base_hi_r = b < r;
         logic addr_hi_r = a < r;
-        logic [1:0] ct  = (top_hi_r  ==  addr_hi_r) ? 0 :
-                            (top_hi_r  && !addr_hi_r) ? 1 :
-                                                        -1;
-        logic [1:0] cb  = (base_hi_r ==  addr_hi_r) ? 0 :
-                               (base_hi_r && !addr_hi_r) ? 1 :
-                                                           -1;
+        logic [1:0] ct  = (top_hi_r  ==  addr_hi_r) ? 0
+                        : (top_hi_r  && !addr_hi_r) ? 1
+                        : -1;
+        logic [1:0] cb  = (base_hi_r ==  addr_hi_r) ? 0
+                        : (base_hi_r && !addr_hi_r) ? 1
+                        : -1;
         ret_info = '{
             r         : r,
             top_hi_r  : top_hi_r,
@@ -507,123 +522,107 @@ package cva6_cheri_pkg;
       return ret_info;
     endfunction
 
+    typedef struct packed {
+        addrwe_t top;
+        addrw_t base;
+        bool_t bounds_valid;
+    } top_base_t;
+
+    function automatic top_base_t get_cap_reg_top_base(cap_reg_t cap, cap_meta_data_t cap_meta_data);
+        ew_t exp = cap.bounds.exp;
+        addrw_t addr_bits = {2'b0, cap.addr} & ~(~66'b0 >> exp); // mask in relevant addr bits
+        // base
+        addrw_t base_corr_bits = $signed({cap_meta_data.cb, 66'b0}) >>> exp;
+        addrw_t base_bits = {cap.bounds.base_bits, 52'b0} >> exp;
+        addrw_t base = (addr_bits + base_corr_bits) | base_bits;
+        // are the bounds a valid set of bounds (not malformed)
+        bool_t malformed_msb =    ((exp == 0) && (cap.bounds.base_bits != 0))
+                               || ((exp == 1) && (cap.bounds.base_bits[CAP_M_WIDTH-1] != 0));
+        bool_t malformed_lsb = (exp > CAP_MAX_EXP);
+        bool_t bounds_valid = (cap.EF == IMPLIED_EXP) || (!malformed_msb && !malformed_lsb);
+        // top
+        addrwe_t top_bits = {cap.bounds.top_bits, 52'b0} >> exp;
+        addrwe_t top_corr_bits = $signed({cap_meta_data.ct, 66'b0}) >>> exp;
+        addrwe_t top = (addr_bits + top_corr_bits) | top_bits;
+        logic [1:0] diff = top[CAP_ADDR_WIDTH:CAP_ADDR_WIDTH-1] - {1'b0, base[CAP_ADDR_WIDTH-1]};
+        if ((exp > 1) && (diff > 1)) top[CAP_ADDR_WIDTH] = ~top[CAP_ADDR_WIDTH];
+        // return
+        return '{top: top, base: base, bounds_valid: bounds_valid};
+    endfunction
+
+    function automatic bool_t are_cap_reg_bounds_valid(cap_reg_t cap, cap_meta_data_t cap_meta_data);
+        top_base_t tb = get_cap_reg_top_base(cap, cap_meta_data);
+        return tb.bounds_valid;
+    endfunction
+
     /**
-     * @brief Function to compute the capability base address.
-     * @param cap capability in register format.
-     * @returns the base address with size [CAP_ADDR_WIDTH-1:0].
-     */
+      * @brief Function to compute the capability base address.
+      * @param cap capability in register format.
+      * @returns the base address with size [CAP_ADDR_WIDTH-1:0].
+      */
     function automatic addrw_t get_cap_reg_base(cap_reg_t cap, cap_meta_data_t cap_meta_data);
-        addrw_t msk_top_bits; /**< mask to fetch address top bits [XLEN:E+14] */
-        addrw_t offset_base; /**< base offset value to be sum */
-        ew_t exp;
-
-        exp = (cap.bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : cap.bounds.exp;
-
-        msk_top_bits = (-1 << (exp + CAP_M_WIDTH));
-        // offset_base = base correction coeficient (cb) + base_bits
-        offset_base  = $signed({cap_meta_data.cb, cap.bounds.base_bits}) << exp;
-        // return base address = address top [XLEN:E+14] bits + base address offset
-        // base[E-1:0] = 0'E
-        return ((cap.addr & msk_top_bits) + offset_base);
+        top_base_t tb = get_cap_reg_top_base(cap, cap_meta_data);
+        return tb.base;
     endfunction
 
     /**
-     * @brief Function to compute the capability top address.
-     * @param cap capability in register format.
-     * @returns the top address with size [CAP_ADDR_WIDTH:0].
-     */
+      * @brief Function to compute the capability top address.
+      * @param cap capability in register format.
+      * @returns the top address with size [CAP_ADDR_WIDTH:0].
+      */
     function automatic addrwe_t get_cap_reg_top(cap_reg_t cap, cap_meta_data_t cap_meta_data);
-        addrwe_t msk_top_bits; /**< mask to fetch address top bits [XLEN:E+14] */
-        addrwe_t offset_base; /**< top and base offset value */
-        addrwe_t ret, offset_top; /**< address to return */
-        logic [1:0] top_msb, base_msb; /**< top and base address MSB bits [63:64]*/
-        ew_t exp = (cap.bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : cap.bounds.exp;
-
-        msk_top_bits = (-1 << (exp + CAP_M_WIDTH));
-        // offset_top = top correction coeficient (ct) + top_bits
-        offset_top  = $signed({cap_meta_data.ct, cap.bounds.top_bits}) << exp;
-        // returntop address = address top [XLEN:E+14] bits + top address offset
-        // top[E-1:0] = 0'E
-        ret = (({1'b0,cap.addr} & msk_top_bits) + offset_top);
-
-        /**
-         * Corner case check to allow the entire 64-bit address space to addressable
-         * the top address is permit to be a 65-bit value. Additional check is required
-         * to correct the top base address:
-         * if ((E < 51) &((t[64 : 63] − b[63]) > 1)) then t[64] =!t[64]
-         */
-
-        top_msb = ret[CAP_ADDR_WIDTH:CAP_ADDR_WIDTH-1];
-        offset_base = $signed({cap_meta_data.cb, cap.bounds.base_bits});
-        offset_base = offset_base << exp;
-        offset_base = ({1'b0,cap.addr} & msk_top_bits) + offset_base;
-        //offset_base = ({1'b0,cap.addr} & msk_top_bits) + ($signed({cap_meta_data.cb, cap.bounds.base_bits}) << cap.bounds.exp);
-        base_msb = {1'b0, offset_base[CAP_ADDR_WIDTH-1]};
-        if (exp == (CAP_RESET_EXP - 1)) base_msb = {1'b0, cap.bounds.base_bits[CAP_M_WIDTH-1]};
-        if ((exp < (CAP_RESET_EXP-1)) && ((top_msb - base_msb) > 1))
-            ret[CAP_ADDR_WIDTH] = ~ret[CAP_ADDR_WIDTH];
-        // if E >= 52, length takes up the entire address space
-        return /* (cap.bounds.exp >= CAP_RESET_EXP) ? 1 << XLEN : */ ret;
+        top_base_t tb = get_cap_reg_top_base(cap, cap_meta_data);
+        return tb.top;
     endfunction
 
     /**
-     * @brief Function to compute the capability length address.
-     * @param cap capability in register format.
-     * @param dec_bounds decounds bounds meta data.
-     * @returns the capability length with size [CAP_ADDR_WIDTH:0].
-     */
-    function automatic addrwe_t get_cap_reg_length(cap_reg_t cap, cap_meta_data_t cap_meta_data);
-        /**< compute top and base mid bits [E+13:E] */
-        logic [CAP_M_WIDTH + 1 : 0] top_mid_bits, base_mid_bits;
-        logic [CAP_M_WIDTH + 1 : 0] length_mid_bits;
-        /**< length [CAP_ADDR_WIDTH:0] plus 1 bit to accomodate the entire address space */
-        logic [CAP_ADDR_WIDTH:0] length;
-        top_mid_bits = {cap_meta_data.ct, cap.bounds.top_bits};
-        base_mid_bits = {cap_meta_data.cb, cap.bounds.base_bits};
-        length_mid_bits = top_mid_bits - base_mid_bits;
-        length = $unsigned(length_mid_bits) << cap.bounds.exp;
-        // if E >= 52, length takes up the entire address space
-        return (cap.bounds.exp >= CAP_RESET_EXP) ? ~(1 << XLEN) : length;
+      * @brief Function to compute the capability length address.
+      * @param cap capability in register format.
+      * @param dec_bounds decounds bounds meta data.
+      * @returns the capability length with size [CAP_ADDR_WIDTH:0].
+      */
+    function automatic addrw_t get_cap_reg_length(cap_reg_t cap, cap_meta_data_t cap_meta_data);
+        mwe2_t top = {cap_meta_data.ct, cap.bounds.top_bits};
+        mwe2_t base = {cap_meta_data.cb, cap.bounds.base_bits};
+        mw_t tmp = base;
+        mwe2_t tmp2 = tmp + base;
+        addrw_t length = {(top - base), 52'b0} >> cap.bounds.exp;
+        // TODO: same saturation behaviour as bsv... "short of being correct"
+        return (cap.bounds.exp == CAP_RESET_EXP) ? ~0 : length;
     endfunction
 
     /**
-     * @brief Function to compute the capability offset address.
-     * @param cap capability in register format.
-     * @param dec_bounds decounds bounds meta data.
-     * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
-     */
+      * @brief Function to compute the capability offset address.
+      * @param cap capability in register format.
+      * @param dec_bounds decounds bounds meta data.
+      * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
+      */
     function automatic addrw_t get_cap_reg_offset(cap_reg_t cap, cap_meta_data_t cap_meta_data);
-        /**< compute base and address mid bits [E+13:E] */
-        mwe2_t base_offset;
-        /**< offset = address - base */
-        mw_t addr_offset;
-        addrw_t msk_lsb_addr, offset_lsb, offset;
-        ew_t exp = (cap.bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : cap.bounds.exp;
-
-        base_offset = $signed({cap_meta_data.cb, cap.bounds.base_bits});
-        //addr_offset = cap.addr >> cap.bounds.exp;
-        addr_offset = cap.addr_mid;
-        offset = $signed({2'b0,addr_offset} - base_offset) << exp;
-        msk_lsb_addr = ~(-1 << exp);
-        offset_lsb = cap.addr & msk_lsb_addr;
-
-        return $signed( offset | offset_lsb);
+        ew_t exp = cap.bounds.exp;
+        mwe2_t base = {cap_meta_data.cb, cap.bounds.base_bits};
+        mwe2_t offset_bits = {2'b0, cap.addr_mid} - base;
+        addrw_t addr_lsb = cap.addr & (~0 >> (CAP_M_WIDTH - 2 + exp));
+        //addrw_t offset = ($signed(offset_bits) << (CAP_MAX_EXP-exp)) | addr_lsb;
+        addrw_t offset = $signed(offset_bits);
+        offset = offset << (CAP_MAX_EXP-exp);
+        offset = offset | addr_lsb;
+        return offset;
     endfunction
 
     /**
-     * @brief Function sets the capability address and check if is representable.
-     * @param cap capability in register format.
-     * @param cursor target address for the resulting capability.
-     * @param cap_meta_data capability decounds bounds meta data.
-     * @returns the input capability with address set to cursor and clear the tag
-     *          if the capability is not representable.
-     */
+      * @brief Function sets the capability address and check if is representable.
+      * @param cap capability in register format.
+      * @param cursor target address for the resulting capability.
+      * @param cap_meta_data capability decounds bounds meta data.
+      * @returns the input capability with address set to cursor and clear the tag
+      *          if the capability is not representable.
+      */
     function automatic cap_reg_t set_cap_reg_address(cap_reg_t cap, addrw_t address, cap_meta_data_t cap_meta_data);
         cap_reg_t ret = cap;
         ew_t exp = (cap.bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : cap.bounds.exp;
         addrw_t addr_mid = $unsigned(address >> exp);
         // compute new
-        logic newAddrHi  = addr_mid[CAP_M_WIDTH-1:CAP_M_WIDTH-3] < cap_meta_data.r;
+        logic newAddrHi  = addr_mid[CAP_M_WIDTH-1:0] < cap_meta_data.r;
         addrw_t deltaAddrHi = $signed({1'b0,newAddrHi} - {1'b0,cap_meta_data.addr_hi_r}) << (cap.bounds.exp + CAP_M_WIDTH);
         // Calculate the actual difference between the upper bits of the new address and the original address.
         addrw_t mask = -1 << (exp + CAP_M_WIDTH);
@@ -636,11 +635,11 @@ package cva6_cheri_pkg;
     endfunction
 
     /**
-     * @brief Function sets the capability address without representable checking.
-     * @param cap capability in register format.
-     * @param cursor target address for the resulting capability.
-     * @returns the input capability with address set to cursor
-     */
+      * @brief Function sets the capability address without representable checking.
+      * @param cap capability in register format.
+      * @param cursor target address for the resulting capability.
+      * @returns the input capability with address set to cursor
+      */
     function automatic cap_reg_t set_cap_reg_addr(cap_reg_t cap, addrw_t address);
         cap_reg_t ret = cap;
         ew_t exp = (cap.bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : cap.bounds.exp;
@@ -649,111 +648,76 @@ package cva6_cheri_pkg;
         return ret;
     endfunction
 
-    /**
-     * @brief Function to compute the capability offset address.
-     * @param cap capability in register format.
-     * @param cursor target address for the resulting capability.
-     * @param offset holds the capability offset when set_offset = 1
-     *               and the increment offset when set_offset = 0.
-     * @param cap_meta_data capability decounds bounds meta data.
-     * @param set_offset 0 - the function sets the capability offset to the input offset.
-     *                   1 - the functions set the capability offset to cap.offset + offset.
-     * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
-     */
-    function automatic cap_reg_t cap_reg_inc_offset(cap_reg_t cap
-                                  , addrw_t cursor
-                                  , addrw_t offset // this is the increment in inc offset, and the offset in set offset
-                                  , cap_meta_data_t cap_meta_data
-                                  , bool_t set_offset);
+    function automatic cap_reg_t cap_reg_inc_offset( cap_reg_t cap
+                                                   , addrw_t cursor
+                                                   , addrw_t offset // this is the increment in inc offset, and the offset in set offset
+                                                   , cap_meta_data_t cap_meta_data
+                                                   , bool_t set_offset );
         cap_reg_t ret = cap;
+        ew_t exp = cap.bounds.exp;
+        addrw_t offset_addr = offset;
+        mw_t offset_bits  = CAP_M_WIDTH'(offset_addr >> (CAP_MAX_EXP - exp));
+
         // ----------------
         // In Range test
-        // Description: Test of the offset increment is less that the representable region's
-        // size s, i.e., -s < offset < s. This test is reduce to test that all bits of the
-        // offset top (offset[63:E+14]) are all the same.
-        // ----------------
 
-        addrw_t msk_offset_msb = -1 << (cap.bounds.exp + CAP_M_WIDTH);
-        addrw_t sign = $signed(offset[CAP_ADDR_WIDTH-1]);
-        addrw_t offset_msb_bits = offset;
-        logic in_range = (((offset_msb_bits ^ sign) & msk_offset_msb) == 0);
-        ew_t exp = (cap.bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : cap.bounds.exp;
+        localparam T_W = CAP_ADDR_WIDTH - CAP_M_WIDTH;
+        logic [T_W-1:0] sgn_bits = T_W'($signed(1'(offset[CAP_ADDR_WIDTH-1])));
+        logic [T_W-1:0] og_hi_off_bits = T_W'(offset_addr[CAP_ADDR_WIDTH-1-:T_W]);
+        logic [T_W-1:0] hi_filt_bits = ~(~T_W'(0)>>exp);
+        logic [T_W-1:0] hi_off_bits = (og_hi_off_bits ^ sgn_bits) & hi_filt_bits;
+        bool_t in_range = hi_off_bits == 0;
 
-        // ----------------
-        // In Limit Test
-        // Description: Checks if the update on the Amid ([E+14:E]) could take the address
-        // beyond the representable limits. It compares the distance from the offset middle
-        // bits [E+14:E] ti the edges of the representable space in the middle bits.
-        // Algorithm as follow:
-        // - offset >= 0 (positive increment)
-        //   in_limit = offset[E+14:E] < (R - cap.addr[E+14:E] -1)
-        // - offset < 0 (negative increment)
-        //   in_limit =  (offset[E+14:E]>= (R - cap.addr[E+14:E]) and R != cap.addr[E+14:E]
-        // (i.e., we are not on the bottom of edge of the representable space).
+        // The sign of the increment
+        bool_t pos_inc = 1'(offset_addr[CAP_ADDR_WIDTH-1]) == 1'b0;
+        mw_t to_bounds_a = CAP_M_WIDTH'(3'b110 << (CAP_M_WIDTH-3));
+        mw_t to_bounds_m1_a = to_bounds_a - CAP_M_WIDTH'(1);
+        mw_t rep_bound_bits = cap_meta_data.r;
+        mw_t to_bounds_b = rep_bound_bits - cap.addr_mid;
+        mw_t to_bounds_m1_b = rep_bound_bits + ~cap.addr_mid;
 
-        // Increment sign:
-        // 1 -> negative increment
-        // 0 -> positive increment
-        logic inc_sign = offset[CAP_ADDR_WIDTH-1];
+        // Select the appropriate toBounds value
+        mw_t to_bounds = set_offset ? to_bounds_a : to_bounds_b;
+        mw_t to_bounds_m1 = set_offset ? to_bounds_m1_a : to_bounds_m1_b;
+        bool_t addr_at_rep_bound = !set_offset && (rep_bound_bits == cap.addr_mid);
 
-        // Get offset middle bits [E+14:E]
-        mw_t offset_mid  = offset >> (exp);
-
-        // Compute distance to representable bounds when set_offset == true
-        // We will denominate this distance as to_rep_bounds1
-
-        // Amid = B (base bits)
-        mw_t to_rep_bounds1_0 = {3'b111,11'b00000000000} - {3'b000,cap.bounds.base_bits[CAP_M_WIDTH-4:0]};
-        // equivalent to (repBoundBits - cap.bounds.baseBits - 1):
-        mw_t to_rep_bounds1_1 = {3'b110,~cap.bounds.base_bits[CAP_M_WIDTH-4:0]};
-
-        // Compute distance to representable bounds when set_offset == false
-        // We will denominate this distance as to_rep_bounds2
-        // r = representable bounds
-        mw_t R = {cap_meta_data.r,11'b00000000000};
-        //mw_t addr_mid = cap.addr >>  (cap.bounds.exp + CAP_M_WIDTH);
-        mw_t addr_mid = cap.addr_mid;
-        mw_t to_rep_bounds2_0 = R - addr_mid;
-        // to compute rep_bounds2_1 we use the complement for 2 representation
-        mw_t to_rep_bounds2_1 = R + ~addr_mid;
-        // select distance to bounds
-        mw_t dist_to_bounds0 = set_offset ? to_rep_bounds1_0 : to_rep_bounds2_0;
-        mw_t dist_to_bounds1 = set_offset ? to_rep_bounds1_1 : to_rep_bounds2_1;
-        // Check if addr is not already at the bottom of the representable edge
-        logic is_addr_at_rep_bot_edge = (R == addr_mid) && (set_offset == 1'b0);
-
-        logic in_limits = 1'b0;
-        logic in_bounds = 1'b0;
-
-        // In limit test
-        if (inc_sign) begin
-          // negative increment
-          in_limits = (offset_mid >= dist_to_bounds0) && !is_addr_at_rep_bot_edge;
-        end else begin
-          in_limits = set_offset ? offset_mid <= dist_to_bounds1
-                               : offset_mid <  dist_to_bounds1;
-        end
+        // Implement the in_limits test
+        bool_t in_limits = pos_inc ? (set_offset ? offset_bits <= to_bounds_m1
+                                                 : offset_bits < to_bounds_m1)
+                                   : ((offset_bits >= to_bounds) && !addr_at_rep_bound);
 
         // Complete representable bounds check
         // -----------------------------------
-        in_bounds = (in_range && in_limits) || (cap.bounds.exp >= (CAP_RESET_EXP - 2));
-        // Update return capability
-        ret.addr = cursor;
-        ret.addr_mid = cursor >> exp;
-        // if not in representable bounds nullify the capability
-        if (!in_bounds)
-            ret.tag = 1'b0;
+        bool_t in_bounds = (in_range && in_limits) || (exp <= 2);
+
+        // Updating the return capability
+        // ------------------------------
+        mw_t new_addr_bits = cap.bounds.base_bits + offset_bits;
+        logic [CAP_M_WIDTH-3:0] mask_lo = ~0;
+        logic [1:0] mask_hi = (exp == 0) ? 2'b00 : (exp == 1) ? 2'b01 : 2'b11;
+        mw_t mask = {mask_hi, mask_lo};
+        if (set_offset) begin
+          ret.addr = get_cap_reg_base(cap, cap_meta_data) + offset_addr;
+          ret.addr_mid = new_addr_bits & mask;
+        end else begin
+          ret.addr = cursor;
+          ret.addr_mid = CAP_M_WIDTH'(cursor >> (CAP_MAX_EXP - exp));
+        end
+        // Nullify the capability if the representable bounds check has failed
+        if (!in_bounds) ret.tag = 1'b0;
+
+        // return updated / invalid capability
         return ret;
     endfunction
 
     /**
-     * @brief Function to check if capabiliy is within bounds.
-     * @param cap capability in register format.
-     * @param cap_meta_data capability decounds bounds meta data.
-     * @param inclusive 0 - includes top in the in bounds check.
-     *                  1 - excludes top in the inbounds check.
-     * @returns 0 if not in bounds and 1 if in bounds.
-     */
+      * @brief Function to check if capabiliy is within bounds.
+      * @param cap capability in register format.
+      * @param cap_meta_data capability decounds bounds meta data.
+      * @param inclusive 0 - includes top in the in bounds check.
+      *                  1 - excludes top in the inbounds check.
+      * @returns 0 if not in bounds and 1 if in bounds.
+      */
     function automatic bool_t is_cap_reg_inbounds(cap_reg_t cap, cap_meta_data_t meta_data, bool_t inclusive);
         mw_t addr_mid = cap.addr_mid;
         bool_t check_addr = inclusive ? addr_mid <= cap.bounds.top_bits
@@ -765,11 +729,11 @@ package cva6_cheri_pkg;
     endfunction
 
     /**
-     * @brief Function to compute the in limit check
-     * @param offset capability offset.
-     * @param exp capability E.
-     * @returns 0 - if not in limit and 1 - if in limit
-     */
+      * @brief Function to compute the in limit check
+      * @param offset capability offset.
+      * @param exp capability E.
+      * @returns 0 - if not in limit and 1 - if in limit
+      */
     function automatic bool_t is_offset_in_range(addrw_t offset, ew_t exp);
         bool_t ret;
         addrw_t offset_msb;
@@ -777,22 +741,28 @@ package cva6_cheri_pkg;
 
         offset_msb = $signed(offset >> (exp + CAP_M_WIDTH));
         cmp_top = |offset_msb;
-        if (cmp_top == 0)
-            ret = 1'b1;
+        if (cmp_top == 0) ret = 1'b1;
         ret = 1'b0;
         return ret;
     endfunction
 
+    // helpers for set_cap_reg_bounds
+    function automatic mw_t bot3z(bool_t cond, mw_t val);
+      return (cond) ? (val & (~0 << 3)) : val;
+    endfunction
+    function automatic mw_t add_b1000(bool_t cond, mw_t val);
+      return (cond) ? (val + 'b1000) : val;
+    endfunction
     /**
-     * @brief Function to set the capability bounds
-     * @param cap capability in register format.
-     * @param base capability base address to be set.
-     * @param lengthfull length of the capability to be set
-     *                   top = base + length
-     * @returns the capability with bounds set to base and length,
-     *          a bool stating if the capability was exact aligned a 2*E+3,
-     *          representable length and mask of the capability.
-     */
+      * @brief Function to set the capability bounds
+      * @param cap capability in register format.
+      * @param base capability base address to be set.
+      * @param lengthfull length of the capability to be set
+      *                   top = base + length
+      * @returns the capability with bounds set to base and length,
+      *          a bool stating if the capability was exact aligned a 2*E+3,
+      *          representable length and mask of the capability.
+      */
     function automatic cap_reg_set_bounds_ret_t set_cap_reg_bounds (cap_reg_t cap, addrw_t base, addrwe_t lengthfull);
         cap_reg_set_bounds_ret_t ret = '{
             cap     : cap,
@@ -800,94 +770,119 @@ package cva6_cheri_pkg;
             length  : lengthfull,
             mask    : '0
         };
-        addrwe_t length = lengthfull;
-        // Compute initial E
-        // E = 52 - CountingLeadingZeros(l[64:13]) in which l = length
-        addrmwm2_t lengh_msb_bits = length[CAP_ADDR_WIDTH:CAP_M_WIDTH-1];
-        ew_t cnt_zeros = $unsigned(count_zeros_msb(lengh_msb_bits));
-        ew_t exp = CAP_RESET_EXP - cnt_zeros;
-        // Compute Ie
-        // - 0, if E=0 and l[12]=0
-        // - 1, otherwise
-        bool_t int_e = !(cnt_zeros == (CAP_RESET_EXP) && length[CAP_M_WIDTH-2] == 1'b0);
-        // Compute new base and top middle bits [E+MW:E]
+
+        // derive candidate exponent from the lenght (numer of leading zeros)
+        // XXX bsv uses a CAP_ADDR_WIDTH - (CAP_M_WIDTH - 1) width
+        //          not a CAP_ADDR_WIDTH - (CAP_M_WIDTH - 2)
+        ////////////////////////////////////////////////////////////////////////
+        // count the leading zeros in the length. By adding one zero msb, we
+        // account for the len msb to hang to the left of the lower 12
+        // mantissa bits. The detected exponent here is at least 1, and may
+        // fall to 0 later if need for rounding arises
+        addrmwm2_t lengh_msb_bits = lengthfull[CAP_ADDR_WIDTH:CAP_M_WIDTH-1];
+        ew_t msb_zeros = $unsigned(count_zeros_msb({1'b0, lengh_msb_bits}));
+        ew_t exp = msb_zeros;
+
+        // we must track an internal exponent unless the length is small
+        // enough
+        ////////////////////////////////////////////////////////////////////////
+        bool_t int_exp = !( (exp == CAP_MAX_EXP)
+                         && (lengthfull[CAP_M_WIDTH-2] == 1'b0) );
+
+        // prepare the new base and the mantissa-width bits version
+        ////////////////////////////////////////////////////////////////////////
         addrwe2_t new_base = {2'b00, base};
-        mwe2_t new_base_bits = new_base >> exp;
-        addrwe2_t new_len = {1'b0, length};
-        addrwe2_t new_top = new_base + new_len;
-        mwe2_t new_top_bits = new_top >> exp;
-        // Creates mask to check all bits bellow msb(l) = exp + CAP_MW_WIDTH;
-        addrwe2_t lmsk_exp_bits = ~(-1 << (exp + 3));
-        addrwe2_t lmsk_m_bits = ~(-1 << (exp + 3 + CAP_M_WIDTH - 4)) & ~lmsk_exp_bits;
-        //addrwe2_t lmsk_m_less_1_bits = ~(-1 << (exp + 3 + CAP_M_WIDTH - 3)) & ~lmsk_exp_bits;
-        addrwe2_t lmsk_m_less_1_bits = (-1 << (exp + 4)) & lmsk_m_bits;
-        addrwe2_t lmsk_exp_bits_over = ~(-1 << (exp + 4));
-        // Check if any of the lsb of len, base and top were lost, i.e., [Einitial+2:0]
-        // are all non-zero
-        bool_t lost_lsb_top_over = (new_top & lmsk_exp_bits_over) != 0 && int_e;
-        bool_t lost_lsb_len = (new_len & lmsk_exp_bits) != 0 && int_e;
-        bool_t lost_lsb_base = (new_base & lmsk_exp_bits) != 0 && int_e;
-        bool_t lost_lsb_top = (new_top & lmsk_exp_bits) != 0 && int_e;
-        bool_t is_exact = !(lost_lsb_base || lost_lsb_top);
-        // Check if all mantissa bits above the Einitial+3 are all ones (i.e., length is max)
-        bool_t is_len_max = (new_len & (lmsk_m_bits)) == (lmsk_m_bits);
-        bool_t is_len_max_less_one = (new_len & (lmsk_m_bits)) == (lmsk_m_less_1_bits);
-        // Check if we lost T[2:0] bits when int e = 1
-        bool_t round_up_length = lost_lsb_top;
-        // Check if there was a carry in from summing base[E+2,E] with len[E+2:E]
-        addrwe2_t lmsk_carry_in_bit = (~(-1 << (exp + 4))) ^ lmsk_exp_bits;
-        bool_t len_carry_in = (lmsk_carry_in_bit & new_top) != ((lmsk_carry_in_bit & new_base)^(lmsk_carry_in_bit & new_len));
-        // Compute new values for top and base when we need to increase E
-        mw_t new_top_bits_over = new_top_bits >> 1;
-        mw_t new_base_bits_over = new_base_bits >> 1;
-        // Check for length overflows
-        bool_t length_over = 1'b0;
-        //addrwe_t new_length_over = {2'b00, new_len};
-        addrwe2_t new_length_over = new_len;
-        addrw_t len_msk = -1;
-        if (is_len_max && (len_carry_in || round_up_length)) length_over = 1'b1;
-        if (is_len_max_less_one && len_carry_in && round_up_length) length_over = 1'b1;
-        if(length_over && int_e) begin
-            // C = , we need to increase the E
-            exp = exp + 1;
-            // Sum one to T if there was a overflow and we lost the 3 lsb bits of T
-            ret.cap.bounds.top_bits = lost_lsb_top_over ? new_top_bits_over + 14'b00000000001000
-                                                  : new_top_bits_over;
-            ret.cap.bounds.base_bits = new_base_bits_over;
-        end else begin
-            ret.cap.bounds.top_bits = lost_lsb_top ? (new_top_bits[CAP_M_WIDTH-1:0] + 14'b00000000001000)
-                                            : new_top_bits[CAP_M_WIDTH-1:0];
-            ret.cap.bounds.base_bits = new_base_bits[CAP_M_WIDTH-1:0];
-        end
-        ret.cap.bounds.exp = exp;
-        ret.cap.int_e = int_e ? EMBEDDED_EXP : EXP0;
-        // Update bounds when E > 0, make 3 lsb bits 0
-        if (int_e) begin
-            ret.cap.bounds.top_bits = {ret.cap.bounds.top_bits[CAP_M_WIDTH-1:CAP_E_HALF_WIDTH], 3'b000};
-            ret.cap.bounds.base_bits = {ret.cap.bounds.base_bits[CAP_M_WIDTH-1:CAP_E_HALF_WIDTH], 3'b000};
-        end
-        // Calculate the new representable length
-        if (int_e) begin
-            new_length_over = new_len + lmsk_carry_in_bit;
-            new_len        = (new_len & (~lmsk_exp_bits));
-            new_length_over = (new_length_over & (~lmsk_exp_bits));
-            if (lost_lsb_len) new_len = new_length_over;
-            len_msk = (is_len_max && lost_lsb_top) ?  (-1 << (exp + 3)) : ~lmsk_exp_bits[CAP_ADDR_WIDTH-1:0];
-        end
-        ret.cap.addr_mid  = cap.addr >> exp;
-        // Return derived capability
-        ret.exact = is_exact;
-        ret.length = new_len[CAP_ADDR_WIDTH:0];
-        ret.mask = len_msk;
+        mwe_t new_base_bits = new_base >> (CAP_ADDR_WIDTH + 2 - CAP_M_WIDTH - exp);
+
+        // prepare the new top and the mantissa-width bits version
+        ////////////////////////////////////////////////////////////////////////
+        addrwe2_t new_top = {2'b00, lengthfull} + new_base;
+        mwe_t new_top_bits = new_top >> (CAP_ADDR_WIDTH + 2 - CAP_M_WIDTH - exp);
+
+        // check if significant bits are lost from the bits used to store the
+        // internal exponent...
+        ////////////////////////////////////////////////////////////////////////
+        // first, prepare masks
+        addrwe2_t lmask = {1'b0, ~(65'b0)} >> exp; // all bits bellow (including) len msb
+        // with len msb shifted just below the mantissa and up 3 (internal exp)
+        addrwe2_t lmask_lo = lmask >> (CAP_M_WIDTH - 1 - 3); // -1 drops the 0 in 14th bit of the length slice, -3 drops the exp bits
+        // check for significant bits in the len, top and base
+        bool_t lost_sig_len = (({2'b00, lengthfull} & lmask_lo != 0)) && int_exp;
+        bool_t lost_sig_top = ((new_top & lmask_lo) != 0) && int_exp;
+        bool_t lost_sig_base = ((new_base & lmask_lo) != 0) && int_exp;
+
+        // prepare values associated with rounded up exponent in case
+        // necessary (due to updated length's msb being pushed up by one from
+        // potential overflow)
+        ////////////////////////////////////////////////////////////////////////
+        mw_t new_top_bits_ovflw = new_top_bits >> 1;
+        addrwe2_t lmask_lo_ovflw = lmask >> (CAP_M_WIDTH - 1 - 3 - 1); // -1 drops the 0 in 14th bit of the length slice, -3 drops the exp bits
+        bool_t lost_sig_top_ovflw = ((new_top & lmask_lo_ovflw) != 0) && int_exp;
+        bool_t lost_sig_base_ovflw = ((new_base & lmask_lo_ovflw) != 0) && int_exp;
+
+        // determine whether the exponent needs rounding up
+        ////////////////////////////////////////////////////////////////////////
+        addrwe2_t mw_lsb_mask = lmask_lo ^ lmask_lo_ovflw;
+        bool_t len_carry_in = (mw_lsb_mask & new_top) != ((mw_lsb_mask & new_base) ^ (mw_lsb_mask & {2'b00, lengthfull}));
+        bool_t len_round_up = lost_sig_top;
+        bool_t len_max = ({2'b00, lengthfull} & ~lmask_lo) == (lmask ^ lmask_lo);
+        bool_t len_max_less_1 = ({2'b00, lengthfull} & ~lmask_lo) == (lmask ^ lmask_lo_ovflw);
+
+        bool_t len_ovflw = (len_max && (len_carry_in || len_round_up)) ? 1'b1
+                         : (len_max_less_1 && len_carry_in && len_round_up) ? 1'b1
+                         : 1'b0;
+
+        // derive final exp, top and base values based on presence of overflow
+        ////////////////////////////////////////////////////////////////////////
+        ew_t final_exp = (len_ovflw && int_exp) ? exp - 1 : exp;
+        mw_t final_top_bits =
+          bot3z( int_exp
+               , (len_ovflw && int_exp) ? add_b1000(lost_sig_top_ovflw, new_top_bits_ovflw)
+                                        : add_b1000(lost_sig_top, new_top_bits)
+               );
+        mw_t final_base_bits =
+          bot3z( int_exp
+               , (len_ovflw && int_exp) ? (new_base_bits >> 1) : new_base_bits
+               );
+
+        bool_t exact = !(lost_sig_base || lost_sig_top);
+        cap_fmt_t fmt = (int_exp) ? EMBEDDED_EXP : IMPLIED_EXP;
+
+        // derive new length value and base mask
+        ////////////////////////////////////////////////////////////////////////
+        addrwe2_t length_lsb_set = (lmask ^ (lmask >> 1)) >> (CAP_M_WIDTH - 2 - 3);
+        addrwe2_t rounded_length = {2'b00, lengthfull} + length_lsb_set;
+        addrwe2_t final_length =
+          (int_exp) ? ( (lost_sig_len) ? (rounded_length & (~lmask_lo))
+                                       : ({2'b00, lengthfull} & (~lmask_lo)) )
+                    : {2'b00, lengthfull};
+        addrwe2_t base_mask =
+          (int_exp) ? ( (len_max && lost_sig_top) ? ~lmask_lo_ovflw
+                                                  : ~lmask_lo )
+                    : ~0;
+
+        // fold in return values and return
+        ////////////////////////////////////////////////////////////////////////
+        ret.cap.EF = fmt;
+        ret.cap.bounds.exp = final_exp;
+        ret.cap.bounds.top_bits = final_top_bits;
+        ret.cap.bounds.base_bits = final_base_bits;
+        ret.cap.addr_mid = final_base_bits;
+        ret.exact = exact;
+        ret.length = final_length;
+        ret.mask = base_mask;
+        // dbg:
+        //ret.cap.addr = lmask;
         return ret;
+
     endfunction
 
     /**
-     * @brief Function to set the capability object type to a arbitrary value.
-     * @param cap capability in register format.
-     * @param otype target object type for the capability.
-     * @returns the input capability cap with otype field equal to the input otype.
-     */
+      * @brief Function to set the capability object type to a arbitrary value.
+      * @param cap capability in register format.
+      * @param otype target object type for the capability.
+      * @returns the input capability cap with otype field equal to the input otype.
+      */
     function automatic cap_reg_t set_cap_reg_otype (cap_reg_t cap, otypew_t otype);
         cap_reg_t ret = cap;
         ret.otype = otype;
@@ -895,51 +890,51 @@ package cva6_cheri_pkg;
     endfunction
 
     /**
-     * Capability formats conversion functions
-     */
-
-    /**
-     * @brief Function to compute the capability offset address.
-     * @param cap capability in register format.
-     * @param dec_bounds decounds bounds meta data.
-     * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
-     */
+      * @brief Function to compute the capability offset address.
+      * @param cap capability in register format.
+      * @param dec_bounds decounds bounds meta data.
+      * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
+      */
     function automatic capw_t cap_reg_to_cap_mem (cap_reg_t cap);
         cap_mem_t cap_mem = '{
             tag:       cap.tag,
             uperms:    cap.uperms,
             hperms:    cap.hperms,
-            res:       cap.res,
+            //CL:        cap.CL,
+            res_hi:    cap.res_hi,
+            res_lo:    cap.res_lo,
             flags:     cap.flags,
             otype:     cap.otype,
-            int_e:     cap.int_e,
-            bounds:    encode_bounds(cap.bounds, cap.int_e),
+            EF:        cap.EF,
+            bounds:    encode_bounds(cap.bounds, cap.EF),
             addr:      cap.addr
         };
         return capw_t'(cap_mem);
     endfunction
 
     /**
-     * @brief Function to compute the capability offset address.
-     * @param cap capability in register format.
-     * @param dec_bounds decounds bounds meta data.
-     * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
-     */
+      * @brief Function to compute the capability offset address.
+      * @param cap capability in register format.
+      * @param dec_bounds decounds bounds meta data.
+      * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
+      */
     function automatic cap_reg_t cap_mem_to_cap_reg (cap_mem_t cap);
         cap_reg_t ret;
-        cap_bounds_t bounds = decode_bounds(cap.bounds, cap.int_e);
-        ew_t exp = /*(bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP :*/ bounds.exp;
+        cap_bounds_t bounds = decode_bounds(cap.bounds, cap.EF);
+        ew_t exp = (bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : bounds.exp;
         ret = '{
             tag:       cap.tag,
             uperms:    cap.uperms,
             hperms:    cap.hperms,
+            //CL:        cap.CL,
             flags:     cap.flags,
-            res:       cap.res,
+            res_hi:    cap.res_hi,
+            res_lo:    cap.res_lo,
             otype:     cap.otype,
-            int_e:     cap.int_e,
+            EF:        cap.EF,
             bounds:    bounds,
             addr:      cap.addr,
-            addr_mid:  cap.addr >> exp
+            addr_mid:  cap.addr >> (CAP_MAX_EXP - exp)
         };
         return ret;
     endfunction
@@ -958,10 +953,10 @@ package cva6_cheri_pkg;
       */
 
     /**
-     * @brief Function that creates a mask from the msb set to 1 till 0
-     * @param x value to extract mask from.
-     * @returns a mask with all 1 from the msb bit set to 1 till 0.
-     */
+      * @brief Function that creates a mask from the msb set to 1 till 0
+      * @param x value to extract mask from.
+      * @returns a mask with all 1 from the msb bit set to 1 till 0.
+      */
     function automatic addrwe2_t smearMSBRight(addrwe2_t x);
         addrwe2_t res = x;
         for (int i = 0; i < $clog2(CAP_ADDR_WIDTH + 2)-1; i = i + 1)
@@ -970,51 +965,48 @@ package cva6_cheri_pkg;
     endfunction
 
     /**
-     * @brief Function counts the number of 0 from [64:13]
-     * @param val value to extract count the zerios.
-     * @returns the number of zeros from [64:13].
-     */
+      * @brief Function counts the number of 0 from [64:13]
+      * @param val value to extract count the zerios.
+      * @returns the number of zeros from [64:13].
+      */
     function automatic ew_t count_zeros_msb(addrmwm2_t val);
         ew_t res = 0;
         for (int i = CAP_ADDR_WIDTH - (CAP_M_WIDTH-1); i >=0; i = i - 1) begin
-            if(!val[i]) res = res + 1;
+            if (!val[i]) res = res + 1;
             else return res;
         end
         return res;
     endfunction
 
     /**
-     * @brief Function to decode from compressed bounds to decoded bounds
-     * @param cbounds compressed bounds in memory.
-     * @param format  bounds format
-     * @returns the decoded bounds.
-     */
+      * @brief Function to decode from compressed bounds to decoded bounds
+      * @param cbounds compressed bounds in memory.
+      * @param format  bounds format
+      * @returns the decoded bounds.
+      */
     function automatic cap_bounds_t decode_bounds (cap_cbounds_t cbounds, cap_fmt_t format);
         cap_bounds_t cap_bounds  = DEFAULT_BOUNDS_CAP;
         logic [1:0] l_carry_out  = 2'b00;
         logic [1:0] l_msb        = 2'b00;
         logic [1:0] dec_top_bits = 2'b00;
 
-        case(format)
+        case (format)
             EMBEDDED_EXP: begin
-                cap_bounds.exp          = {cbounds.exp_fmt.exp_top_bits, cbounds.exp_fmt.exp_base_bits};
-                /* if (cap_bounds.exp > CAP_RESET_EXP)
-                    cap_bounds.exp = CAP_RESET_EXP; */
-                cap_bounds.top_bits     = {2'b00, cbounds.exp_fmt.top_bits, 3'b000};
-                cap_bounds.base_bits    = {cbounds.exp_fmt.base_bits, 3'b000};
+                cap_bounds.exp          = {cbounds.emb_exp_fmt.exp_top_bits, cbounds.emb_exp_fmt.exp_base_bits};
+                cap_bounds.top_bits     = {2'b00, cbounds.emb_exp_fmt.top_bits, 3'b000};
+                cap_bounds.base_bits    = {cbounds.emb_exp_fmt.base_bits, 3'b000};
             end
-            EXP0: begin
-                cap_bounds.exp          = '{default: 0};
-                cap_bounds.top_bits     = {2'b00, cbounds.exp0_fmt.top[11:0]};
-                cap_bounds.base_bits    = cbounds.exp0_fmt.base;
+            IMPLIED_EXP: begin
+                cap_bounds.exp          = CAP_MAX_EXP;
+                cap_bounds.top_bits     = {2'b00, cbounds.impl_exp_fmt.top[11:0]};
+                cap_bounds.base_bits    = cbounds.impl_exp_fmt.base;
             end
             default:;
         endcase
 
-        l_carry_out = (cap_bounds.top_bits[11:0] < cap_bounds.base_bits[11:0]) ?
-                                                                         2'b01 :
-                                                                         2'b00;
-        l_msb = (format == EXP0) ? 2'b00 : 2'b01;
+        l_carry_out = (cap_bounds.top_bits[11:0] < cap_bounds.base_bits[11:0]) ? 2'b01
+                                                                               : 2'b00;
+        l_msb = (format == IMPLIED_EXP) ? 2'b00 : 2'b01;
         dec_top_bits = cap_bounds.base_bits[13:12] + l_carry_out + l_msb;
 
         cap_bounds.top_bits = {dec_top_bits, cap_bounds.top_bits[11:0]};
@@ -1022,11 +1014,11 @@ package cva6_cheri_pkg;
     endfunction
 
     /**
-     * @brief Function to encode from decoded bounds to compressed bounds
-     * @param bounds decoded bounds in register capability.
-     * @param format bounds format
-     * @returns the compressed bounds encoded format.
-     */
+      * @brief Function to encode from decoded bounds to compressed bounds
+      * @param bounds decoded bounds in register capability.
+      * @param format bounds format
+      * @returns the compressed bounds encoded format.
+      */
     function automatic cap_cbounds_t encode_bounds (cap_bounds_t bounds, cap_fmt_t format);
         cap_cbounds_t cap_cbounds = DEFAULT_CBOUNDS_CAP;
         hew_t exp_msb  = bounds.exp[CAP_E_WIDTH - 1:CAP_E_HALF_WIDTH];
@@ -1039,8 +1031,8 @@ package cva6_cheri_pkg;
             exp_lsb = 3'b100;
         end */
 
-        case(format)
-            EXP0: begin
+        case (format)
+            IMPLIED_EXP: begin
                 cap_cbounds.cbounds.top_bits  = bounds.top_bits[CAP_M_WIDTH-3:0];
                 cap_cbounds.cbounds.base_bits = bounds.base_bits;
             end
