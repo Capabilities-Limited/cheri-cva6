@@ -749,7 +749,7 @@ module load_store_unit
                 cheri_exception.valid     = 1'b1;
             end
 
-            if (!check_cap.hperms.permit_load_cap && (lsu_ctrl.fu == LOAD) && lsu_ctrl.operation inside{ariane_pkg::CLOAD_TAGS}) begin
+            if (!(check_cap.hperms.permit_load && check_cap.hperms.permit_cap) && (lsu_ctrl.fu == LOAD) && lsu_ctrl.operation inside{ariane_pkg::CLOAD_TAGS}) begin
                 cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_LD_CAP_VIOLATION;
                 cheri_exception.valid     = 1'b1;
             end
@@ -759,12 +759,15 @@ module load_store_unit
                 cheri_exception.valid     = 1'b1;
             end
 
+            // XXX TODO(pdr32) Removed while levels are not supported. Add back in for newer version of zcheri spec
+            /*
             if (!check_cap.hperms.permit_store_local_cap && !operand_b.hperms.gbl && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
                 cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_ST_CAP_LOCAL_VIOLATION;
                 cheri_exception.valid     = 1'b1;
             end
+            */
 
-            if (!check_cap.hperms.permit_store_cap && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
+            if (!(check_cap.hperms.permit_store && check_cap.hperms.permit_cap) && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
                 cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_ST_CAP_VIOLATION;
                 cheri_exception.valid     = 1'b1;
             end
@@ -795,7 +798,7 @@ module load_store_unit
   lsu_ctrl_t lsu_req_i;
   logic ld_clr_tag;
   if (CVA6Cfg.CheriPresent)
-    assign ld_clr_tag = (!check_cap.hperms.permit_load_cap && (((lsu_ctrl.fu == LOAD) && (lsu_ctrl.operation inside{ariane_pkg::LC})) || ((lsu_ctrl.fu == STORE) && lsu_ctrl.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC})));
+    assign ld_clr_tag = (!(check_cap.hperms.permit_load && check_cap.hperms.permit_cap) && (((lsu_ctrl.fu == LOAD) && (lsu_ctrl.operation inside{ariane_pkg::LC})) || ((lsu_ctrl.fu == STORE) && lsu_ctrl.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC})));
   else
     assign ld_clr_tag = 1'b0;
 

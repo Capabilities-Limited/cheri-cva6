@@ -92,8 +92,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     // -----------
     // CHERI ALU main logic circuit
     // -----------
-    capw_t cap_mem, cap_mem_dec_bits;
-    cap_mem_t cap_mem_dec;
+    capw_t cap_mem;
     cap_mem_t cap_mem_null;
     cap_reg_t tmp_cap, req_cap;
     addrwe_t tmp_length;
@@ -129,9 +128,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         // Auxiliar signals
         tmp_cap                    = REG_NULL_CAP;
         cap_mem                    = '0;
-        cap_mem_dec                = '0;
         cap_mem_null               = MEM_NULL_CAP;
-        cap_mem_dec                = '0;
         tmp_length                 = '0;
 
         unique case (fu_data_i.operation)
@@ -180,8 +177,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
 
                 if( tmp_cap.tag == 1'b1                              &&
                     tmp_cap.addr == req_cap.addr                     &&
-                    tmp_cap.res == req_cap.res                       &&
-                    tmp_cap.int_e == req_cap.int_e                   &&
+                    tmp_cap.res_hi == req_cap.res_hi                 &&
+                    tmp_cap.res_lo == req_cap.res_lo                 &&
+                    tmp_cap.EF == req_cap.EF                         &&
                     tmp_cap.otype == req_cap.otype                   &&
                     tmp_cap.bounds == req_cap.bounds                 &&
                     tmp_cap.hperms == req_cap.hperms                 &&
@@ -190,7 +188,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                     !operand_b_violations[CAP_LENGTH_VIOLATION]       &&
                     !operand_b_violations[CAP_USER_DEF_PERM_VIOLATION]) begin
                     clu_result = tmp_cap;
-                    clu_result.res = operand_b.res;
+                    clu_result.res_hi = operand_b.res_hi;
+                    clu_result.res_lo = operand_b.res_lo;
                     clu_result.tag = 1'b1;
                 end else begin
                     clu_result = req_cap;
@@ -278,10 +277,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CGetHigh
             ariane_pkg::GCHI: begin
                 cap_mem = cap_reg_to_cap_mem(operand_a);
-                cap_mem_dec_bits = cap_mem;
-                cap_mem_dec = cap_mem;
-                cap_mem_null = MEM_NULL_CAP;
-                cap_mem = cap_mem ^ MEM_NULL_CAP;
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, cap_mem[((CVA6Cfg.XLEN * 2) - 1):CVA6Cfg.XLEN]);
             end
             // CGetPerm
@@ -451,32 +446,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 end
                 set_cap_reg_addr(clu_result, clu_result.addr);
             end
-            // CToPtr
-            // TODO-cheri ninolomata: use ALU to compute address
-            ariane_pkg::CTO_PTR: begin
-                check_operand_a_violations = (1 << CAP_TAG_VIOLATION);
-                if(operand_a_violations[CAP_TAG_VIOLATION]) begin
-                    clu_result.addr = {{CVA6Cfg.XLEN{1'b0}}};
-                end else begin
-                    clu_result.addr = operand_a_address - operand_b_base;
-                end
-            end
-            // CUnseal
-            ariane_pkg::CUNSEAL: begin
-                check_operand_a_violations = (1 << CAP_TAG_VIOLATION)   |
-                                             (1 << CAP_SEAL_VIOLATION)  |
-                                             (1 << CAP_TYPE_VIOLATION);
-
-                check_operand_b_violations = (1 << CAP_TAG_VIOLATION)   |
-                                             (1 << CAP_SEAL_VIOLATION)  |
-                                             (1 << CAP_TYPE_VIOLATION)  |
-                                             (1 << CAP_PERM_UNSEAL)     |
-                                             (1 << CAP_LENGTH_VIOLATION);
-                tmp_cap = operand_a;
-                tmp_cap.hperms.gbl = tmp_cap.hperms.gbl & operand_b.hperms.gbl;
-                tmp_cap.otype = UNSEALED_CAP;
-                clu_result = tmp_cap;
-            end
             default: ; // default case to suppress unique warning
         endcase
 
@@ -587,40 +556,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end */
         end
 
-        if ((fu_data_i.operation inside {ariane_pkg::CCSEAL,ariane_pkg::CSEAL})) begin
-            if (operand_b_address > OTYPE_MAX) begin
-                operand_b_violations[CAP_TYPE_VIOLATION] = 1'b1;
-            end
-
-            if (!operand_b.hperms.permit_seal) begin
-                operand_b_violations[CAP_PERM_SEAL] = 1'b1;
-            end
-        end
-
-        if ((fu_data_i.operation inside {ariane_pkg::CCSEAL,ariane_pkg::CSEAL,ariane_pkg::CUNSEAL})) begin
-            if (operand_b_address < operand_b_base) begin
-                operand_b_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-
-            if (operand_b_address >= operand_b_top) begin
-                operand_b_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-        end
-
-        if (fu_data_i.operation inside {ariane_pkg::CCOPY_TYPE}) begin
-            if (operand_b.otype < operand_a_base) begin
-                operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-
-            if (operand_b.otype >= operand_a_top) begin
-                operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-
-            if (is_operand_b_rev_otype) begin
-                operand_b_violations[CAP_TYPE_VIOLATION] = 1'b1;
-            end
-        end
-
         if ((fu_data_i.operation inside {ariane_pkg::CSET_BOUNDS,ariane_pkg::CSET_BOUNDS_EXACT,ariane_pkg::CSET_BOUNDS_IMM})) begin
             if (operand_a_address < operand_a_base) begin
                 operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
@@ -628,67 +563,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
 
             if ((set_bounds_top) > operand_a_top) begin
                 operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-        end
-
-        if ((fu_data_i.operation inside {ariane_pkg::CUNSEAL})) begin
-            if (is_operand_a_rev_otype) begin
-                operand_a_violations[CAP_TYPE_VIOLATION] = 1'b1;
-            end
-
-            if (operand_b_address != $unsigned(operand_a.otype)) begin
-                operand_b_violations[CAP_TYPE_VIOLATION] = 1'b1;
-            end
-            if (!operand_b.hperms.permit_unseal) begin
-                operand_b_violations[CAP_PERM_UNSEAL] = 1'b1;
-            end
-
-            if (!operand_a_is_sealed) begin
-                operand_a_violations[CAP_SEAL_VIOLATION] = 1'b1;
-            end else begin
-                operand_a_violations[CAP_SEAL_VIOLATION] = 1'b0;
-            end
-        end
-
-        if ((fu_data_i.operation inside {ariane_pkg::CINVOKE})) begin
-            if (operand_a.otype != operand_b.otype) begin
-                operand_a_violations[CAP_TYPE_VIOLATION] = 1'b1;
-            end
-
-            if((operand_a_address < operand_a_base) || ((operand_a_address + {{riscv::VLEN-2{1'b0}}, 2'h2}) > operand_a_top)) begin
-                operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-
-            if ((operand_a_base[0] != 1'b0)) begin
-                operand_a_violations[CAP_UNLIGNED_BASE] = 1'b1;
-            end
-
-            if (is_operand_a_rev_otype) begin
-                operand_a_violations[CAP_SEAL_VIOLATION] = 1'b1;
-            end else begin
-                operand_a_violations[CAP_SEAL_VIOLATION] = 1'b0;
-            end
-
-            if (is_operand_b_rev_otype) begin
-                operand_b_violations[CAP_SEAL_VIOLATION] = 1'b1;
-            end else begin
-                operand_b_violations[CAP_SEAL_VIOLATION] = 1'b0;
-            end
-
-            if (!operand_a.hperms.permit_cinvoke) begin
-                operand_a_violations[CAP_PERM_CINVOKE] = 1'b1;
-            end
-
-            if (!operand_b.hperms.permit_cinvoke) begin
-                operand_b_violations[CAP_PERM_CINVOKE] = 1'b1;
-            end
-
-            if (!operand_a.hperms.permit_execute) begin
-                operand_a_violations[CAP_PERM_EXEC_VIOLATION] = 1'b1;
-            end
-
-            if (operand_b.hperms.permit_execute) begin
-                operand_b_violations[CAP_PERM_EXEC_VIOLATION] = 1'b1;
             end
         end
     end
