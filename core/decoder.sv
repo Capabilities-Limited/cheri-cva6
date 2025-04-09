@@ -853,7 +853,6 @@ module decoder
               endcase
             end
             if (CVA6Cfg.CheriPresent) begin
-              instruction_o.fu  = CLU;
               //instruction_o.rs1[4:0]  = instr.rtype.rs1;
               //instruction_o.rs2[4:0]  = instr.rtype.rs2;
               //instruction_o.rd[4:0]  = instr.rtype.rd;
@@ -878,6 +877,7 @@ module decoder
                   illegal_instr_cheri = 1'b1;
                 end
               endcase
+              if (!illegal_instr_cheri) instruction_o.fu  = CLU;
             end 
             //VCS coverage on
             unique case ({
