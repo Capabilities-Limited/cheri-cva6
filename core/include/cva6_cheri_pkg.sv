@@ -604,13 +604,12 @@ package cva6_cheri_pkg;
       */
     function automatic cap_reg_t set_cap_reg_address(cap_reg_t cap, addrw_t address, cap_meta_data_t cap_meta_data);
         cap_reg_t ret = cap;
-        ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp; // 0
-        mw_t addr_mid = $unsigned(address >> (CAP_MAX_EXP - exp)); // address >> 52, 0000
-        // compute new
-        logic newAddrHi  = addr_mid < cap_meta_data.r; // 0000 < 2000 = True
-        // __ = 2'b01 - 2'b01 << 52
-        addrwe2_t deltaAddrHi = $signed({{1'b0,newAddrHi} - {1'b0,cap_meta_data.addr_hi_r},'b0}) >> cap.bounds.exp;
+        ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
+        mw_t addr_mid = $unsigned(address >> (CAP_MAX_EXP - exp));
+        // compute "is new address in high portion of the representable region"
+        logic newAddrHi  = addr_mid < cap_meta_data.r;
         // Calculate the actual difference between the upper bits of the new address and the original address.
+        addrwe2_t deltaAddrHi = $signed({{1'b0,newAddrHi} - {1'b0,cap_meta_data.addr_hi_r},'b0}) >> cap.bounds.exp;
         addrwe2_t mask = ~{-1 >> exp};
         addrwe2_t deltaAddrUpper = ({2'b0,address} & mask) - ({2'b0,cap.addr} & mask);
         logic is_rep = deltaAddrHi == deltaAddrUpper;
