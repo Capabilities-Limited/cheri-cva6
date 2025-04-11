@@ -1104,25 +1104,43 @@ module decoder
               unique case ({
                 instr.rtype.funct7, instr.rtype.funct3
               })
+                //CADDI                    CADDI=010 OP-IMM-32=0011011
+                //SCBNDSI SCBNDSI=000001 SCBNDSI=101 OP-IMM=0010011
+
+                //CADD       CADD=0000110    CADD=000
+                //CMV        CADD=0000110    CADD=000 (rs2=0)
+                //SCADDR   SCADDR=0000110  SCADDR=001
+                //ACPERM   ACPERM=0000110  ACPERM=010
+                //SCHI       SCHI=0000110    SCHI=011
+                //CBLD       CBLD=0000110    CBLD=101
+                //SCBNDS   SCBNDS=0000111  SCBNDS=000
+                //SCBNDSR SCBNDSR=0000111 SCBNDSR=001
                 {7'b000_0110, 3'b000} : begin
                   case(instr.rtype.rs2)
                     // ------------------------------------
                     // Pointer-Arithmetic Instructions
                     // ------------------------------------
-                    5'b00000:   instruction_o.op = ariane_pkg::CMV;
+                    5'b00000: instruction_o.op = ariane_pkg::CMV;
                     default: begin
-                      illegal_instr_cheri = 1'b1;
+                      instruction_o.op = ariane_pkg::CADD;
                     end
                   endcase
                 end
+                {7'b000_0110, 3'b001} : instruction_o.op = ariane_pkg::SCADDR;
+                {7'b000_0110, 3'b010} : instruction_o.op = ariane_pkg::ACPERM;
+                {7'b000_0110, 3'b011} : instruction_o.op = ariane_pkg::SCHI;
+                {7'b000_0110, 3'b101} : instruction_o.op = ariane_pkg::CBLD;
+                {7'b000_0111, 3'b000} : instruction_o.op = ariane_pkg::SCBNDS;
+                {7'b000_0111, 3'b001} : instruction_o.op = ariane_pkg::SCBNDSR;
                 //GCTAG   GCTAG=0001000  GCTAG=00000  GCTAG=000
                 //GCPERM GCPERM=0001000 GCPERM=00001 GCPERM=000
                 //GCTYPE GCTYPE=0001000 GCTYPE=00010 GCTYPE=000
+                //GCMODE GCMODE=0001000 GCMODE=00011 GCMODE=000
                 //GCBASE GCBASE=0001000 GCBASE=00101 GCBASE=000
                 //GCLEN   GCLEN=0001000  GCLEN=00110  GCLEN=000
                 //GCHI     GCHI=0001000   GCHI=00100   GCHI=000
                 //CRAM     CRAM=0001000   CRAM=00111   CRAM=000
-                //GCMODE GCMODE=0001000 GCMODE=00011 GCMODE=000
+                //SENTRY SENTRY=0001000 SENTRY=01000 SENTRY=000
                 {7'b000_1000, 3'b000} : begin
                   case(instr.rtype.rs2)
                     // ----------------------------------
@@ -2105,17 +2123,17 @@ module decoder
                                 // ------------------------------------
                                 7'b000_1011:  instruction_o.op = ariane_pkg::CSEAL;
                                 7'b000_1100:  instruction_o.op = ariane_pkg::CUNSEAL;
-                                7'b000_1101:  instruction_o.op = ariane_pkg::CAND_PERM;
+                                7'b000_1101:  instruction_o.op = ariane_pkg::ACPERM;
                                 7'b000_1110:  instruction_o.op = ariane_pkg::SCMODE;
                                 7'b000_1111:  instruction_o.op = ariane_pkg::CSET_OFFSET;
-                                7'b001_0000:  instruction_o.op = ariane_pkg::CSET_ADDR;
-                                7'b001_0001:  instruction_o.op = ariane_pkg::CINC_OFFSET;
-                                7'b001_0110:  instruction_o.op = ariane_pkg::CSET_HIGH;
-                                7'b000_1000:  instruction_o.op = ariane_pkg::CSET_BOUNDS;
-                                7'b000_1001:  instruction_o.op = ariane_pkg::CSET_BOUNDS_EXACT;
+                                7'b001_0000:  instruction_o.op = ariane_pkg::SCADDR;
+                                7'b001_0001:  instruction_o.op = ariane_pkg::CADD;
+                                7'b001_0110:  instruction_o.op = ariane_pkg::SCHI;
+                                7'b000_1000:  instruction_o.op = ariane_pkg::SCBNDSR;
+                                7'b000_1001:  instruction_o.op = ariane_pkg::SCBNDS;
                                 7'b001_1101:  begin
                                     instruction_o.use_ddc  = (instr.rtype.rs1 == 0) ? 1'b1 : 1'b0;
-                                    instruction_o.op = ariane_pkg::CBUILD_CAP;
+                                    instruction_o.op = ariane_pkg::CBLD;
                                 end
                                 7'b001_1110:  instruction_o.op = ariane_pkg::CCOPY_TYPE;
                                 7'b001_1111:  instruction_o.op = ariane_pkg::CCSEAL;
