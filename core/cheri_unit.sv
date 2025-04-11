@@ -246,7 +246,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CIncOffset and CIncOffsetImm
             // TODO-cheri(ninolomata): use ALU to calculate address
-            ariane_pkg::CADD,ariane_pkg::CINC_OFFSET_IMM: begin
+            ariane_pkg::CADD,ariane_pkg::CADDI: begin
                 check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
                 offset = operand_b_address;
                 op_set_offset = operand_a;
@@ -281,7 +281,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CRepresentableAlignmentMask and CRepresentableLength
             ariane_pkg::SCBNDSR,
             ariane_pkg::SCBNDS,
-            ariane_pkg::CSET_BOUNDS_IMM,
+            ariane_pkg::SCBNDSI,
             ariane_pkg::CRND_REPRESENTABLE_LEN,
             ariane_pkg::CRAM: begin
                 if (fu_data_i.operation inside {ariane_pkg::CRND_REPRESENTABLE_LEN,ariane_pkg::CRAM}) begin
@@ -290,7 +290,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                    set_bounds_top = set_bounds_len;
                 end else begin
                     set_bounds_base = operand_a_address;
-                    set_bounds_len =  ((fu_data_i.operation == ariane_pkg::CSET_BOUNDS_IMM) ? fu_data_i.imm : $unsigned(operand_b_address));
+                    set_bounds_len =  ((fu_data_i.operation == ariane_pkg::SCBNDSI) ? fu_data_i.imm : $unsigned(operand_b_address));
                     set_bounds_top = {1'b0,set_bounds_base} + set_bounds_len;
                     check_operand_a_violations = (1 << CAP_TAG_VIOLATION)   |
                                                  (1 << CAP_LENGTH_VIOLATION)|
@@ -470,7 +470,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end */
         end
 
-        if ((fu_data_i.operation inside {ariane_pkg::SCBNDSR,ariane_pkg::SCBNDS,ariane_pkg::CSET_BOUNDS_IMM})) begin
+        if ((fu_data_i.operation inside {ariane_pkg::SCBNDSR,ariane_pkg::SCBNDS,ariane_pkg::SCBNDSI})) begin
             if (operand_a_address < operand_a_base) begin
                 operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
             end
