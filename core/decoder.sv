@@ -148,7 +148,7 @@ module decoder
     JIMM,
     RS3,
     MUX_RD_RS3,
-    EXTZ
+    SCIMM
   } imm_select;
 
   logic [CVA6Cfg.XLEN-1:0] imm_i_type;
@@ -156,6 +156,7 @@ module decoder
   logic [CVA6Cfg.XLEN-1:0] imm_sb_type;
   logic [CVA6Cfg.XLEN-1:0] imm_u_type;
   logic [CVA6Cfg.XLEN-1:0] imm_uj_type;
+  logic [CVA6Cfg.XLEN-1:0] imm_si_type;
 
   // ---------------------------------------
   // Accelerator instructions' first-pass decoder
@@ -1104,9 +1105,6 @@ module decoder
               unique case ({
                 instr.rtype.funct7, instr.rtype.funct3
               })
-                //CADDI                    CADDI=010 OP-IMM-32=0011011
-                //SCBNDSI SCBNDSI=000001 SCBNDSI=101 OP-IMM=0010011
-
                 //CADD       CADD=0000110    CADD=000
                 //CMV        CADD=0000110    CADD=000 (rs2=0)
                 //SCADDR   SCADDR=0000110  SCADDR=001
@@ -1354,10 +1352,22 @@ module decoder
               end
               default: illegal_instr_bm = 1'b1;
             endcase
-            illegal_instr = illegal_instr_non_bm & illegal_instr_bm;
-          end else begin
-            illegal_instr = illegal_instr_non_bm;
           end
+          if (CVA6Cfg.CheriPresent) begin
+            //SCBNDSI SCBNDSI=000001 SCBNDSI=101 OP-IMM=0010011
+            unique case (instr.itype.funct3)
+              3'b101: begin
+                if (instr.instr[31:26] == 6'b000_001) begin
+                  instruction_o.op = ariane_pkg::SCBNDSI;  // Set Bounds Immediate
+                  imm_select = SCIMM; // Scaled immediate; special for SCBNDSI
+                  if (instr.instr[25] != 1'b0 && instr.instr[24:20] <= 5'b1) illegal_instr_cheri = 1'b1;
+                end else illegal_instr_cheri = 1'b1;
+              end
+              default: illegal_instr_cheri = 1'b1;
+            endcase
+            if (!illegal_instr_cheri) instruction_o.fu  = CLU;
+          end
+          illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_cheri;
         end
 
         // --------------------------------
@@ -1402,11 +1412,16 @@ module decoder
                 end
                 default: illegal_instr_bm = 1'b1;
               endcase
-              illegal_instr = illegal_instr_non_bm & illegal_instr_bm;
-            end else begin
-              illegal_instr = illegal_instr_non_bm;
             end
-
+            if (CVA6Cfg.CheriPresent) begin
+              //CADDI CADDI=010
+              unique case (instr.itype.funct3)
+                3'b010: instruction_o.op = ariane_pkg::CADDI;
+                default illegal_instr_cheri = 1'b1;
+              endcase
+              if (!illegal_instr_cheri) instruction_o.fu  = CLU;
+            end
+            illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_cheri;
           end else illegal_instr = 1'b1;
         end
         // --------------------------------
@@ -2162,11 +2177,11 @@ module decoder
                         end
                         3'b001: begin
                             imm_select = IIMM;
-                            instruction_o.op = ariane_pkg::CINC_OFFSET_IMM;
+                            instruction_o.op = ariane_pkg::CADDI;
                         end
                         3'b010: begin
-                            imm_select = EXTZ;
-                            instruction_o.op = ariane_pkg::CSET_BOUNDS_IMM;
+                            imm_select = SCIMM;
+                            instruction_o.op = ariane_pkg::SCBNDSI;
                         end
                         default: illegal_instr = 1'b1;
                     endcase
@@ -2239,6 +2254,9 @@ module decoder
         1'b0
       };
     end
+    imm_si_type = (CVA6Cfg.CheriPresent) ?
+      ( instruction_i[25] ? {'b0,instruction_i[24:20],4'b0} : {'b0, instruction_i[24:20]} )
+      :0;
 
     // TODO-cheri: make cheri optional
     instruction_o.result = '{default:0};
@@ -2275,10 +2293,15 @@ module decoder
         instruction_o.result[CVA6Cfg.XLEN-1:0] = {{CVA6Cfg.XLEN - 5{1'b0}}, instr.rtype.rd};
         instruction_o.use_imm = 1'b0;
       end
-      EXTZ: begin
-        // sets zeros to the rest of the bits
-        instruction_o.result[CVA6Cfg.XLEN-1:0] = {{riscv::XLEN-12{1'b0}}, instruction_i[31:20]};
-        instruction_o.use_imm = 1'b1;
+      SCIMM: begin
+        if (CVA6Cfg.CheriPresent) begin
+          // sets zeros to the rest of the bits
+          instruction_o.result[CVA6Cfg.XLEN-1:0] = imm_si_type;
+          instruction_o.use_imm = 1'b1;
+        end else begin
+          instruction_o.result[CVA6Cfg.XLEN-1:0]  = {CVA6Cfg.XLEN{1'b0}};
+          instruction_o.use_imm = 1'b0;
+        end
       end
       default: begin
         instruction_o.result[CVA6Cfg.XLEN-1:0] = {CVA6Cfg.XLEN{1'b0}};
