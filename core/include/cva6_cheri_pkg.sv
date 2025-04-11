@@ -162,18 +162,18 @@ package cva6_cheri_pkg;
     } cap_tval_t;
 
     /**
-      * Capability architectural defined permission bits
+      * Capability encoded architectural permission bits
       */
     //typedef struct packed {
-    //  bool_t SL;
-    //  bool_t EL;
+    //  bool_t SL; // TODO in newer spec
+    //  bool_t EL; // TODO in newer spec
     //  bool_t LM;
     //  bool_t ASR;
     //  bool_t X;
     //  bool_t R;
     //  bool_t W;
     //  bool_t C;
-    //  bool_t CL;
+    //  bool_t CL; // TODO in newer spec
     //} cap_hperms_t;
     typedef struct packed {
         // Allow loading writeable capabilites through unwriteable ones.
@@ -199,6 +199,24 @@ package cva6_cheri_pkg;
         /// Permit capability memory operations (respecting permit_load/store)
         bool_t permit_cap;
     } cap_hperms_t;
+    /**
+      * Capability reported architectural permission bits
+      */
+    typedef struct packed {
+        logic [3:0]                     reserved_hi;
+        bool_t                          permit_load;
+        bool_t                          permit_execute;
+        bool_t                          access_sys_regs;
+        logic [10-CAP_UPERMS_WIDTH-1:0] reserved_lo;
+        upermsw_t                       uperms;
+        bool_t                          permit_cap;
+        bool_t                          capability_level; // TODO in newer spec
+        bool_t                          store_level;      // TODO in newer spec
+        bool_t                          elevate_level;    // TODO in newer spec
+        bool_t                          permit_load_mutable;
+        bool_t                          permit_store;
+    } cap_report_perms_t;
+
     /* Capability flags definition */
     typedef struct packed {
         /**
@@ -932,6 +950,47 @@ package cva6_cheri_pkg;
         return cap;
     endfunction
 
+    /**
+      * @brief Function to convert from encoded hperms and uperms field to format for reporting with gcperm.
+      * @param hardware permissions in encoded format.
+      * @param user/software permissions.
+      * @returns permissions in the report format for gcperms.
+      */
+    function automatic cap_report_perms_t hperms_and_uperms_to_report_perms (cap_hperms_t hp_raw, upermsw_t up);
+        cap_hperms_t hp = legalize_arch_perms(hp_raw);
+        cap_report_perms_t rp = '{
+            reserved_hi          : 0,//Newer spec:'1,
+            permit_load          : hp.permit_load,
+            permit_execute       : hp.permit_execute,
+            access_sys_regs      : hp.access_sys_regs,
+            reserved_lo          : 0,//Newer spec:'1,
+            uperms               : up,
+            permit_cap           : hp.permit_cap,
+            capability_level     : 0,//Newer spec: 1, or hp.capability_level,
+            store_level          : 0,//Newer spec: 1, or hp.store_level,
+            elevate_level        : 0,//Newer spec: 1, or hp.elevate_level,
+            permit_load_mutable  : hp.permit_load_mutable,
+            permit_store         : hp.permit_store
+        };
+        return rp;
+    endfunction
+
+    /**
+      * @brief Function to convert from reported permissions format for andperms to encoded hardware permissions.
+      * @param permissions in the report format for ACPERM.
+      * @returns hardware permissions in encoded format.
+      */
+    function automatic cap_hperms_t report_perms_to_hperms (cap_report_perms_t rp);
+        cap_hperms_t hp = '{
+            permit_load_mutable  : hp.permit_load_mutable,
+            access_sys_regs      : hp.access_sys_regs,
+            permit_execute       : hp.permit_execute,
+            permit_load          : hp.permit_load,
+            permit_store         : hp.permit_store,
+            permit_cap           : rp.permit_cap
+        };
+        return legalize_arch_perms(hp);
+    endfunction
 
     /**
       * Capability Auxiliary functions
