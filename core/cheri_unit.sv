@@ -139,7 +139,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result       = res_set_addr;
             end
             // CAndPerm
-            ariane_pkg::CAND_PERM: begin
+            ariane_pkg::ACPERM: begin
                 check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
                 tmp_cap = operand_a;
                 tmp_cap.uperms = (tmp_cap.uperms & (operand_b_address[CAP_UPERMS_WIDTH+CAP_UPERMS_SHIFT-1:CAP_UPERMS_SHIFT]));
@@ -147,7 +147,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = tmp_cap;
             end
             // CBuildCap
-            ariane_pkg::CBUILD_CAP: begin
+            ariane_pkg::CBLD: begin
                 tmp_cap = operand_a;
                 req_cap = operand_b;
                 req_cap.tag = 1'b1;
@@ -246,13 +246,13 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CIncOffset and CIncOffsetImm
             // TODO-cheri(ninolomata): use ALU to calculate address
-            ariane_pkg::CINC_OFFSET,ariane_pkg::CINC_OFFSET_IMM: begin
+            ariane_pkg::CADD,ariane_pkg::CINC_OFFSET_IMM: begin
                 check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
                 offset = operand_b_address;
                 op_set_offset = operand_a;
                 op_meta_set_offset = op_a_meta_info;
                 set_offset = 1'b0;
-                offset = ((fu_data_i.operation == ariane_pkg::CINC_OFFSET) ? operand_b_address : fu_data_i.imm);
+                offset = ((fu_data_i.operation == ariane_pkg::CADD) ? operand_b_address : fu_data_i.imm);
                 address = operand_a_address + offset;
                 tmp_cap = res_set_offset;
                 clu_result = tmp_cap;
@@ -269,7 +269,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result.otype = SENTRY_CAP;
             end
             // CSetAddr
-            ariane_pkg::CSET_ADDR: begin
+            ariane_pkg::SCADDR: begin
                 en_ex =  1'b0;
                 check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
                 op_set_addr  = operand_a;
@@ -279,8 +279,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CSetBounds, CSetBoundsExact, CSetBoundsImm,
             // CRepresentableAlignmentMask and CRepresentableLength
-            ariane_pkg::CSET_BOUNDS,
-            ariane_pkg::CSET_BOUNDS_EXACT,
+            ariane_pkg::SCBNDSR,
+            ariane_pkg::SCBNDS,
             ariane_pkg::CSET_BOUNDS_IMM,
             ariane_pkg::CRND_REPRESENTABLE_LEN,
             ariane_pkg::CRAM: begin
@@ -304,7 +304,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 else
                     clu_result = res_set_bounds.cap;
 
-                if ((!res_set_bounds.exact && fu_data_i.operation == ariane_pkg::CSET_BOUNDS_EXACT))
+                if ((!res_set_bounds.exact && fu_data_i.operation == ariane_pkg::SCBNDS))
                     clu_result.tag = 1'b0;
             end
             // CSetEqualExact
@@ -319,7 +319,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = tmp_cap;
             end
             // CSetHigh
-            ariane_pkg::CSET_HIGH: begin
+            ariane_pkg::SCHI: begin
                 cap_mem = cap_reg_to_cap_mem(operand_a);
                 cap_mem[((CVA6Cfg.XLEN * 2) - 1):CVA6Cfg.XLEN] = operand_b[XLEN-1:0] ^ MEM_NULL_CAP[((CVA6Cfg.XLEN * 2) - 1):CVA6Cfg.XLEN];
                 //cap_mem = operand_b ^ MEM_NULL_CAP[((CVA6Cfg.XLEN * 2) - 1):CVA6Cfg.XLEN];
@@ -440,7 +440,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             operand_b_violations[CAP_SEAL_VIOLATION] = 1'b1;
         end
 
-        if ((fu_data_i.operation inside {ariane_pkg::CBUILD_CAP})) begin
+        if ((fu_data_i.operation inside {ariane_pkg::CBLD})) begin
             if (operand_b_base < operand_a_base) begin
                 operand_b_violations[CAP_LENGTH_VIOLATION] = 1'b1;
             end
@@ -470,7 +470,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end */
         end
 
-        if ((fu_data_i.operation inside {ariane_pkg::CSET_BOUNDS,ariane_pkg::CSET_BOUNDS_EXACT,ariane_pkg::CSET_BOUNDS_IMM})) begin
+        if ((fu_data_i.operation inside {ariane_pkg::SCBNDSR,ariane_pkg::SCBNDS,ariane_pkg::CSET_BOUNDS_IMM})) begin
             if (operand_a_address < operand_a_base) begin
                 operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
             end
