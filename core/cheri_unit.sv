@@ -214,7 +214,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, (operand_a_top[CVA6Cfg.XLEN]) ? {CVA6Cfg.XLEN{1'b1}} : operand_a_top[CVA6Cfg.XLEN-1:0]);
             end
             // CGetFlags
-            ariane_pkg::CGET_FLAGS: begin
+            ariane_pkg::GCMODE: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a.flags});
             end
             // CGetFlags
@@ -314,7 +314,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}}, (operand_a == operand_b) ? 1'b1 : 1'b0});
             end
             // CSetFlags
-            ariane_pkg::CSET_FLAGS: begin
+            ariane_pkg::SCMODE: begin
                 check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
                 tmp_cap = operand_a;
                 tmp_cap.flags.int_mode = operand_b.addr[0];

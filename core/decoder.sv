@@ -876,6 +876,7 @@ module decoder
                 //GCLEN   GCLEN=0001000  GCLEN=00110  GCLEN=000
                 //GCHI     GCHI=0001000   GCHI=00100   GCHI=000
                 //CRAM     CRAM=0001000   CRAM=00111   CRAM=000
+                //GCMODE GCMODE=0001000 GCMODE=00011 GCMODE=000
                 {7'b000_1000, 3'b000} : begin
                   case(instr.rtype.rs2)
                     // ----------------------------------
@@ -884,6 +885,7 @@ module decoder
                     5'b00000:   instruction_o.op = ariane_pkg::GCTAG;
                     5'b00001:   instruction_o.op = ariane_pkg::GCPERM;
                     5'b00010:   instruction_o.op = ariane_pkg::GCTYPE;
+                    5'b00011:   instruction_o.op = ariane_pkg::GCMODE;
                     5'b00101:   instruction_o.op = ariane_pkg::GCBASE;
                     5'b00110:   instruction_o.op = ariane_pkg::GCLEN;
                     5'b00100:   instruction_o.op = ariane_pkg::GCHI;
@@ -893,10 +895,14 @@ module decoder
                     end
                   endcase
                 end
-                //SCEQ=0000110 SCEQ=100
-                //SCSS=0000110 SCSS=110
+                //  SCEQ=0000110   SCEQ=100
+                //  SCSS=0000110   SCSS=110
+                //SCMODE=0000110 SCMODE=111
                 {7'b000_0110, 3'b100}: instruction_o.op = ariane_pkg::SCEQ;
                 {7'b000_0110, 3'b110}: instruction_o.op = ariane_pkg::SCSS;
+                {7'b000_0110, 3'b111}: instruction_o.op = ariane_pkg::SCMODE;
+                //MODESW.CAP MSW.CAP=0001001 MSW=00000 MSW=00000 MSW=001 MSW=00000
+                //MODESW.INT MSW.INT=0001010 MSW=00000 MSW=00000 MSW=001 MSW=00000
                 default: begin
                   illegal_instr_cheri = 1'b1;
                 end
@@ -1621,7 +1627,7 @@ module decoder
                                         5'b00100:   instruction_o.op = ariane_pkg::GCTAG;
                                         5'b00101:   instruction_o.op = ariane_pkg::CGET_SEALED;
                                         5'b00110:   instruction_o.op = ariane_pkg::CGET_OFFSET;
-                                        5'b00111:   instruction_o.op = ariane_pkg::CGET_FLAGS;
+                                        5'b00111:   instruction_o.op = ariane_pkg::GCMODE;
                                         5'b10111:   instruction_o.op = ariane_pkg::GCHI;
                                         5'b01111:   instruction_o.op = ariane_pkg::CGET_ADDR;
                                         5'b11000:   instruction_o.op = ariane_pkg::CGET_TOP;
@@ -1798,7 +1804,7 @@ module decoder
                                 7'b000_1011:  instruction_o.op = ariane_pkg::CSEAL;
                                 7'b000_1100:  instruction_o.op = ariane_pkg::CUNSEAL;
                                 7'b000_1101:  instruction_o.op = ariane_pkg::CAND_PERM;
-                                7'b000_1110:  instruction_o.op = ariane_pkg::CSET_FLAGS;
+                                7'b000_1110:  instruction_o.op = ariane_pkg::SCMODE;
                                 7'b000_1111:  instruction_o.op = ariane_pkg::CSET_OFFSET;
                                 7'b001_0000:  instruction_o.op = ariane_pkg::CSET_ADDR;
                                 7'b001_0001:  instruction_o.op = ariane_pkg::CINC_OFFSET;
