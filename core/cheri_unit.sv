@@ -233,9 +233,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CGetPerm
             ariane_pkg::GCPERM: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-19{1'b0}},
-                                      operand_a.uperms,
-                                      3'b000,
-                                      operand_a.hperms
+                                      hperms_and_uperms_to_report_perms(operand_a.hperms, operand_a.uperms)
                                     });
             end
             // CGetSealed
