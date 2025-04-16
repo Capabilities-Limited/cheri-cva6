@@ -360,6 +360,15 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 if((operand_a.hperms & operand_b.hperms) != operand_b.hperms) begin
                     clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
                 end
+                if(!are_cap_reg_bounds_valid(operand_a, op_a_meta_info) | !are_cap_reg_bounds_valid(operand_b, op_b_meta_info)) begin
+                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
+                end
+                if(operand_a.hperms != legalize_arch_perms(operand_a.hperms) | operand_b.hperms != legalize_arch_perms(operand_b.hperms)) begin
+                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
+                end
+                if(operand_a.res_lo != 0 | operand_a.res_hi != 0 | operand_b.res_lo != 0 | operand_b.res_hi != 0) begin
+                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
+                end
                 set_cap_reg_addr(clu_result, clu_result.addr);
             end
             default: ; // default case to suppress unique warning
