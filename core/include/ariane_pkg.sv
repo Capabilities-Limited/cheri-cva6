@@ -326,7 +326,7 @@ package ariane_pkg;
     // 50 Capability-Modification Instructions
     CSEAL, CUNSEAL, ACPERM, SCMODE, SCHI, CSET_OFFSET, SCADDR, CADD, CADDI, SCBNDSR,
     // 60
-    SCBNDS, SCBNDSI, CCLEAR_TAG, CBLD, CCOPY_TYPE, CCSEAL, CSEAL_ENTRY,
+    SCBNDS, SCBNDSI, CCLEAR_TAG, CBLD, CCOPY_TYPE, CCSEAL, SENTRY,
     // 68 Pointer-Arithmetic Instructions
     CTO_PTR, CFROM_PTR, CSUB, CMV,
     // 72 Pointer-Comparison Instructions
