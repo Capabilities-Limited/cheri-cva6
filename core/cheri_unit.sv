@@ -262,9 +262,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = operand_a;
             end
             // CSealEntry
-            ariane_pkg::CSEAL_ENTRY: begin
-                // NOTE: for CHERI ISAv8 we need to do this checks
-                check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
+            ariane_pkg::SENTRY: begin
                 clu_result = operand_a;
                 clu_result.otype = SENTRY_CAP;
             end

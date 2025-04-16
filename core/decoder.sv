@@ -1076,6 +1076,7 @@ module decoder
                     5'b00110:   instruction_o.op = ariane_pkg::GCLEN;
                     5'b00100:   instruction_o.op = ariane_pkg::GCHI;
                     5'b00111:   instruction_o.op = ariane_pkg::CRAM;
+                    5'b01000:   instruction_o.op = ariane_pkg::SENTRY;
                     default: begin
                       illegal_instr_cheri = 1'b1;
                     end
@@ -1894,7 +1895,7 @@ module decoder
                                         // Capability-Modification Instructions
                                         // ------------------------------------
                                         5'b01011:   instruction_o.op = ariane_pkg::CCLEAR_TAG;
-                                        5'b10001:   instruction_o.op = ariane_pkg::CSEAL_ENTRY;
+                                        5'b10001:   instruction_o.op = ariane_pkg::SENTRY;
                                         // ------------------------------------
                                         // Fast Register-Clearing Instructions
                                         // ------------------------------------
