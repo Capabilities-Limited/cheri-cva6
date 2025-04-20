@@ -124,8 +124,8 @@ package cva6_cheri_pkg;
     typedef logic [CAP_ADDR_WIDTH-1:0]                        addrw_t;
     typedef logic [CAP_ADDR_WIDTH:0]                          addrwe_t;
     typedef logic [CAP_ADDR_WIDTH+1:0]                        addrwe2_t;
-    typedef logic [CAP_ADDR_WIDTH - CAP_M_WIDTH -1:0]         addrmw_t;
-    typedef logic [CAP_ADDR_WIDTH - (CAP_M_WIDTH - 1) :0]     addrmwm2_t;
+    typedef logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1:0]        addrmw_t;
+    typedef logic [CAP_ADDR_WIDTH - (CAP_M_WIDTH - 1):0]      addrmwm2_t;
     typedef logic [CAP_RSERV_LO_WIDTH-1:0]                    resw_lo_t;
     typedef logic [CAP_RSERV_HI_WIDTH-1:0]                    resw_hi_t;
     typedef logic [CAP_OTYPE_WIDTH-1:0]                       otypew_t;
@@ -621,21 +621,47 @@ package cva6_cheri_pkg;
       *          if the capability is not representable.
       */
     function automatic cap_reg_t set_cap_reg_address(cap_reg_t cap, addrw_t address, cap_meta_data_t cap_meta_data);
-        cap_reg_t ret = cap;
-        ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
-        mw_t addr_mid = $unsigned(address >> (CAP_MAX_EXP - exp));
-        // compute "is new address in high portion of the representable region"
-        logic newAddrHi  = addr_mid < cap_meta_data.r;
-        // Calculate the actual difference between the upper bits of the new address and the original address.
-        addrwe2_t deltaAddrHi = $signed({{1'b0,newAddrHi} - {1'b0,cap_meta_data.addr_hi_r},'b0}) >> cap.bounds.exp;
-        addrwe2_t mask = ~{-1 >> exp};
-        addrwe2_t deltaAddrUpper = ({2'b0,address} & mask) - ({2'b0,cap.addr} & mask);
-        logic is_rep = deltaAddrHi == deltaAddrUpper;
-        ret.addr = address;
-        ret.addr_mid = addr_mid;
-        if (!(is_rep)) ret.tag = 1'b0;
-        return ret;
+      cap_reg_t ret = cap;
+      ew_t e = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
+
+      logic [CAP_ADDR_WIDTH + 1 : 0] newAddrMidTmp = $unsigned({2'b00, address} >> (CAP_MAX_EXP-e));
+      mw_t newAddrMid = newAddrMidTmp;
+      bool_t newAddrHi = newAddrMid < cap_meta_data.r;
+      logic [1:0] diffTmp = {1'b0, newAddrHi} - {1'b0, cap_meta_data.addr_hi_r};
+      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] deltaAddrHi =
+        (CAP_ADDR_WIDTH - CAP_M_WIDTH)'(signed'(diffTmp)) << (CAP_MAX_EXP - e);
+        //$signed(diffTmp) >>> e;
+
+      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] newAddrTruncLSB =
+        address >> CAP_M_WIDTH;
+      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] oldAddrTruncLSB =
+        cap.addr >> CAP_M_WIDTH;
+      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] mask = ~0 << (CAP_MAX_EXP - e);
+      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] deltaAddrUpper =
+        (newAddrTruncLSB & mask) - (oldAddrTruncLSB & mask);
+
+      bool_t is_rep = deltaAddrHi == deltaAddrUpper;
+      ret.addr = address;
+      ret.addr_mid = newAddrMid;
+      if (!is_rep) ret.tag = 1'b0;
+      return e;
     endfunction
+    //function automatic cap_reg_t set_cap_reg_address(cap_reg_t cap, addrw_t address, cap_meta_data_t cap_meta_data);
+    //    cap_reg_t ret = cap;
+    //    ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
+    //    mw_t addr_mid = $unsigned(address >> (CAP_MAX_EXP - exp));
+    //    // compute "is new address in high portion of the representable region"
+    //    bool_t newAddrHi  = addr_mid < cap_meta_data.r;
+    //    // Calculate the actual difference between the upper bits of the new address and the original address.
+    //    addrwe2_t deltaAddrHi = $signed({{1'b0,newAddrHi} - {1'b0,cap_meta_data.addr_hi_r},'b0}) >>> exp;
+    //    addrwe2_t mask = ~(~0 >> exp);
+    //    addrwe2_t deltaAddrUpper = (({2'b00, address} & mask) >> CAP_M_WIDTH) - (({2'b00, cap.addr} & mask) >> CAP_M_WIDTH);
+    //    bool_t is_rep = deltaAddrHi == deltaAddrUpper;
+    //    ret.addr = address;
+    //    ret.addr_mid = addr_mid;
+    //    if (!is_rep) ret.tag = 1'b0;
+    //    return ret;
+    //endfunction
 
     /**
       * @brief Function sets the capability address without representable checking.
