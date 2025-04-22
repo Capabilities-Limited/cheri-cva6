@@ -622,7 +622,7 @@ package cva6_cheri_pkg;
       */
     function automatic cap_reg_t set_cap_reg_address(cap_reg_t cap, addrw_t address, cap_meta_data_t cap_meta_data);
       cap_reg_t ret = cap;
-      ew_t e = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
+      ew_t e = cap.bounds.exp;
 
       logic [CAP_ADDR_WIDTH + 1 : 0] newAddrMidTmp = $unsigned({2'b00, address} >> (CAP_MAX_EXP-e));
       mw_t newAddrMid = newAddrMidTmp;
