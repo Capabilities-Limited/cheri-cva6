@@ -644,7 +644,7 @@ package cva6_cheri_pkg;
       ret.addr = address;
       ret.addr_mid = newAddrMid;
       if (!is_rep) ret.tag = 1'b0;
-      return e;
+      return ret;
     endfunction
     //function automatic cap_reg_t set_cap_reg_address(cap_reg_t cap, addrw_t address, cap_meta_data_t cap_meta_data);
     //    cap_reg_t ret = cap;
