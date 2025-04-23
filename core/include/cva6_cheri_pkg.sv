@@ -693,13 +693,13 @@ package cva6_cheri_pkg;
         localparam T_W = CAP_ADDR_WIDTH - CAP_M_WIDTH;
         logic [T_W-1:0] sgn_bits = T_W'($signed(1'(offset[CAP_ADDR_WIDTH-1])));
         logic [T_W-1:0] og_hi_off_bits = T_W'(offset_addr[CAP_ADDR_WIDTH-1-:T_W]);
-        logic [T_W-1:0] hi_filt_bits = ~(~T_W'(0)>>exp);
+        logic [T_W-1:0] hi_filt_bits = ~T_W'(0) << (CAP_MAX_EXP - exp);
         logic [T_W-1:0] hi_off_bits = (og_hi_off_bits ^ sgn_bits) & hi_filt_bits;
         bool_t in_range = hi_off_bits == 0;
 
         // The sign of the increment
         bool_t pos_inc = 1'(offset_addr[CAP_ADDR_WIDTH-1]) == 1'b0;
-        mw_t to_bounds_a = CAP_M_WIDTH'(3'b110 << (CAP_M_WIDTH-3));
+        mw_t to_bounds_a = {3'b110, (CAP_M_WIDTH-3)'(0)};
         mw_t to_bounds_m1_a = to_bounds_a - CAP_M_WIDTH'(1);
         mw_t rep_bound_bits = cap_meta_data.r;
         mw_t to_bounds_b = rep_bound_bits - cap.addr_mid;
