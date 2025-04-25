@@ -155,6 +155,19 @@ module id_stage #(
   logic              [CVA6Cfg.NrIssuePorts-1:0][31:0] instruction_deco;
   logic              [CVA6Cfg.NrIssuePorts-1:0]       is_compressed_deco;
 
+  logic              [CVA6Cfg.NrIssuePorts-1:0]       cap_mode_decode_o;
+  logic              [CVA6Cfg.NrIssuePorts-1:0]       cap_mode_decode_i;
+  logic                                               cap_mode_d;
+  logic                                               cap_mode_q;
+  logic                                               cap_mode_reset_d;
+  logic                                               cap_mode_reset_q;
+
+  for (genvar i = 0; i <= CVA6Cfg.NrIssuePorts; i++) begin
+    assign cap_mode_decode_i[i] = (i==0) ?
+                        (cap_mode_reset_q ? !pcc_i.flags.int_mode : cap_mode_q)
+                        : cap_mode_decode_o[i-1];
+  end
+
   if (CVA6Cfg.RVC) begin
     // ---------------------------------------------------------
     // 1. Check if they are compressed and expand in case they are
@@ -164,7 +177,7 @@ module id_stage #(
           .CVA6Cfg(CVA6Cfg)
       ) compressed_decoder_i (
           .instr_i         (fetch_entry_i[i].instruction),
-          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? !pcc_i.flags.int_mode : 1'b0),
+          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? cap_mode_decode_i[i] : 1'b0),
           .instr_o         (instruction_rvc[i]),
           .illegal_instr_o (is_illegal_rvc[i]),
           .is_compressed_o (is_compressed_rvc[i]),
@@ -320,7 +333,8 @@ module id_stage #(
         .irq_i,
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
-        .pcc_i                     (pcc_i),
+        .asr_i                     ((CVA6Cfg.CheriPresent) ? pcc_i.hperms.access_sys_regs : 1'b0), // TODO(pdr32) this could be out of date
+        .cap_mode_i                ((CVA6Cfg.CheriPresent) ? cap_mode_decode_i[i] : 1'b0),
         .is_compressed_i           (is_compressed_deco[i]),
         .is_macro_instr_i          (is_macro_instr[i]),
         .is_zcmt_i                 (is_zcmt_instr[i]),
@@ -347,7 +361,8 @@ module id_stage #(
         .instruction_o             (decoded_instruction[i]),
         .orig_instr_o              (orig_instr[i]),
         .is_control_flow_instr_o   (is_control_flow_instr[i]),
-        .debug_from_trigger_i      (debug_from_trigger_i)
+        .debug_from_trigger_i      (debug_from_trigger_i),
+        .cap_mode_o                (cap_mode_decode_o[i])
     );
   end
 
@@ -452,14 +467,33 @@ module id_stage #(
       if (flush_i) issue_n[0].valid = 1'b0;
     end
   end
+  always_comb begin
+    cap_mode_d = cap_mode_q;
+    cap_mode_reset_d = cap_mode_reset_q;
+    if (flush_i) cap_mode_reset_d = 1'b1;
+    else begin
+      for (int i = 0; i <= CVA6Cfg.NrIssuePorts; i++) begin
+        if (fetch_entry_ready_o[i]) begin
+          cap_mode_d = cap_mode_decode_o[i];
+          cap_mode_reset_d = 1'b0;
+        end
+      end
+    end
+  end
   // -------------------------
   // Registers (ID <-> Issue)
   // -------------------------
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
       issue_q <= '0;
+      cap_mode_q <= '0;
+      cap_mode_reset_q <= '0;
     end else begin
       issue_q <= issue_n;
+      if (CVA6Cfg.CheriPresent) begin
+        cap_mode_q <= cap_mode_d;
+        cap_mode_reset_q <= cap_mode_reset_d;
+      end
     end
   end
 

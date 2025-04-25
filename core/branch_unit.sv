@@ -61,8 +61,6 @@ module branch_unit #(
   logic [CVA6Cfg.PCLEN-1:0] target_address;
   logic [CVA6Cfg.PCLEN-1:0] next_pc;
 
-  // CHERI Signals
-  logic cap_mode;
   // Decode input capability operand a and pcc
   cva6_cheri_pkg::cap_pcc_t operand_a;
   cva6_cheri_pkg::cap_reg_t pcc;
@@ -77,7 +75,6 @@ module branch_unit #(
   cva6_cheri_pkg::addrwe_t min_instr_off;
   logic target_pcc_is_sealed;
   assign pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_t'(pc_i) : pc_i;
-  assign cap_mode = CVA6Cfg.CheriPresent ? (!pcc.flags.int_mode || fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) : 1'b0;
   assign operand_a = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_to_cap_pcc(fu_data_i.operand_a) : fu_data_i.operand_a;
   assign target_pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_t'(target_address) : target_address;
   assign target_pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(target_pcc);
@@ -100,11 +97,9 @@ module branch_unit #(
     automatic cva6_cheri_pkg::cap_pcc_t jump_base_cap;
     automatic cva6_cheri_pkg::cap_pcc_t next_pc_tmp, target_address_tmp;
     // TODO(zarubaf): The ALU can be used to calculate the branch target
-    jump_base = (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR, ariane_pkg::CINVOKE}) ? fu_data_i.operand_a[CVA6Cfg.VLEN-1:0] : pc_i[CVA6Cfg.VLEN-1:0];
-    jump_base_cap = CVA6Cfg.CheriPresent ? ((fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) ? operand_a : pc_i) : '0;
-    jump_base_addr = CVA6Cfg.CheriPresent ? ((fu_data_i.operation inside {ariane_pkg::CINVOKE}) ?
-                            operand_a.addr :
-                            $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]))) : '0;
+    jump_base = (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) ? fu_data_i.operand_a[CVA6Cfg.VLEN-1:0] : pc_i[CVA6Cfg.VLEN-1:0];
+    jump_base_cap = CVA6Cfg.CheriPresent ? ((fu_data_i.operation inside {ariane_pkg::CJALR}) ? operand_a : pc_i) : '0;
+    jump_base_addr = CVA6Cfg.CheriPresent ? ($unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]))) : '0;
 
     next_pc_tmp = '0;
     target_address_tmp = '0;
@@ -124,49 +119,22 @@ module branch_unit #(
       target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
     end
     // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
-    if (fu_data_i.operation inside {ariane_pkg::CINVOKE, ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
+    if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
     if (CVA6Cfg.CheriPresent) begin
-      if (!ariane_pkg::op_is_branch(fu_data_i.operation) && cap_mode) begin
+      if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
         next_pc_tmp = next_pc;
         next_pc_tmp.otype = cva6_cheri_pkg::SENTRY_CAP;
+        next_pc_tmp.flags.int_mode = 1'b0;
         next_pc = next_pc_tmp;
-        if (fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) begin
-          target_address_tmp =  target_address;
+        if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
+          target_address_tmp = target_address;
           target_address_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
           target_address =  target_address_tmp;
         end
-      end
-      if (fu_data_i.operation inside {ariane_pkg::CINVOKE}) begin
-        next_pc_tmp = cva6_cheri_pkg::cap_reg_to_cap_pcc(fu_data_i.operand_b);
-        next_pc_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
+        branch_result_o = cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc_tmp);
       end else begin
-        if (!cap_mode) begin
-          next_pc_tmp = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::PCC_NULL_CAP, next_pc[CVA6Cfg.VLEN-1:0]);
-          next_pc_tmp.tag = 1'b0;
-        end else begin
-          next_pc_tmp = next_pc;
-          next_pc_tmp.otype = cva6_cheri_pkg::SENTRY_CAP;
-          next_pc = next_pc_tmp;
-          if (fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) begin
-            target_address_tmp = target_address;
-            target_address_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
-            target_address = target_address_tmp;
-          end
-        end
+        branch_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, next_pc[CVA6Cfg.VLEN-1:0]);
       end
-      if (fu_data_i.operation inside {ariane_pkg::CINVOKE}) begin
-        next_pc_tmp = fu_data_i.operand_b;
-        next_pc_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
-      end else begin
-        if (!cap_mode) begin
-          next_pc_tmp = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::PCC_NULL_CAP, next_pc[CVA6Cfg.VLEN-1:0]);
-          next_pc_tmp.tag = 1'b0;
-        end else begin
-          next_pc_tmp = next_pc;
-        end
-        // branch_result_o = cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc);
-      end
-      branch_result_o = cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc_tmp);
     end else begin
       // we need to put the branch target address into rd, this is the result of this unit
       branch_result_o = next_pc;
@@ -204,9 +172,6 @@ module branch_unit #(
         if (branch_predict_i.cf != ariane_pkg::Return)
           resolved_branch_o.cf_type = ariane_pkg::JumpR;
       end
-      if (fu_data_i.operation inside {ariane_pkg::CINVOKE} && (branch_predict_i.cf == ariane_pkg::NoCF)) begin
-        resolved_branch_o.is_mispredict = 1'b1;
-      end
       // to resolve the branch in ID
       resolve_branch_o = 1'b1;
     end
@@ -240,7 +205,7 @@ module branch_unit #(
       end
     end
     if (CVA6Cfg.CheriPresent && branch_valid_i && jump_taken) begin
-            if ((fu_data_i.operation inside {ariane_pkg::CJALR} && cap_mode)) begin
+            if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
                 if (target_pcc_base[0] != 1'b0) begin
                     branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
                     cheri_tval.cause         = cva6_cheri_pkg::CAP_UNLIGNED_BASE;
@@ -255,7 +220,7 @@ module branch_unit #(
                cheri_tval.cap_idx       = {6'b100000};
                branch_exception_o.valid = 1'b1;
             end
-            if ((fu_data_i.operation inside {ariane_pkg::CJALR})) begin
+            if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
                 if (!operand_a.hperms.permit_execute) begin
                     branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
                     cheri_tval.cause         = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
@@ -281,9 +246,6 @@ module branch_unit #(
         if (CVA6Cfg.CheriPresent && branch_valid_i) begin
           // Update tval
           branch_exception_o.tval = cheri_tval;
-          if (clu_exception_i.valid && fu_data_i.operation inside {ariane_pkg::CINVOKE}) begin
-            branch_exception_o = clu_exception_i;
-          end
         end
   end
 endmodule
