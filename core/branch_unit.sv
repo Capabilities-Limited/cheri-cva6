@@ -63,19 +63,31 @@ module branch_unit #(
   // Decode input capability operand a and pcc
   cva6_cheri_pkg::cap_pcc_t operand_a;
   cva6_cheri_pkg::cap_pcc_t pcc;
+  cva6_cheri_pkg::cap_reg_t pcc_reg;
+  cva6_cheri_pkg::cap_meta_data_t pcc_meta;
   cva6_cheri_pkg::addrw_t pcc_base;
+  cva6_cheri_pkg::addrw_t pcc_top;
 
   // Signals for CHERI exception handling
   cva6_cheri_pkg::cap_pcc_t target_pcc;
+  cva6_cheri_pkg::cap_reg_t target_pcc_reg;
+  cva6_cheri_pkg::cap_meta_data_t target_pcc_meta;
   cva6_cheri_pkg::addrw_t target_pcc_base;
   cva6_cheri_pkg::addrwe_t target_pcc_top;
   cva6_cheri_pkg::addrw_t target_pcc_address;
   logic target_pcc_is_sealed;
-  assign target_pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_pcc_t'(target_address) : target_address;
   assign pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_pcc_t'(pc_i) : pc_i;
+  assign pcc_reg = cva6_cheri_pkg::cap_mem_to_cap_reg(pcc);
+  assign pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_reg);
+  assign pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_reg, pcc_meta);
+  assign pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_reg, pcc_meta);
   assign cap_mode = CVA6Cfg.CheriPresent ? (pcc.flags.cap_mode || fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) : 1'b0;
   assign operand_a = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_to_cap_pcc(fu_data_i.operand_a) : fu_data_i.operand_a;
-  assign pcc_base = CVA6Cfg.CheriPresent ? pcc.base : '0;
+  assign target_pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_pcc_t'(target_address) : target_address;
+  assign target_pcc_reg = cva6_cheri_pkg::cap_mem_to_cap_reg(target_pcc);
+  assign target_pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(target_pcc_reg);
+  assign target_pcc_base = cva6_cheri_pkg::get_cap_reg_base(target_pcc_reg, target_pcc_meta);
+  assign target_pcc_top = cva6_cheri_pkg::get_cap_reg_top(target_pcc_reg, target_pcc_meta);
 
   // here we handle the various possibilities of mis-predicts
   always_comb begin : mispredict_handler
@@ -196,8 +208,6 @@ module branch_unit #(
     branch_exception_o.gva   = CVA6Cfg.RVH ? v_i : 1'b0;
 
      // Decode target address (next PCC) fields
-    target_pcc_base       = target_pcc.base;
-    target_pcc_top        = target_pcc.top;
     target_pcc_address    = target_pcc.addr;
     target_pcc_is_sealed  = (operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP);
     min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
@@ -247,7 +257,7 @@ module branch_unit #(
         end
         if (CVA6Cfg.CheriPresent && branch_valid_i) begin
             // Check PCC bounds every instruction
-            if(pcc.addr < pcc.base || $unsigned(pcc.addr) > pcc.top) begin
+            if(pcc.addr < pcc_base || $unsigned(pcc.addr) > pcc_top) begin
                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
                cheri_tval.cause         = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
                cheri_tval.cap_idx       = {6'b100000};

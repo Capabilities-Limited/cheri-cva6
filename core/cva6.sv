@@ -85,7 +85,7 @@ module cva6
     // IF/ID Stage
     // store the decompressed instruction
     localparam type fetch_entry_t = struct packed {
-      logic [CVA6Cfg.PCLEN-1:0] address;  // the address of the instructions from below
+      logic [CVA6Cfg.VLEN-1:0] address;  // the address of the instructions from below
       logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;
       logic [31:0] instruction;  // instruction word
       branchpredict_sbe_t     branch_predict; // this field contains branch prediction information regarding the forward branch path
@@ -134,7 +134,7 @@ module cva6
       logic                    valid;           // prediction with all its values is valid
       logic [CVA6Cfg.VLEN-1:0] pc;              // PC of predict or mis-predict
       logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;      // dii id of branch
-      logic [CVA6Cfg.PCLEN-1:0] target_address;  // target address at which to jump, or not
+      logic [CVA6Cfg.VLEN-1:0] target_address;  // target address at which to jump, or not
       logic                    is_mispredict;   // set if this was a mis-predict
       logic                    is_taken;        // branch is taken
       cf_t                     cf_type;         // Type of control flow change
@@ -397,7 +397,7 @@ module cva6
   logic [CVA6Cfg.REGLEN-1:0] rs2_forwarding_id_ex;  // unregistered version of fu_data_o.operandb
 
   fu_data_t fu_data_id_ex;
-  logic [CVA6Cfg.PCLEN-1:0] pc_id_ex;
+  logic [CVA6Cfg.VLEN-1:0] pc_id_ex;
   logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_id_ex;
   logic is_compressed_instr_id_ex;
   logic [31:0] tinst_ex;
@@ -695,7 +695,8 @@ module cva6
       .vtw_i       (vtw_csr_id),
       .tsr_i       (tsr_csr_id),
       .hu_i        (hu),
-    .ddc_i                      ( ddc                        )
+    .ddc_i                      ( ddc                        ),
+      .pcc_commit_i(pc_commit)
   );
 
   logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_ex_id;
@@ -839,6 +840,7 @@ module cva6
       .we_fpr_i             (we_fpr_commit_id),
       .commit_instr_o       (commit_instr_id_commit),
       .commit_ack_i         (commit_ack),
+      .pcc_commit_i         (pc_commit),
       // Performance Counters
       .stall_issue_o        (stall_issue),
       //RVFI

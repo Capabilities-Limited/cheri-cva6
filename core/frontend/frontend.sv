@@ -30,7 +30,7 @@ module frontend
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
     // Next PC when reset - SUBSYSTEM
-    input logic [CVA6Cfg.PCLEN-1:0] boot_addr_i,
+    input logic [CVA6Cfg.VLEN-1:0] boot_addr_i,
     // Flush branch prediction - zero
     input logic flush_bp_i,
     // Flush requested by FENCE, mis-predict and exception - CONTROLLER
@@ -41,7 +41,7 @@ module frontend
     // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
     input logic set_pc_commit_i,
     // COMMIT PC - COMMIT
-    input logic [CVA6Cfg.PCLEN-1:0] pc_commit_i,
+    input logic [CVA6Cfg.VLEN-1:0] pc_commit_i,
     input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_commit_i,
     // Exception event - COMMIT
     input logic ex_valid_i,
@@ -108,7 +108,7 @@ module frontend
   bht_prediction_t                                               bht_q;
   // instruction fetch is ready
   logic                                                          if_ready;
-  logic [CVA6Cfg.PCLEN-1:0] npc_d, npc_q;  // next PC
+  logic [CVA6Cfg.VLEN-1:0] npc_d, npc_q;  // next PC
   logic [CVA6Cfg.DIIIDLEN-1:0] ndii_id_d, ndii_id_q;
 
   // indicates whether we come out of reset (then we need to load boot_addr_i)
@@ -367,7 +367,6 @@ module frontend
   logic [CVA6Cfg.DIIIDLEN-1:0] fetch_dii_id;
 
   always_comb begin : npc_select
-    automatic cva6_cheri_pkg::cap_pcc_t debug_pcc;
     //automatic logic [CVA6Cfg.VLEN-1:0] fetch_address;
     // check whether we come out of reset
     // this is a workaround. some tools have issues
@@ -376,8 +375,6 @@ module frontend
     // boot_addr_i will be assigned a constant
     // on the top-level.
 
-    debug_pcc = cva6_cheri_pkg::PCC_ROOT_CAP;
-    debug_pcc.flags.cap_mode = 1'b0;
     if (npc_rst_load_q) begin
       npc_d         = boot_addr_i;
       fetch_address = boot_addr_i[CVA6Cfg.XLEN-1:0];
@@ -394,27 +391,18 @@ module frontend
     if (bp_valid) begin
       fetch_address = predict_address;
       fetch_dii_id = predict_dii_id;
-      if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(npc_q, predict_address);
-      else
-        npc_d = predict_address;
+      npc_d = predict_address;
       ndii_id_d = predict_dii_id;
     end
     // 1. Default assignment
     if (if_ready) begin
-      if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor((npc_rst_load_q) ? boot_addr_i : npc_q, {fetch_address[CVA6Cfg.VLEN-1:CVA6Cfg.FETCH_ALIGN_BITS] + 1, {CVA6Cfg.FETCH_ALIGN_BITS{1'b0}}});
-      else
-        npc_d = {
+      npc_d = {
         fetch_address[CVA6Cfg.VLEN-1:CVA6Cfg.FETCH_ALIGN_BITS] + 1, {CVA6Cfg.FETCH_ALIGN_BITS{1'b0}}
       };
     end
     // 2. Replay instruction fetch
     if (replay) begin
-      if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(npc_q, replay_addr);
-      else
-        npc_d = replay_addr;
+      npc_d = replay_addr;
       ndii_id_d = replay_dii_id;
     end
     // 3. Control flow change request
@@ -424,18 +412,12 @@ module frontend
     end
     // 4. Return from environment call
     if (eret_i) begin
-      if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::cap_reg_to_cap_pcc(epc_i);
-      else
-        npc_d = epc_i;
+      npc_d = epc_i;
       ndii_id_d = dii_id_commit_i + 1;
     end
     // 5. Exception/Interrupt
     if (ex_valid_i) begin
-      if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::cap_reg_to_cap_pcc(trap_vector_base_i);
-      else
-        npc_d = trap_vector_base_i;
+      npc_d = trap_vector_base_i;
       ndii_id_d = dii_id_commit_i + 1;
     end
     // 6. Pipeline Flush because of CSR side effects
@@ -448,70 +430,16 @@ module frontend
     // instruction in the commit stage
     // TODO(zarubaf) This adder can at least be merged with the one in the csr_regfile stage
     if (set_pc_commit_i) begin
-      if (CVA6Cfg.CheriPresent)
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(pc_commit_i, pc_commit_i + (halt_i ? '0 : {{CVA6Cfg.VLEN - 3{1'b0}}, 3'b100}));
-      else
-        npc_d = pc_commit_i + (halt_i ? '0 : {{CVA6Cfg.VLEN - 3{1'b0}}, 3'b100});
+      npc_d = pc_commit_i + (halt_i ? '0 : {{CVA6Cfg.VLEN - 3{1'b0}}, 3'b100});
       ndii_id_d = dii_id_commit_i + 1;
     end
     // 7. Debug
     // enter debug on a hard-coded base-address
     if (CVA6Cfg.DebugEn && set_debug_pc_i)
-      if (CVA6Cfg.CheriPresent) begin
-        npc_d = cva6_cheri_pkg::set_cap_pcc_cursor(debug_pcc,CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0]);
-      end else begin
-        npc_d = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0];
-      end
+      npc_d = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0];
     icache_dreq_o.vaddr = fetch_address;
     icache_dreq_o.dii_id = fetch_dii_id;
-    if (CVA6Cfg.CheriPresent) begin
-      icache_dreq_o.ex    = cheri_ex;
-    end
   end
-if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
-always_comb begin : cheri_pcc_checks
-        automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
-        automatic cva6_cheri_pkg::cap_pcc_t npcc;
-        automatic cva6_cheri_pkg::addrw_t min_instr_off;
-
-        npcc = cva6_cheri_pkg::cap_pcc_t'(npc_q);
-
-        min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
-
-        cheri_tval     = {CVA6Cfg.XLEN{1'b0}};
-        cheri_ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-        cheri_ex.valid = 1'b0;
-        cheri_ex.tval  = {CVA6Cfg.XLEN{1'b0}};
-        cheri_ex.tval2 = {CVA6Cfg.XLEN{1'b0}};
-        cheri_ex.tinst = {CVA6Cfg.XLEN{1'b0}};
-        cheri_ex.gva   = v_i;
-
-        if(!(npcc.base[0] == 1'b0)) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_UNLIGNED_BASE;
-            cheri_ex.valid     = 1'b1;
-        end
-
-        if(fetch_address < npcc.base || ($unsigned(fetch_address) + min_instr_off) > npcc.top) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
-            cheri_ex.valid     = 1'b1;
-        end
-
-        if(!npcc.hperms.permit_execute) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
-            cheri_ex.valid     = 1'b1;
-        end
-        if((npcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && npcc.tag) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
-            cheri_ex.valid     = 1'b1;
-        end
-        if(!npcc.tag) begin
-            cheri_tval.cause   = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-            cheri_ex.valid     = 1'b1;
-        end
-        // Update tval
-        cheri_ex.tval = cheri_tval;
-    end
-end
   logic [CVA6Cfg.FETCH_WIDTH-1:0] icache_data;
   // re-align the cache line
   assign icache_data = icache_dreq_i.data >> {shamt, 4'b0};
@@ -519,7 +447,7 @@ end
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       npc_rst_load_q    <= 1'b1;
-      npc_q             <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::PCC_ROOT_CAP : '0;
+      npc_q             <= '0;
       ndii_id_q         <= '0;
       speculative_q     <= '0;
       icache_data_q     <= '0;
@@ -561,8 +489,6 @@ end
           icache_ex_valid_q <= ariane_pkg::FE_INSTR_PAGE_FAULT;
         end else if (icache_dreq_i.ex.cause == riscv::INSTR_ACCESS_FAULT) begin
           icache_ex_valid_q <= ariane_pkg::FE_INSTR_ACCESS_FAULT;
-        end else if (icache_dreq_i.ex.cause == cva6_cheri_pkg::CAP_EXCEPTION && icache_dreq_i.ex.valid) begin
-          icache_ex_valid_q <= ariane_pkg::FE_INSTR_CHERI_FAULT;
         end else begin
           icache_ex_valid_q <= ariane_pkg::FE_NONE;
         end

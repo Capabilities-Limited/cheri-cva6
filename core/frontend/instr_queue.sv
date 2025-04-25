@@ -61,7 +61,7 @@ module instr_queue
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] addr_i,
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Instruction Capability - instr_realign
-    input  logic [CVA6Cfg.PCLEN-1:0] pc_i,
+    input  logic [CVA6Cfg.VLEN-1:0] pc_i,
     // Instruction is valid - instr_realign
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0] valid_i,
     // Handshake’s ready with CACHE - CACHE
@@ -136,8 +136,8 @@ ariane_pkg::FETCH_FIFO_DEPTH
   // rotated by N
   logic [ariane_pkg::SUPERSCALAR+1:0][CVA6Cfg.INSTR_PER_FETCH-1:0] idx_ds;
 
-  logic [CVA6Cfg.PCLEN-1:0] pc_d, pc_q;  // current PC
-  logic [ariane_pkg::SUPERSCALAR+1:0][CVA6Cfg.PCLEN-1:0] pc_j;
+  logic [CVA6Cfg.VLEN-1:0] pc_d, pc_q;  // current PC
+  logic [ariane_pkg::SUPERSCALAR+1:0][CVA6Cfg.VLEN-1:0] pc_j;
   logic reset_address_d, reset_address_q;  // we need to re-set the address because of a flush
 
   logic [ariane_pkg::SUPERSCALAR:0] fetch_entry_is_cf, fetch_entry_fire;

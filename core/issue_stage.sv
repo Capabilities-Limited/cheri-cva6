@@ -127,6 +127,8 @@ module issue_stage
     output scoreboard_entry_t [CVA6Cfg.NrCommitPorts-1:0] commit_instr_o,
     // Commit acknowledge - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_i,
+    // Program counter capability last committed - TO_BE_COMPLETED
+    input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
     // Issue stall - PERF_COUNTERS
     output logic stall_issue_o,
     // Information dedicated to RVFI - RVFI

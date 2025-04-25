@@ -122,6 +122,8 @@ module issue_read_operands
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_i,
+    // Program counter capability last committed - TO_BE_COMPLETED
+    input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
 
     // Stall signal, we do not want to fetch any more entries - TO_BE_COMPLETED
     output logic stall_issue_o
@@ -156,6 +158,7 @@ module issue_read_operands
   fu_t fu_n, fu_q;  // functional unit to use
   logic [31:0] tinst_n, tinst_q;  // transformed instruction
   logic use_ddc_n, use_ddc_q;
+  logic [CVA6Cfg.PCLEN-1:0] pcc_q;
 
   // forwarding signals
   logic forward_rs1, forward_rs2, forward_rs3;

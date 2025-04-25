@@ -290,7 +290,52 @@ module ex_stage
       .result_o        (alu_result),
       .alu_branch_res_o(alu_branch_res)
   );
+/* TODO: check PCC here
+  if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
+always_comb begin : cheri_pcc_checks
+        automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+        automatic cva6_cheri_pkg::cap_pcc_t npcc;
+        automatic cva6_cheri_pkg::addrw_t min_instr_off;
 
+        npcc = cva6_cheri_pkg::cap_pcc_t'(npc_q);
+
+        min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
+
+        cheri_tval     = {CVA6Cfg.XLEN{1'b0}};
+        cheri_ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+        cheri_ex.valid = 1'b0;
+        cheri_ex.tval  = {CVA6Cfg.XLEN{1'b0}};
+        cheri_ex.tval2 = {CVA6Cfg.XLEN{1'b0}};
+        cheri_ex.tinst = {CVA6Cfg.XLEN{1'b0}};
+        cheri_ex.gva   = v_i;
+
+        if(!(npcc.base[0] == 1'b0)) begin
+            cheri_tval.cause   = cva6_cheri_pkg::CAP_UNLIGNED_BASE;
+            cheri_ex.valid     = 1'b1;
+        end
+
+        if(fetch_address < npcc.base || ($unsigned(fetch_address) + min_instr_off) > npcc.top) begin
+            cheri_tval.cause   = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
+            cheri_ex.valid     = 1'b1;
+        end
+
+        if(!npcc.hperms.permit_execute) begin
+            cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
+            cheri_ex.valid     = 1'b1;
+        end
+        if((npcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && npcc.tag) begin
+            cheri_tval.cause   = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+            cheri_ex.valid     = 1'b1;
+        end
+        if(!npcc.tag) begin
+            cheri_tval.cause   = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+            cheri_ex.valid     = 1'b1;
+        end
+        // Update tval
+        cheri_ex.tval = cheri_tval;
+    end
+end
+*/
   // 2. Branch Unit (combinatorial)
   // we don't silence the branch unit as this is already critical and we do
   // not want to add another layer of logic

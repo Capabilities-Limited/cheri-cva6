@@ -35,7 +35,7 @@ module decoder
     input logic debug_req_i,
     // PC from fetch stage - FRONTEND
     // TODO-cheri: make cheri optional
-    input logic [CVA6Cfg.PCLEN-1:0] pc_i,
+    input logic [CVA6Cfg.VLEN-1:0] pc_i,
     input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Is a compressed instruction - compressed_decoder
     input logic is_compressed_i,
@@ -85,6 +85,8 @@ module decoder
     input logic hu_i,
     // Default Data Capability (DDC) - CSR_REGFILE
     input  logic [CVA6Cfg.REGLEN-1:0] ddc_i,
+    // CHERI program counter capability; only used for metadata.
+    input logic [CVA6Cfg.PCLEN-1:0] pcc_commit_i,
     // Instruction to be added to scoreboard entry - ISSUE_STAGE
     output scoreboard_entry_t instruction_o,
     // Instruction - ISSUE_STAGE
@@ -111,9 +113,10 @@ module decoder
   logic [31:0] tinst;
   // capability mode
   logic cap_mode;
+    // current pcc metadata (includes address, but not used)
   cva6_cheri_pkg::cap_pcc_t pcc;
   // cap mode is equal to PCC.flags.cap_mode
-  assign pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);
+  assign pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_commit_i);
   assign cap_mode = (CVA6Cfg.CheriPresent) ? pcc.flags.cap_mode : 1'b0;
   // --------------------
   // Immediate select
@@ -177,7 +180,7 @@ module decoder
     illegal_instr_bm                       = 1'b0;
     illegal_instr_zic                      = 1'b0;
     virtual_illegal_instr                  = 1'b0;
-    instruction_o.pc                       = pc_i;
+    instruction_o.pc                       = cva6_cheri_pkg::set_cap_mem_addr_unsafe(pcc_commit_i, pc_i);
     instruction_o.trans_id                 = '0;
     instruction_o.fu                       = NONE;
     instruction_o.op                       = ariane_pkg::ADD;

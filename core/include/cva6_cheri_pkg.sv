@@ -306,14 +306,11 @@ package cva6_cheri_pkg;
         bool_t                          tag;
         upermsw_t                       uperms;
         cap_hperms_t                    hperms;
-        cap_flags_t                     flags;
         resw_t                          res;
+        cap_flags_t                     flags;
         otypew_t                        otype;
         cap_fmt_t                       int_e;
-        ew_t                            exp;
-        addrw_t                         base;
-        addrwe_t                        top;
-        mw_t                            addr_mid;
+        cap_cbounds_t                   bounds;
         addrw_t                         addr;
     } cap_pcc_t;
 
@@ -363,31 +360,25 @@ package cva6_cheri_pkg;
     localparam cap_pcc_t PCC_ROOT_CAP = '{
         tag             : 1'b1,
         res             : '0,
-        addr            : '{default: 0},
-        addr_mid        : '{default: 0},
-        base            : '{default: 0},
-        top             : (1 << 64),
         uperms          : '{default: '1},
         hperms          : '{default: '1},
         flags           : 1'b0,
         otype           : UNSEALED_CAP,
-        exp             : 52,
-        int_e           : EMBEDDED_EXP
+        int_e           : EMBEDDED_EXP,
+        bounds          : encode_bounds(DEFAULT_BOUNDS_CAP, EMBEDDED_EXP),
+        addr            : '{default: 0}
     };
 
     localparam cap_pcc_t PCC_NULL_CAP = '{
         tag             : 1'b0,
-        res             : '0,
         uperms          : '{default: 0},
         hperms          : '{default: 0},
+        res             : '0,
         flags           : 1'b0,
         otype           : UNSEALED_CAP,
         int_e           : EMBEDDED_EXP,
-        exp             : 52,
-        base            : '{default: 0},
-        top             : (1 << 64),
-        addr            : '{default: 0},
-        addr_mid        : '{default: 0}
+        bounds          : encode_bounds(DEFAULT_BOUNDS_CAP, EMBEDDED_EXP),
+        addr            : '{default: 0}
     };
 
     localparam cap_mem_t MEM_NULL_CAP = '{
@@ -461,7 +452,6 @@ package cva6_cheri_pkg;
     function automatic cap_pcc_t set_cap_pcc_cursor (cap_pcc_t cap, addrw_t cursor);
         cap_pcc_t ret = cap;
         ret.addr      = cursor;
-        ret.addr_mid  = ret.addr >> cap.exp;
         return ret;
     endfunction
 
@@ -1002,40 +992,11 @@ package cva6_cheri_pkg;
     endfunction
 
     function automatic cap_pcc_t cap_reg_to_cap_pcc(cap_reg_t cap);
-        cap_pcc_t cap_pcc;
-        cap_meta_data_t cap_meta_data = get_cap_reg_meta_data(cap);
-        cap_pcc.tag       = cap.tag;
-        cap_pcc.uperms    = cap.uperms;
-        cap_pcc.hperms    = cap.hperms;
-        cap_pcc.flags     = cap.flags;
-        cap_pcc.res       = cap.res;
-        cap_pcc.otype     = cap.otype;
-        cap_pcc.int_e     = cap.int_e;
-        cap_pcc.exp       = cap.bounds.exp;
-        cap_pcc.base      = get_cap_reg_base(cap,cap_meta_data);
-        cap_pcc.top       = get_cap_reg_top(cap,cap_meta_data);
-        cap_pcc.addr      = cap.addr;
-        cap_pcc.addr_mid  = cap.addr >> cap.bounds.exp;
-        return cap_pcc;
+        return cap_reg_to_cap_mem(cap);
     endfunction
 
     function automatic cap_reg_t cap_pcc_to_cap_reg(cap_pcc_t cap);
-        cap_reg_t cap_reg;
-        addrw_t base = cap.base >> cap.exp;
-        addrwe_t top = cap.top >> cap.exp;
-        cap_reg.tag              = cap.tag;
-        cap_reg.uperms           = cap.uperms;
-        cap_reg.hperms           = cap.hperms;
-        cap_reg.flags            = cap.flags;
-        cap_reg.res              = cap.res;
-        cap_reg.otype            = cap.otype;
-        cap_reg.int_e            = cap.int_e;
-        cap_reg.bounds.exp       = cap.exp;
-        cap_reg.bounds.top_bits  = top[CAP_M_WIDTH-1:0];
-        cap_reg.bounds.base_bits = base[CAP_M_WIDTH-1:0];
-        cap_reg.addr_mid         = cap.addr_mid;
-        cap_reg.addr             = cap.addr;
-        return cap_reg;
+        return cap_mem_to_cap_reg(cap);
     endfunction
 
 
