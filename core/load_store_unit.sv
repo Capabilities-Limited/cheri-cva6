@@ -191,15 +191,7 @@ module load_store_unit
   logic                        g_overflow;
   logic [(CVA6Cfg.CLEN/8)-1:0] be_i;
 
-  if (CVA6Cfg.CheriPresent) begin : gen_vaddr_cheri
-    // TODO-ninolomata(cheri): make relocation possible via configuration parameter
-    assign vaddr_xlen = //(cap_mode_i || fu_data_i.operation == ariane_pkg::CLOAD_TAGS) ?
-                         $unsigned($signed(fu_data_i.operand_a[CVA6Cfg.XLEN-1:0])  + $signed(fu_data_i.imm)); /* : */
-                         // Remove Relocation via DDC
-                         // $unsigned($signed(ddc_i.addr) + $signed(fu_data_i.operand_a[CVA6Cfg.XLEN-1:0])  + $signed(fu_data_i.imm));
-  end else begin : gen_vaddr_no_cheri
-    assign vaddr_xlen = $unsigned($signed(fu_data_i.imm) + $signed(fu_data_i.operand_a));
-  end
+  assign vaddr_xlen = $unsigned($signed(fu_data_i.imm) + $signed(fu_data_i.operand_a));
   assign vaddr_i = vaddr_xlen[CVA6Cfg.VLEN-1:0];
   // we work with SV39 or SV32, so if VM is enabled, check that all bits [XLEN-1:38] or [XLEN-1:31] are equal
   assign overflow = (CVA6Cfg.IS_XLEN64 && (!((&vaddr_xlen[CVA6Cfg.XLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|vaddr_xlen[CVA6Cfg.XLEN-1:CVA6Cfg.SV-1]) == 1'b0)));
