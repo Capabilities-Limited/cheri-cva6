@@ -558,6 +558,17 @@ package cva6_cheri_pkg;
         return tb.bounds_valid;
     endfunction
 
+    function automatic cap_flags_t get_cap_reg_flags(cap_reg_t cap);
+        cap_mem_t ret = cap;
+        return ret.flags;
+    endfunction
+
+    function automatic cap_reg_t set_cap_reg_flags(cap_reg_t cap, cap_flags_t flags);
+        cap_reg_t ret = cap;
+        ret.flags = flags;
+        return ret;
+    endfunction
+
     /**
       * @brief Function to compute the capability base address.
       * @param cap capability in register format.

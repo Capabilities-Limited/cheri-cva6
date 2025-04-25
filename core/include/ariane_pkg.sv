@@ -289,15 +289,16 @@ package ariane_pkg;
     SRLW,
     SLLW,
     SRAW,
-    // comparisons
+    // 13 comparisons
     LTS,
     LTU,
     GES,
     GEU,
     EQ,
     NE,
-    // jumps
+    // 19 jumps
     JALR,
+    JAL,
     BRANCH,
     AUIPCC,
     // set lower than operations
@@ -321,21 +322,21 @@ package ariane_pkg;
     // CLU functions
     //Special Capabilty Register Access Instructions
     SCR_READ, SCR_READWRITE,
-    // 40 Capability-Inspection Instructions
+    // 41 Capability-Inspection Instructions
     GCPERM, GCTYPE, GCBASE, CGET_TOP, GCLEN, GCTAG, CGET_SEALED, CGET_OFFSET, GCMODE, GCHI, CGET_ADDR,
-    // 50 Capability-Modification Instructions
+    // 51 Capability-Modification Instructions
     CSEAL, CUNSEAL, ACPERM, SCMODE, SCHI, CSET_OFFSET, SCADDR, CADD, CADDI, SCBNDSR,
-    // 60
+    // 61
     SCBNDS, SCBNDSI, CCLEAR_TAG, CBLD, CCOPY_TYPE, CCSEAL, SENTRY,
-    // 68 Pointer-Arithmetic Instructions
+    // 69 Pointer-Arithmetic Instructions
     CTO_PTR, CFROM_PTR, CSUB, CMV,
-    // 72 Pointer-Comparison Instructions
+    // 73 Pointer-Comparison Instructions
     SCSS, SCEQ,
-    // 74 Control-Flow Instructions
-    JALR_CAP, JALR_PCC, CINVOKE, CJAL, CJALR,
-    // 79 Fast Register-Clearing Instructions
+    // 75 Control-Flow Instructions
+    MODESW_CAP, MODESW_INT, CINVOKE, CJAL, CJALR,
+    // 80 Fast Register-Clearing Instructions
     CLEAR, CCLEAR, FPCLEAR,
-    // 82 Adjusting to Compressed Capability Precision Instructions
+    // 83 Adjusting to Compressed Capability Precision Instructions
     CRND_REPRESENTABLE_LEN, CRAM,
     // Tag-Memory Access Instructions
     CLOAD_TAGS, CCLEAR_TAGS,
@@ -586,8 +587,8 @@ package ariane_pkg;
 
   function automatic logic op_is_jump(input fu_op op);
     unique case (op) inside
-      JALR, JALR_CAP, JALR_PCC, CJAL, CJALR, CINVOKE: return 1'b1;
-      default:                    return 1'b0;  // all other ops
+      JALR, CJAL, CJALR, JAL: return 1'b1;
+      default:                return 1'b0;  // all other ops
     endcase
   endfunction
 
