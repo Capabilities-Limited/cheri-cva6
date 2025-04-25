@@ -79,7 +79,9 @@ module id_stage #(
     // Hypervisor user mode - CSR_REGFILE
     input logic hu_i,
     // CHERI Data Default capability - CSR_REGFILE
-    input logic[CVA6Cfg.REGLEN-1:0] ddc_i
+    input logic[CVA6Cfg.REGLEN-1:0] ddc_i,
+    // CHERI program counter capability; only used for metadata - ISSUE_STAGE
+    input cva6_cheri_pkg::cap_pcc_t pcc_i
 );
   // ID/ISSUE register stage
   typedef struct packed {
@@ -105,12 +107,6 @@ module id_stage #(
   logic                                                is_last_macro_instr_o;
   logic                                                is_double_rd_macro_instr_o;
 
-  cva6_cheri_pkg::cap_pcc_t               [ariane_pkg::SUPERSCALAR:0] pcc;
-
-  for (genvar i = 0; i <= ariane_pkg::SUPERSCALAR; i++) begin
-    assign pcc[i] = (CVA6Cfg.CheriPresent) ? (cva6_cheri_pkg::cap_pcc_t'(fetch_entry_i[i].address)) : '0;
-  end
-
   if (CVA6Cfg.RVC) begin
     // ---------------------------------------------------------
     // 1. Check if they are compressed and expand in case they are
@@ -120,7 +116,7 @@ module id_stage #(
           .CVA6Cfg(CVA6Cfg)
       ) compressed_decoder_i (
           .instr_i         (fetch_entry_i[i].instruction),
-          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? pcc[i].flags.cap_mode : 1'b0),
+          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? pcc_i.flags.cap_mode : 1'b0),
           .instr_o         (compressed_instr[i]),
           .illegal_instr_o (is_illegal[i]),
           .is_compressed_o (is_compressed[i]),
@@ -189,6 +185,7 @@ module id_stage #(
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
         .ddc_i                     (ddc_i),
+        .pcc_i                     (pcc_i),
         .is_compressed_i           (is_compressed_cmp[i]),
         .is_macro_instr_i          (is_macro_instr_i[i]),
         .is_last_macro_instr_i     (is_last_macro_instr_o),

@@ -86,7 +86,7 @@ module cva6
     // IF/ID Stage
     // store the decompressed instruction
     localparam type fetch_entry_t = struct packed {
-      logic [CVA6Cfg.PCLEN-1:0] address;  // the address of the instructions from below
+      logic [CVA6Cfg.VLEN-1:0] address;  // the address of the instructions from below
       logic [CVA6Cfg.DIIIDLEN-1:0] dii_id; // the DII ID of the instruction in the stream
       logic [31:0] instruction;  // instruction word
       branchpredict_sbe_t     branch_predict; // this field contains branch prediction information regarding the forward branch path
@@ -95,7 +95,7 @@ module cva6
 
     // ID/EX/WB Stage
     localparam type scoreboard_entry_t = struct packed {
-      logic [CVA6Cfg.PCLEN-1:0] pc;  // PC of instruction
+      logic [CVA6Cfg.VLEN-1:0] pc;  // PC of instruction
       logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;  // DII ID of the instruction in the stream
       logic [CVA6Cfg.REGLEN-1:0] ddc;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;      // this can potentially be simplified, we could index the scoreboard entry
@@ -626,8 +626,7 @@ module cva6
       .bp_resolve_t(bp_resolve_t),
       .fetch_entry_t(fetch_entry_t),
       .icache_dreq_t(icache_dreq_t),
-      .icache_drsp_t(icache_drsp_t),
-      .exception_t(exception_t)
+      .icache_drsp_t(icache_drsp_t)
   ) i_frontend (
       .flush_i            (flush_ctrl_if),                  // not entirely correct
       .flush_bp_i         (1'b0),
@@ -696,7 +695,8 @@ module cva6
       .vtw_i       (vtw_csr_id),
       .tsr_i       (tsr_csr_id),
       .hu_i        (hu),
-    .ddc_i                      ( ddc                        )
+      .ddc_i       (ddc),
+      .pcc_i       (pc_commit)
   );
 
   logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_ex_id;
@@ -830,6 +830,11 @@ module cva6
       .ex_ex_i               (ex_ex_ex_id),
       .wt_valid_i            (wt_valid_ex_id),
       .x_we_i                (x_we_ex_id),
+      .ex_valid_i            (ex_commit.valid),
+      .trap_vector_base_i    (trap_vector_base_commit_pcgen),
+      // CSR
+      .epc_i                 (epc_commit_pcgen),
+      .eret_i                (eret),
 
       .waddr_i              (waddr_commit_id),
       .wdata_i              (wdata_commit_id),
@@ -840,6 +845,9 @@ module cva6
       .we_fpr_i             (we_fpr_commit_id),
       .commit_instr_o       (commit_instr_id_commit),
       .commit_ack_i         (commit_ack),
+      .pcc_commit_i         (pc_commit),
+      .set_pc_commit_i      (set_pc_ctrl_pcgen),
+
       // Performance Counters
       .stall_issue_o        (stall_issue),
       //RVFI
@@ -1022,6 +1030,7 @@ module cva6
       .amo_valid_commit_o(amo_valid_commit),
       .amo_resp_i        (amo_resp),
       .commit_csr_o      (csr_commit_commit_ex),
+      .pcc_i             (pc_id_ex),
       .pc_o              (pc_commit),
       .dii_id_o          (dii_id_commit),
       .csr_op_o          (csr_op_commit_csr),

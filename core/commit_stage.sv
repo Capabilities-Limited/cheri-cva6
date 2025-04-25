@@ -60,6 +60,8 @@ module commit_stage
     output  logic [CVA6Cfg.NrCommitPorts-1:0][1:0] quarter_o,
     // Result of AMO operation - CACHE
     input amo_resp_t amo_resp_i,
+    // Current PCC - ISSUE_STAGE
+    input logic [CVA6Cfg.PCLEN-1:0] pcc_i,
     // TO_BE_COMPLETED - FRONTEND_CSR_REGFILE
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
     // Decoded CSR operation - CSR_REGFILE
@@ -125,7 +127,7 @@ module commit_stage
     assign waddr_o[i] = commit_instr_i[i].rd[4:0];
   end
 
-  assign pc_o = commit_instr_i[0].pc;
+  assign pc_o = cva6_cheri_pkg::set_cap_reg_addr(pcc_i, commit_instr_i[0].pc);
   if (CVA6Cfg.RVFI_DII) assign dii_id_o = commit_instr_i[0].dii_id;
   // Dirty the FP state if we are committing anything related to the FPU
   always_comb begin : dirty_fp_state

@@ -272,7 +272,8 @@ module ex_stage
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] mult_trans_id;
   logic mult_valid;
   exception_t branch_exception, clu_exception;
-  assign flu_exception_o = (clu_valid_i) ? clu_exception : branch_exception;
+  // Conditioning this on the result of the exception is likely to have timing problems.
+  assign flu_exception_o = (branch_valid_i) ? branch_exception : clu_exception;
 
   cva6_cheri_pkg::cap_pcc_t pcc;
   assign pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);
@@ -292,7 +293,6 @@ module ex_stage
       .result_o        (alu_result),
       .alu_branch_res_o(alu_branch_res)
   );
-
   // 2. Branch Unit (combinatorial)
   // we don't silence the branch unit as this is already critical and we do
   // not want to add another layer of logic
@@ -312,7 +312,7 @@ module ex_stage
       .dii_id_i,
       .is_compressed_instr_i,
       // any functional unit is valid, check that there is no accidental mis-predict
-      .fu_valid_i ( alu_valid_i || lsu_valid_i || csr_valid_i || mult_valid_i || fpu_valid_i || acc_valid_i ) ,
+      .fu_valid_i ( alu_valid_i || lsu_valid_i || csr_valid_i || mult_valid_i || fpu_valid_i || acc_valid_i || clu_valid_i) ,
       .branch_valid_i,
       .branch_comp_res_i(alu_branch_res),
       .branch_result_o(branch_result),
