@@ -643,6 +643,7 @@ module cva6
   logic dtlb_miss_ex_perf;
   logic dcache_miss_cache_perf;
   logic icache_miss_cache_perf;
+  logic icache_miss_cache_perf_real;
   logic [NumPorts-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0] miss_vld_bits;
   logic stall_issue;
   // --------------
@@ -675,8 +676,10 @@ module cva6
 
   icache_areq_t icache_areq_ex_cache;
   icache_arsp_t icache_areq_cache_ex;
+  icache_arsp_t icache_areq_cache_ex_real;
   icache_dreq_t icache_dreq_if_cache;
   icache_drsp_t icache_dreq_cache_if;
+  icache_drsp_t icache_dreq_cache_if_real;
 
   amo_req_t amo_req;
   amo_resp_t amo_resp;
@@ -1465,11 +1468,11 @@ module cva6
         // I$
         .icache_en_i       (icache_en_csr),
         .icache_flush_i    (icache_flush_ctrl_cache),
-        .icache_miss_o     (icache_miss_cache_perf),
+        .icache_miss_o     (icache_miss_cache_perf_real),
         .icache_areq_i     (icache_areq_ex_cache),
-        .icache_areq_o     (icache_areq_cache_ex),
+        .icache_areq_o     (icache_areq_cache_ex_real),
         .icache_dreq_i     (icache_dreq_if_cache),
-        .icache_dreq_o     (icache_dreq_cache_if),
+        .icache_dreq_o     (icache_dreq_cache_if_real),
         // D$
         .dcache_enable_i   (dcache_en_csr_nbdcache),
         .dcache_flush_i    (dcache_flush_ctrl_cache),
@@ -1524,11 +1527,11 @@ module cva6
 
         .icache_en_i   (icache_en_csr),
         .icache_flush_i(icache_flush_ctrl_cache),
-        .icache_miss_o (icache_miss_cache_perf),
+        .icache_miss_o (icache_miss_cache_perf_real),
         .icache_areq_i (icache_areq_ex_cache),
-        .icache_areq_o (icache_areq_cache_ex),
+        .icache_areq_o (icache_areq_cache_ex_real),
         .icache_dreq_i (icache_dreq_if_cache),
-        .icache_dreq_o (icache_dreq_cache_if),
+        .icache_dreq_o (icache_dreq_cache_if_real),
 
         .dcache_enable_i   (dcache_en_csr_nbdcache),
         .dcache_flush_i    (dcache_flush_ctrl_cache),
@@ -1592,11 +1595,11 @@ module cva6
         // I$
         .icache_en_i       (icache_en_csr),
         .icache_flush_i    (icache_flush_ctrl_cache),
-        .icache_miss_o     (icache_miss_cache_perf),
+        .icache_miss_o     (icache_miss_cache_perf_real),
         .icache_areq_i     (icache_areq_ex_cache),
-        .icache_areq_o     (icache_areq_cache_ex),
+        .icache_areq_o     (icache_areq_cache_ex_real),
         .icache_dreq_i     (icache_dreq_if_cache),
-        .icache_dreq_o     (icache_dreq_cache_if),
+        .icache_dreq_o     (icache_dreq_cache_if_real),
         // D$
         .dcache_enable_i   (dcache_en_csr_nbdcache),
         .dcache_flush_i    (dcache_flush_ctrl_cache),
@@ -1617,6 +1620,26 @@ module cva6
     assign dcache_commit_wbuffer_not_ni = 1'b1;
     assign inval_ready                  = 1'b1;
     assign miss_vld_bits                = '0;
+  end
+
+  if (CVA6Cfg.RVFI_DII) begin
+    rvfi_dii_generator #(
+        .CVA6Cfg(CVA6Cfg),
+        .icache_dreq_t(icache_dreq_t),
+        .icache_drsp_t(icache_drsp_t),
+        .exception_t(exception_t)
+    ) i_cva6_rvfi_dii_generator (
+        .clk_i (clk_i),
+        .rst_ni(rst_ni),
+        .dreq_i(icache_dreq_if_cache),
+        .dreq_o(icache_dreq_cache_if)
+    );
+    assign icache_miss_cache_perf = '0;
+    assign icache_areq_cache_ex   = '0;
+  end else begin
+    assign icache_dreq_cache_if   = icache_dreq_cache_if_real;
+    assign icache_miss_cache_perf = icache_miss_cache_perf_real;
+    assign icache_areq_cache_ex   = icache_areq_cache_ex_real;
   end
 
   // ----------------
