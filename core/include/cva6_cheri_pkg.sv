@@ -906,7 +906,18 @@ package cva6_cheri_pkg;
      * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
      */
     function automatic capw_t cap_reg_to_cap_mem (cap_reg_t cap);
-        return cap;
+        cap_mem_t cap_mem = '{
+            tag:       cap.tag,
+            uperms:    cap.uperms,
+            hperms:    cap.hperms,
+            res:       cap.res,
+            flags:     cap.flags,
+            otype:     cap.otype,
+            int_e:     cap.int_e,
+            bounds:    encode_bounds(cap.bounds, cap.int_e),
+            addr:      cap.addr
+        };
+        return capw_t'(cap_mem);
     endfunction
 
     /**
@@ -916,15 +927,30 @@ package cva6_cheri_pkg;
      * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
      */
     function automatic cap_reg_t cap_mem_to_cap_reg (cap_mem_t cap);
-        return cap;
+        cap_reg_t ret;
+        cap_bounds_t bounds = decode_bounds(cap.bounds, cap.int_e);
+        ew_t exp = (bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : bounds.exp;
+        ret = '{
+            tag:       cap.tag,
+            uperms:    cap.uperms,
+            hperms:    cap.hperms,
+            flags:     cap.flags,
+            res:       cap.res,
+            otype:     cap.otype,
+            int_e:     cap.int_e,
+            bounds:    bounds,
+            addr:      cap.addr,
+            addr_mid:  cap.addr >> exp
+        };
+        return ret;
     endfunction
 
     function automatic cap_pcc_t cap_reg_to_cap_pcc(cap_reg_t cap);
-        return cap_reg_to_cap_mem(cap);
+        return cap;
     endfunction
 
     function automatic cap_reg_t cap_pcc_to_cap_reg(cap_pcc_t cap);
-        return cap_mem_to_cap_reg(cap);
+        return cap;
     endfunction
 
 
