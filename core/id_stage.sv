@@ -80,7 +80,7 @@ module id_stage #(
     // CHERI Data Default capability - CSR_REGFILE
     input logic[CVA6Cfg.REGLEN-1:0] ddc_i,
     // CHERI program counter capability; only used for metadata.
-    input logic [CVA6Cfg.PCLEN-1:0] pcc_commit_i
+    input logic [CVA6Cfg.PCLEN-1:0] pcc_i
 );
   // ID/ISSUE register stage
   typedef struct packed {
@@ -115,7 +115,7 @@ module id_stage #(
           .CVA6Cfg(CVA6Cfg)
       ) compressed_decoder_i (
           .instr_i         (fetch_entry_i[i].instruction),
-          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::get_cap_mem_flags(pcc_commit_i).cap_mode : 1'b0),
+          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::get_cap_mem_flags(pcc_i).cap_mode : 1'b0),
           .instr_o         (compressed_instr[i]),
           .illegal_instr_o (is_illegal[i]),
           .is_compressed_o (is_compressed[i]),
@@ -184,7 +184,7 @@ module id_stage #(
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
         .ddc_i                     (ddc_i),
-        .pcc_commit_i              (pcc_commit_i),
+        .pcc_i                     (pcc_i),
         .is_compressed_i           (is_compressed_cmp[i]),
         .is_macro_instr_i          (is_macro_instr_i[i]),
         .is_last_macro_instr_i     (is_last_macro_instr_o),

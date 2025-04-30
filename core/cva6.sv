@@ -94,7 +94,7 @@ module cva6
 
     // ID/EX/WB Stage
     localparam type scoreboard_entry_t = struct packed {
-      logic [CVA6Cfg.PCLEN-1:0] pc;  // PC of instruction
+      logic [CVA6Cfg.VLEN-1:0] pc;  // PC of instruction
       logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;  // PC of instruction
       logic [CVA6Cfg.REGLEN-1:0] ddc;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;      // this can potentially be simplified, we could index the scoreboard entry
@@ -397,7 +397,7 @@ module cva6
   logic [CVA6Cfg.REGLEN-1:0] rs2_forwarding_id_ex;  // unregistered version of fu_data_o.operandb
 
   fu_data_t fu_data_id_ex;
-  logic [CVA6Cfg.VLEN-1:0] pc_id_ex;
+  logic [CVA6Cfg.PCLEN-1:0] pc_id_ex;
   logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_id_ex;
   logic is_compressed_instr_id_ex;
   logic [31:0] tinst_ex;
@@ -625,8 +625,7 @@ module cva6
       .bp_resolve_t(bp_resolve_t),
       .fetch_entry_t(fetch_entry_t),
       .icache_dreq_t(icache_dreq_t),
-      .icache_drsp_t(icache_drsp_t),
-      .exception_t(exception_t)
+      .icache_drsp_t(icache_drsp_t)
   ) i_frontend (
       .flush_i            (flush_ctrl_if),                  // not entirely correct
       .flush_bp_i         (1'b0),
@@ -695,8 +694,8 @@ module cva6
       .vtw_i       (vtw_csr_id),
       .tsr_i       (tsr_csr_id),
       .hu_i        (hu),
-    .ddc_i                      ( ddc                        ),
-      .pcc_commit_i(pc_commit)
+      .ddc_i                      ( ddc                        ),
+      .pcc_i(pc_commit)
   );
 
   logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_ex_id;
@@ -830,6 +829,9 @@ module cva6
       .ex_ex_i               (ex_ex_ex_id),
       .wt_valid_i            (wt_valid_ex_id),
       .x_we_i                (x_we_ex_id),
+      // CSR
+      .epc_i                 (epc_commit_pcgen),
+      .eret_i                (eret),
 
       .waddr_i              (waddr_commit_id),
       .wdata_i              (wdata_commit_id),
@@ -1023,6 +1025,7 @@ module cva6
       .amo_valid_commit_o(amo_valid_commit),
       .amo_resp_i        (amo_resp),
       .commit_csr_o      (csr_commit_commit_ex),
+      .pcc_i             (pc_id_ex),
       .pc_o              (pc_commit),
       .dii_id_o          (dii_id_commit),
       .csr_op_o          (csr_op_commit_csr),

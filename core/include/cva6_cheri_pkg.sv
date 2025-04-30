@@ -302,18 +302,7 @@ package cva6_cheri_pkg;
     } cap_reg_t;
 
     /* Full PCC Capability definition */
-    typedef struct packed {
-        bool_t                          tag;
-        upermsw_t                       uperms;
-        cap_hperms_t                    hperms;
-        resw_t                          res;
-        cap_flags_t                     flags;
-        otypew_t                        otype;
-        cap_fmt_t                       int_e;
-        cap_cbounds_t                   bounds;
-        addrw_t                         addr;
-    } cap_pcc_t;
-
+    typedef cap_reg_t cap_pcc_t;
 
     /* Capability set bounds return */
     typedef struct packed {
@@ -357,29 +346,9 @@ package cva6_cheri_pkg;
         bounds          : DEFAULT_BOUNDS_CAP
     };
 
-    localparam cap_pcc_t PCC_ROOT_CAP = '{
-        tag             : 1'b1,
-        res             : '0,
-        uperms          : '{default: '1},
-        hperms          : '{default: '1},
-        flags           : 1'b0,
-        otype           : UNSEALED_CAP,
-        int_e           : EMBEDDED_EXP,
-        bounds          : encode_bounds(DEFAULT_BOUNDS_CAP, EMBEDDED_EXP),
-        addr            : '{default: 0}
-    };
+    localparam cap_pcc_t PCC_ROOT_CAP = REG_ROOT_CAP;
 
-    localparam cap_pcc_t PCC_NULL_CAP = '{
-        tag             : 1'b0,
-        uperms          : '{default: 0},
-        hperms          : '{default: 0},
-        res             : '0,
-        flags           : 1'b0,
-        otype           : UNSEALED_CAP,
-        int_e           : EMBEDDED_EXP,
-        bounds          : encode_bounds(DEFAULT_BOUNDS_CAP, EMBEDDED_EXP),
-        addr            : '{default: 0}
-    };
+    localparam cap_pcc_t PCC_NULL_CAP = REG_NULL_CAP;
 
     localparam cap_mem_t MEM_NULL_CAP = '{
         tag             : 1'b0,
@@ -438,21 +407,6 @@ package cva6_cheri_pkg;
         addrw_t addr = get_cap_mem_addr(cap);
         ret.addr = set_cap_mem_addr_unsafe(cap, addr + $signed(inc));
         return ret.addr;
-    endfunction
-    /**
-     * Capability Register Interface
-     */
-
-    /**
-     * @brief Function that sets the PCC capability cursor or address.
-     * @param cap capability in register format.
-     * @param cursor a [63:0] value with the cursor to be set.
-     * @returns capability PCC with addr set to input address.
-     */
-    function automatic cap_pcc_t set_cap_pcc_cursor (cap_pcc_t cap, addrw_t cursor);
-        cap_pcc_t ret = cap;
-        ret.addr      = cursor;
-        return ret;
     endfunction
 
     /**
@@ -952,18 +906,7 @@ package cva6_cheri_pkg;
      * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
      */
     function automatic capw_t cap_reg_to_cap_mem (cap_reg_t cap);
-        cap_mem_t cap_mem = '{
-            tag:       cap.tag,
-            uperms:    cap.uperms,
-            hperms:    cap.hperms,
-            res:       cap.res,
-            flags:     cap.flags,
-            otype:     cap.otype,
-            int_e:     cap.int_e,
-            bounds:    encode_bounds(cap.bounds, cap.int_e),
-            addr:      cap.addr
-        };
-        return capw_t'(cap_mem);
+        return cap;
     endfunction
 
     /**
@@ -973,22 +916,7 @@ package cva6_cheri_pkg;
      * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
      */
     function automatic cap_reg_t cap_mem_to_cap_reg (cap_mem_t cap);
-        cap_reg_t ret;
-        cap_bounds_t bounds = decode_bounds(cap.bounds, cap.int_e);
-        ew_t exp = (bounds.exp > CAP_RESET_EXP) ? CAP_RESET_EXP : bounds.exp;
-        ret = '{
-            tag:       cap.tag,
-            uperms:    cap.uperms,
-            hperms:    cap.hperms,
-            flags:     cap.flags,
-            res:       cap.res,
-            otype:     cap.otype,
-            int_e:     cap.int_e,
-            bounds:    bounds,
-            addr:      cap.addr,
-            addr_mid:  cap.addr >> exp
-        };
-        return ret;
+        return cap;
     endfunction
 
     function automatic cap_pcc_t cap_reg_to_cap_pcc(cap_reg_t cap);

@@ -60,8 +60,6 @@ module instr_queue
     // Instruction address - instr_realign
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] addr_i,
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
-    // Instruction Capability - instr_realign
-    input  logic [CVA6Cfg.VLEN-1:0] pc_i,
     // Instruction is valid - instr_realign
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0] valid_i,
     // Handshake’s ready with CACHE - CACHE
@@ -72,7 +70,6 @@ module instr_queue
     input ariane_pkg::frontend_exception_t exception_i,
     // Exception address - CACHE
     input logic [CVA6Cfg.VLEN-1:0] exception_addr_i,
-    input logic [CVA6Cfg.XLEN-1:0] exception_tval_i,
     input logic [CVA6Cfg.GPLEN-1:0] exception_gpaddr_i,
     input logic [31:0] exception_tinst_i,
     input logic exception_gva_i,
@@ -102,7 +99,6 @@ module instr_queue
     ariane_pkg::cf_t                 cf;         // branch was taken
     ariane_pkg::frontend_exception_t ex;         // exception happened
     logic [CVA6Cfg.VLEN-1:0]         ex_vaddr;   // lower VLEN bits of tval for exception
-    logic [CVA6Cfg.XLEN-1:0]         ex_tval;
     logic [CVA6Cfg.GPLEN-1:0]        ex_gpaddr;  // lower GPLEN bits of tval2 for exception
     logic [31:0]                     ex_tinst;   // tinst of exception
     logic                            ex_gva;
@@ -234,7 +230,6 @@ ariane_pkg::FETCH_FIFO_DEPTH
       assign instr_data_in[i].cf = cf[CVA6Cfg.INSTR_PER_FETCH+i-idx_is_q];
       assign instr_data_in[i].ex = exception_i;  // exceptions hold for the whole fetch packet
       assign instr_data_in[i].ex_vaddr = exception_addr_i;
-      assign instr_data_in[i].ex_tval = exception_tval_i;
       if (CVA6Cfg.RVH) begin : gen_hyp_ex_with_C
         assign instr_data_in[i].ex_gpaddr = exception_gpaddr_i;
         assign instr_data_in[i].ex_tinst = exception_tinst_i;
@@ -275,7 +270,6 @@ ariane_pkg::FETCH_FIFO_DEPTH
     assign instr_data_in[0].cf = cf_type_i[0];
     assign instr_data_in[0].ex = exception_i;  // exceptions hold for the whole fetch packet
     assign instr_data_in[0].ex_vaddr = exception_addr_i;
-    assign instr_data_in[0].ex_tval  = exception_tval_i;
     if (CVA6Cfg.RVH) begin : gen_hyp_ex_without_C
       assign instr_data_in[0].ex_gpaddr = exception_gpaddr_i;
       assign instr_data_in[0].ex_tinst = exception_tinst_i;
@@ -367,23 +361,16 @@ ariane_pkg::FETCH_FIFO_DEPTH
             fetch_entry_o[0].ex.cause = riscv::INSTR_ACCESS_FAULT;
           end else if (CVA6Cfg.RVH && instr_data_out[i].ex == ariane_pkg::FE_INSTR_GUEST_PAGE_FAULT) begin
             fetch_entry_o[0].ex.cause = riscv::INSTR_GUEST_PAGE_FAULT;
-          end else if (CVA6Cfg.CheriPresent && instr_data_out[i].ex == ariane_pkg::FE_INSTR_CHERI_FAULT) begin
-            fetch_entry_o[0].ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
           end else begin
             fetch_entry_o[0].ex.cause = riscv::INSTR_PAGE_FAULT;
           end
           fetch_entry_o[0].instruction = instr_data_out[i].instr;
           fetch_entry_o[0].dii_id = instr_data_out[i].dii_id;
           fetch_entry_o[0].ex.valid = instr_data_out[i].ex != ariane_pkg::FE_NONE;
-          if (CVA6Cfg.TvalEn) begin
-            if (CVA6Cfg.CheriPresent && instr_data_out[i].ex == ariane_pkg::FE_INSTR_CHERI_FAULT) begin
-              fetch_entry_o[0].ex.tval = instr_data_out[i].ex_tval;
-            end else begin
-              fetch_entry_o[0].ex.tval = {
-                {(CVA6Cfg.XLEN - CVA6Cfg.VLEN) {1'b0}}, instr_data_out[i].ex_vaddr
-              };
-            end
-          end
+          if (CVA6Cfg.TvalEn)
+            fetch_entry_o[0].ex.tval = {
+              {(CVA6Cfg.XLEN - CVA6Cfg.VLEN) {1'b0}}, instr_data_out[i].ex_vaddr
+            };
           if (CVA6Cfg.RVH) begin
             fetch_entry_o[0].ex.tval2 = instr_data_out[i].ex_gpaddr;
             fetch_entry_o[0].ex.tinst = instr_data_out[i].ex_tinst;
@@ -397,23 +384,13 @@ ariane_pkg::FETCH_FIFO_DEPTH
           if (idx_ds[1][i]) begin
             if (instr_data_out[i].ex == ariane_pkg::FE_INSTR_ACCESS_FAULT) begin
               fetch_entry_o[NID].ex.cause = riscv::INSTR_ACCESS_FAULT;
-            end else if (CVA6Cfg.CheriPresent && instr_data_out[i].ex == ariane_pkg::FE_INSTR_CHERI_FAULT) begin
-              fetch_entry_o[NID].ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
             end else begin
               fetch_entry_o[NID].ex.cause = riscv::INSTR_PAGE_FAULT;
             end
             fetch_entry_o[NID].instruction = instr_data_out[i].instr;
             fetch_entry_o[NID].dii_id = instr_data_out[i].dii_id;
             fetch_entry_o[NID].ex.valid = instr_data_out[i].ex != ariane_pkg::FE_NONE;
-            if (CVA6Cfg.TvalEn) begin
-            if (CVA6Cfg.CheriPresent && instr_data_out[i].ex == ariane_pkg::FE_INSTR_CHERI_FAULT) begin
-              fetch_entry_o[NID].ex.tval = instr_data_out[i].ex_tval;
-            end else begin
-              fetch_entry_o[NID].ex.tval = {
-                {{64 - riscv::VLEN{1'b0}}, instr_data_out[i].ex_vaddr}
-              };
-            end
-          end
+            fetch_entry_o[NID].ex.tval = {{64 - riscv::VLEN{1'b0}}, instr_data_out[i].ex_vaddr};
             fetch_entry_o[NID].branch_predict.cf = instr_data_out[i].cf;
             // Cannot output two CF the same cycle.
             pop_instr[i] = fetch_entry_fire[NID];
@@ -440,20 +417,12 @@ ariane_pkg::FETCH_FIFO_DEPTH
       fetch_entry_o[0].ex.valid = instr_data_out[0].ex != ariane_pkg::FE_NONE;
       if (instr_data_out[0].ex == ariane_pkg::FE_INSTR_ACCESS_FAULT) begin
         fetch_entry_o[0].ex.cause = riscv::INSTR_ACCESS_FAULT;
-      end else if (CVA6Cfg.CheriPresent && instr_data_out[0].ex == ariane_pkg::FE_INSTR_CHERI_FAULT) begin
-        fetch_entry_o[0].ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
       end else begin
         fetch_entry_o[0].ex.cause = riscv::INSTR_PAGE_FAULT;
       end
-      if (CVA6Cfg.TvalEn) begin
-        if (CVA6Cfg.CheriPresent && instr_data_out[0].ex == ariane_pkg::FE_INSTR_CHERI_FAULT) begin
-              fetch_entry_o[0].ex.tval = instr_data_out[0].ex_tval;
-          end else begin
-            fetch_entry_o[0].ex.tval = {
-              {{64 - CVA6Cfg.VLEN{1'b0}}, instr_data_out[0].ex_vaddr}
-            };
-          end
-      end else fetch_entry_o[0].ex.tval = '0;
+      if (CVA6Cfg.TvalEn)
+        fetch_entry_o[0].ex.tval = {{64 - CVA6Cfg.VLEN{1'b0}}, instr_data_out[0].ex_vaddr};
+      else fetch_entry_o[0].ex.tval = '0;
       if (CVA6Cfg.RVH) begin
         fetch_entry_o[0].ex.tval2 = instr_data_out[0].ex_gpaddr;
         fetch_entry_o[0].ex.tinst = instr_data_out[0].ex_tinst;
@@ -483,13 +452,9 @@ ariane_pkg::FETCH_FIFO_DEPTH
   // ----------------------
   assign pc_j[0] = pc_q;
   for (genvar i = 0; i <= ariane_pkg::SUPERSCALAR; i++) begin
-    if (CVA6Cfg.CheriPresent) begin
-      assign pc_j[i+1] = fetch_entry_is_cf[i] ? cva6_cheri_pkg::set_cap_pcc_cursor(pc_j[i], address_out) : cva6_cheri_pkg::set_cap_pcc_cursor(pc_j[i], pc_j[i][CVA6Cfg.XLEN-1:0] + ((fetch_entry_o[i].instruction[1:0] != 2'b11) ? 'd2 : 'd4));
-    end else begin
-      assign pc_j[i+1] = fetch_entry_is_cf[i] ? address_out : (
-        pc_j[i] + ((fetch_entry_o[i].instruction[1:0] != 2'b11) ? 'd2 : 'd4)
-      );
-    end
+    assign pc_j[i+1] = fetch_entry_is_cf[i] ? address_out : (
+      pc_j[i] + ((fetch_entry_o[i].instruction[1:0] != 2'b11) ? 'd2 : 'd4)
+    );
   end
 
   always_comb begin
@@ -508,11 +473,7 @@ ariane_pkg::FETCH_FIFO_DEPTH
     // we previously flushed so we need to reset the address
     if (valid_i[0] && reset_address_q) begin
       // this is the base of the first instruction
-      if (CVA6Cfg.CheriPresent) begin
-        pc_d = cva6_cheri_pkg::set_cap_pcc_cursor(pc_i, addr_i[0]);
-      end else begin
-        pc_d = addr_i[0];
-      end
+      pc_d = addr_i[0];
       reset_address_d = 1'b0;
     end
   end

@@ -124,6 +124,10 @@ module issue_read_operands
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_i,
     // Program counter capability last committed - TO_BE_COMPLETED
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
+    // Exception PC - CSR_FILE
+    input logic [CVA6Cfg.REGLEN-1:0] epc_i,
+    // ERET now - CSR_FILE
+    input logic eret_i,
 
     // Stall signal, we do not want to fetch any more entries - TO_BE_COMPLETED
     output logic stall_issue_o
@@ -158,7 +162,7 @@ module issue_read_operands
   fu_t fu_n, fu_q;  // functional unit to use
   logic [31:0] tinst_n, tinst_q;  // transformed instruction
   logic use_ddc_n, use_ddc_q;
-  logic [CVA6Cfg.PCLEN-1:0] pcc_q;
+  logic [CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
 
   // forwarding signals
   logic forward_rs1, forward_rs2, forward_rs3;
@@ -315,6 +319,7 @@ module issue_read_operands
       rs1_n = issue_instr_i.rs1;
       rs2_n = issue_instr_i.rs2;
       use_ddc_n  = issue_instr_i.use_ddc;
+      pcc_n = (eret_i) ? epc_i : pcc_q;
     end
     if (CVA6Cfg.RVH) begin
       tinst_n = issue_instr_i.ex.tinst;
@@ -656,6 +661,7 @@ module issue_read_operands
         rs1_q <= '0;
         rs2_q <= '0;
         use_ddc_q <= '0;
+        pcc_q <= cva6_cheri_pkg::PCC_ROOT_CAP;
       end
       pc_o                  <= '0;
       is_compressed_instr_o <= 1'b0;
@@ -675,8 +681,9 @@ module issue_read_operands
         rs1_q <= rs1_n;
         rs2_q <= rs2_n;
         use_ddc_q <= use_ddc_n;
+        pcc_q <= pcc_n;
       end
-      pc_o                  <= issue_instr_i.pc;
+      pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc_q, issue_instr_i.pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q));
       is_compressed_instr_o <= issue_instr_i.is_compressed;
       branch_predict_o      <= issue_instr_i.bp;
       if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i.dii_id;

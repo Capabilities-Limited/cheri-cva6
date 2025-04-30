@@ -22,8 +22,7 @@ module frontend
     parameter type bp_resolve_t = logic,
     parameter type fetch_entry_t = logic,
     parameter type icache_dreq_t = logic,
-    parameter type icache_drsp_t = logic,
-    parameter type exception_t = logic
+    parameter type icache_drsp_t = logic
 ) (
     // Subsystem Clock - SUBSYSTEM
     input logic clk_i,
@@ -50,9 +49,9 @@ module frontend
     // Return from exception event - CSR
     input logic eret_i,
     // Next PC when returning from exception - CSR
-    input logic [CVA6Cfg.REGLEN-1:0] epc_i,
+    input logic [CVA6Cfg.VLEN-1:0] epc_i,
     // Next PC when jumping into exception - CSR
-    input logic [CVA6Cfg.REGLEN-1:0] trap_vector_base_i,
+    input logic [CVA6Cfg.VLEN-1:0] trap_vector_base_i,
     // Debug event - CSR
     input logic set_debug_pc_i,
     // Debug mode state - CSR
@@ -97,7 +96,6 @@ module frontend
   ariane_pkg::frontend_exception_t                               icache_ex_valid_q;
   logic                            [           CVA6Cfg.VLEN-1:0] icache_vaddr_q;
   logic                            [       CVA6Cfg.DIIIDLEN-1:0] icache_dii_id_q;
-  logic                            [           CVA6Cfg.XLEN-1:0] icache_tval_q;
   logic                            [          CVA6Cfg.GPLEN-1:0] icache_gpaddr_q;
   logic                            [                       31:0] icache_tinst_q;
   logic                                                          icache_gva_q;
@@ -349,8 +347,7 @@ module frontend
                                 & resolved_branch_i.is_mispredict
                                 & (resolved_branch_i.cf_type == ariane_pkg::JumpR);
   assign btb_update.pc = resolved_branch_i.pc;
-  assign btb_update.target_address = resolved_branch_i.target_address[CVA6Cfg.XLEN-1:0];
-  exception_t cheri_ex;
+  assign btb_update.target_address = resolved_branch_i.target_address;
   // -------------------
   // Next PC
   // -------------------
@@ -377,11 +374,11 @@ module frontend
 
     if (npc_rst_load_q) begin
       npc_d         = boot_addr_i;
-      fetch_address = boot_addr_i[CVA6Cfg.XLEN-1:0];
+      fetch_address = boot_addr_i;
       ndii_id_d     = test_dii_start();
       fetch_dii_id  = test_dii_start();
     end else begin
-      fetch_address = npc_q[CVA6Cfg.VLEN-1:0];
+      fetch_address = npc_q;
       // keep stable by default
       npc_d         = npc_q;
       fetch_dii_id  = ndii_id_q;
@@ -455,7 +452,6 @@ module frontend
       icache_vaddr_q    <= 'b0;
       icache_dii_id_q   <= 'b0;
       icache_gpaddr_q   <= 'b0;
-      icache_tval_q     <= 'b0;
       icache_tinst_q    <= 'b0;
       icache_gva_q      <= 1'b0;
       icache_ex_valid_q <= ariane_pkg::FE_NONE;
@@ -471,7 +467,6 @@ module frontend
         icache_data_q  <= icache_data;
         icache_vaddr_q <= icache_dreq_i.vaddr;
         icache_dii_id_q <= icache_dreq_i.dii_id;
-        icache_tval_q <= icache_dreq_i.ex.tval;
         if (CVA6Cfg.RVH) begin
           icache_gpaddr_q <= icache_dreq_i.ex.tval2[CVA6Cfg.GPLEN-1:0];
           icache_tinst_q  <= icache_dreq_i.ex.tinst;
@@ -592,10 +587,8 @@ module frontend
       .instr_i            (instr),                 // from re-aligner
       .addr_i             (addr),                  // from re-aligner
       .dii_id_i           (dii_id),
-      .pc_i(npc_q),
       .exception_i        (icache_ex_valid_q),     // from I$
       .exception_addr_i   (icache_vaddr_q),
-      .exception_tval_i   (icache_tval_q),
       .exception_gpaddr_i (icache_gpaddr_q),
       .exception_tinst_i  (icache_tinst_q),
       .exception_gva_i    (icache_gva_q),
