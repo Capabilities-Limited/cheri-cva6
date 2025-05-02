@@ -270,6 +270,7 @@ module ex_stage
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] mult_trans_id;
   logic mult_valid;
   exception_t branch_exception, clu_exception;
+  // If PCC bounds check is in branch_exception, this might have priority problems.
   assign flu_exception_o = (clu_valid_i) ? clu_exception : branch_exception;
 
   cva6_cheri_pkg::cap_pcc_t pcc;

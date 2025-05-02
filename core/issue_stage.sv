@@ -127,10 +127,14 @@ module issue_stage
     output scoreboard_entry_t [CVA6Cfg.NrCommitPorts-1:0] commit_instr_o,
     // Commit acknowledge - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_i,
+    // Exception event - COMMIT
+    input logic ex_valid_i,
     // Program counter capability last committed - TO_BE_COMPLETED
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
     // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
     input logic set_pc_commit_i,
+    // Next PC when jumping into exception - CSR_FILE
+    input logic [CVA6Cfg.REGLEN-1:0] trap_vector_base_i,
     // Exception PC - CSR_FILE
     input logic [CVA6Cfg.REGLEN-1:0] epc_i,
     // ERET now - CSR_FILE

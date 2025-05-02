@@ -251,7 +251,7 @@ module branch_unit #(
                 end
             end
         end
-        if (CVA6Cfg.CheriPresent && branch_valid_i) begin
+        if (CVA6Cfg.CheriPresent && (fu_valid_i || branch_valid_i)) begin
             // Check PCC bounds every instruction
             if(!cva6_cheri_pkg::is_cap_reg_inbounds(pcc, pcc_meta, 0)) begin
                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
@@ -259,10 +259,12 @@ module branch_unit #(
                cheri_tval.cap_idx       = {6'b100000};
                branch_exception_o.valid = 1'b1;
             end
-            // Update tval
-            branch_exception_o.tval = cheri_tval;
-            if (CVA6Cfg.CheriPresent && clu_exception_i.valid && fu_data_i.operation inside {ariane_pkg::CINVOKE}) begin
-              branch_exception_o = clu_exception_i;
+            else if (branch_valid_i) begin
+              // Update tval
+              branch_exception_o.tval = cheri_tval;
+              if (clu_exception_i.valid && fu_data_i.operation inside {ariane_pkg::CINVOKE}) begin
+                branch_exception_o = clu_exception_i;
+              end
             end
         end
   end

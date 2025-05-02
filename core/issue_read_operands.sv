@@ -127,8 +127,12 @@ module issue_read_operands
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
     // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
     input logic set_pc_commit_i,
+    // Exception event - COMMIT
+    input logic ex_valid_i,
     // Mispredict event and next PC - EXECUTE
     input bp_resolve_t resolved_branch_i,
+    // Next PC when jumping into exception - CSR_FILE
+    input logic [CVA6Cfg.REGLEN-1:0] trap_vector_base_i,
     // Exception PC - CSR_FILE
     input logic [CVA6Cfg.REGLEN-1:0] epc_i,
     // ERET now - CSR_FILE
@@ -324,13 +328,13 @@ module issue_read_operands
       rs1_n = issue_instr_i.rs1;
       rs2_n = issue_instr_i.rs2;
       use_ddc_n  = issue_instr_i.use_ddc;
-      pcc_n = (eret_i) ?
-                        epc_i : 
+      pcc_n = eret_i ?
+                      epc_i : 
+              ((set_pc_commit_i || ex_valid_i) ?
+                      trap_vector_base_i :
               ((resolved_branch_i.valid && resolved_branch_i.is_mispredict && (resolved_branch_i.cf_type == ariane_pkg::JumpR)) ?
-                        resolved_branch_i.target_address :
-              (set_pc_commit_i ?
-                        pcc_commit_i :
-                        pcc_q));
+                      resolved_branch_i.target_address :
+                      pcc_q));
     end
     if (CVA6Cfg.RVH) begin
       tinst_n = issue_instr_i.ex.tinst;

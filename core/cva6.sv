@@ -829,6 +829,8 @@ module cva6
       .ex_ex_i               (ex_ex_ex_id),
       .wt_valid_i            (wt_valid_ex_id),
       .x_we_i                (x_we_ex_id),
+      .ex_valid_i            (ex_commit.valid),
+      .trap_vector_base_i    (trap_vector_base_commit_pcgen),
       // CSR
       .epc_i                 (epc_commit_pcgen),
       .eret_i                (eret),
