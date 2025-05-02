@@ -129,6 +129,8 @@ module issue_stage
     input logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_i,
     // Program counter capability last committed - TO_BE_COMPLETED
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
+    // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
+    input logic set_pc_commit_i,
     // Exception PC - CSR_FILE
     input logic [CVA6Cfg.REGLEN-1:0] epc_i,
     // ERET now - CSR_FILE
@@ -218,6 +220,7 @@ module issue_stage
   // ---------------------------------------------------------
   issue_read_operands #(
       .CVA6Cfg(CVA6Cfg),
+      .bp_resolve_t(bp_resolve_t),
       .branchpredict_sbe_t(branchpredict_sbe_t),
       .fu_data_t(fu_data_t),
       .scoreboard_entry_t(scoreboard_entry_t),

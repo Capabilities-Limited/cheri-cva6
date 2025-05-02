@@ -19,6 +19,7 @@ module issue_read_operands
   import ariane_pkg::*;
 #(
     parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
+    parameter type bp_resolve_t = logic,
     parameter type branchpredict_sbe_t = logic,
     parameter type fu_data_t = logic,
     parameter type scoreboard_entry_t = logic,
@@ -124,6 +125,10 @@ module issue_read_operands
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_i,
     // Program counter capability last committed - TO_BE_COMPLETED
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
+    // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
+    input logic set_pc_commit_i,
+    // Mispredict event and next PC - EXECUTE
+    input bp_resolve_t resolved_branch_i,
     // Exception PC - CSR_FILE
     input logic [CVA6Cfg.REGLEN-1:0] epc_i,
     // ERET now - CSR_FILE
@@ -319,7 +324,13 @@ module issue_read_operands
       rs1_n = issue_instr_i.rs1;
       rs2_n = issue_instr_i.rs2;
       use_ddc_n  = issue_instr_i.use_ddc;
-      pcc_n = (eret_i) ? epc_i : pcc_q;
+      pcc_n = (eret_i) ?
+                        epc_i : 
+              ((resolved_branch_i.valid && resolved_branch_i.is_mispredict && (resolved_branch_i.cf_type == ariane_pkg::JumpR)) ?
+                        resolved_branch_i.target_address :
+              (set_pc_commit_i ?
+                        pcc_commit_i :
+                        pcc_q));
     end
     if (CVA6Cfg.RVH) begin
       tinst_n = issue_instr_i.ex.tinst;

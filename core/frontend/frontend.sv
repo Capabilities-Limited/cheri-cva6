@@ -347,7 +347,7 @@ module frontend
                                 & resolved_branch_i.is_mispredict
                                 & (resolved_branch_i.cf_type == ariane_pkg::JumpR);
   assign btb_update.pc = resolved_branch_i.pc;
-  assign btb_update.target_address = resolved_branch_i.target_address;
+  assign btb_update.target_address = resolved_branch_i.target_address[CVA6Cfg.VLEN-1:0];
   // -------------------
   // Next PC
   // -------------------

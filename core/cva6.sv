@@ -134,7 +134,7 @@ module cva6
       logic                    valid;           // prediction with all its values is valid
       logic [CVA6Cfg.VLEN-1:0] pc;              // PC of predict or mis-predict
       logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;      // dii id of branch
-      logic [CVA6Cfg.VLEN-1:0] target_address;  // target address at which to jump, or not
+      logic [CVA6Cfg.PCLEN-1:0] target_address;  // target address at which to jump, or not
       logic                    is_mispredict;   // set if this was a mis-predict
       logic                    is_taken;        // branch is taken
       cf_t                     cf_type;         // Type of control flow change
@@ -843,6 +843,8 @@ module cva6
       .commit_instr_o       (commit_instr_id_commit),
       .commit_ack_i         (commit_ack),
       .pcc_commit_i         (pc_commit),
+      .set_pc_commit_i      (set_pc_ctrl_pcgen),
+      
       // Performance Counters
       .stall_issue_o        (stall_issue),
       //RVFI
