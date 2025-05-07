@@ -54,9 +54,10 @@ module branch_unit #(
     // Branch exception in - CLU Unit
     input exception_t clu_exception_i
 );
+  logic [CVA6Cfg.VLEN-1:0] next_pc_off;
+  logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
   logic [CVA6Cfg.PCLEN-1:0] target_address;
   logic [CVA6Cfg.PCLEN-1:0] next_pc;
-
 
   // CHERI Signals
   logic cap_mode;
@@ -65,7 +66,7 @@ module branch_unit #(
   cva6_cheri_pkg::cap_reg_t pcc;
   cva6_cheri_pkg::cap_meta_data_t pcc_meta;
   cva6_cheri_pkg::addrw_t pcc_base;
-  cva6_cheri_pkg::addrw_t pcc_top;
+  cva6_cheri_pkg::addrwe_t pcc_top;
 
   // Signals for CHERI exception handling
   cva6_cheri_pkg::cap_reg_t target_pcc;
@@ -90,14 +91,16 @@ module branch_unit #(
   assign target_pcc_address = target_pcc.addr;
   assign target_pcc_address_end = {1'b0,target_pcc_address} + min_instr_off;
 
+  // calculate next PC, depending on whether the instruction is compressed or not this may be different
+  // TODO(zarubaf): We already calculate this a couple of times, maybe re-use?
+  assign next_pc_off                      = ((is_compressed_instr_i) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
+  assign next_pc_addr                     = pc_i[CVA6Cfg.VLEN-1:0] + next_pc_off;
 
   // here we handle the various possibilities of mis-predicts
   always_comb begin : mispredict_handler
     // set the jump base, for JALR we need to look at the register, for all other control flow instructions we can take the current PC
     automatic logic [CVA6Cfg.VLEN-1:0] jump_base;
     automatic logic [CVA6Cfg.VLEN-1:0] jump_base_addr;
-    automatic logic [CVA6Cfg.VLEN-1:0] next_pc_off;
-    automatic logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
     automatic cva6_cheri_pkg::cap_pcc_t jump_base_cap;
     automatic cva6_cheri_pkg::cap_pcc_t next_pc_tmp, target_address_tmp;
     // TODO(zarubaf): The ALU can be used to calculate the branch target
@@ -116,12 +119,7 @@ module branch_unit #(
     resolved_branch_o.valid = branch_valid_i;
     resolved_branch_o.is_mispredict = 1'b0;
     resolved_branch_o.cf_type = branch_predict_i.cf;
-    // calculate next PC, depending on whether the instruction is compressed or not this may be different
-    // TODO(zarubaf): We already calculate this a couple of times, maybe re-use?
-    next_pc_off                      = ((is_compressed_instr_i) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
-    next_pc_addr                     = pc_i[CVA6Cfg.VLEN-1:0] + next_pc_off;
-    // Assume that capability is always representable since there is a inbounds check here
-    next_pc                          = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_addr(pcc, next_pc_addr) : next_pc_addr;
+    next_pc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_addr(pcc, next_pc_addr) : next_pc_addr;
     // calculate target address simple 64 bit addition
     if (CVA6Cfg.CheriPresent) begin
       target_address = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_address(jump_base_cap, jump_base_addr, cva6_cheri_pkg::get_cap_reg_meta_data(jump_base_cap)) : '0;
@@ -257,7 +255,7 @@ module branch_unit #(
         end
         if (CVA6Cfg.CheriPresent && (fu_valid_i || branch_valid_i)) begin
             // Check PCC bounds every instruction
-            if(!cva6_cheri_pkg::is_cap_reg_inbounds(pcc, pcc_meta, 0)) begin
+            if((cva6_cheri_pkg::get_cap_mem_addr(cva6_cheri_pkg::cap_reg_to_cap_mem(pcc)) < pcc_base) || ({0,next_pc_addr} > pcc_top)) begin
                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
                cheri_tval.cause         = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
                cheri_tval.cap_idx       = {6'b100000};
