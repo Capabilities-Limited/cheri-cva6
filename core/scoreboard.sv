@@ -79,6 +79,8 @@ module scoreboard #(
     output logic              [ariane_pkg::SUPERSCALAR:0][31:0] orig_instr_o,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     output logic              [ariane_pkg::SUPERSCALAR:0]       issue_instr_valid_o,
+    // The next instruction to be issued is also the next to be committed - issue_read_operands
+    output logic                                                backend_empty_o,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input  logic              [ariane_pkg::SUPERSCALAR:0]       issue_ack_i,
 
@@ -123,6 +125,8 @@ module scoreboard #(
   assign issue_full = (issue_cnt_q[CVA6Cfg.TRANS_ID_BITS] == 1'b1);
 
   assign sb_full_o  = issue_full;
+
+  assign backend_empty_o = issue_pointer_q == commit_pointer_q[0];
 
   // output commit instruction directly
   always_comb begin : commit_ports

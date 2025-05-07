@@ -174,6 +174,8 @@ module issue_stage
   logic              [    CVA6Cfg.REGLEN-1:0]       rs1_forwarding_xlen;
   logic              [    CVA6Cfg.REGLEN-1:0]       rs2_forwarding_xlen;
 
+  logic                                           backend_empty;
+
   assign rs1_forwarding_o = rs1_forwarding_xlen;
   assign rs2_forwarding_o = rs2_forwarding_xlen;
 
@@ -211,6 +213,7 @@ module issue_stage
       .orig_instr_o         (orig_instr_sb_iro),
       .issue_instr_valid_o  (issue_instr_valid_sb_iro),
       .issue_ack_i          (issue_ack_iro_sb),
+      .backend_empty_o      (backend_empty),
 
       .resolved_branch_i(resolved_branch_i),
       .trans_id_i       (trans_id_i),
@@ -235,6 +238,7 @@ module issue_stage
       .orig_instr_i       (orig_instr_sb_iro[0]),
       .issue_instr_valid_i(issue_instr_valid_sb_iro[0]),
       .issue_ack_o        (issue_ack_iro_sb[0]),
+      .backend_empty_i    (backend_empty),
       .fu_data_o          (fu_data_o),
       .flu_ready_i        (flu_ready_i),
       .rs1_o              (rs1_iro_sb),

@@ -41,6 +41,8 @@ module issue_read_operands
     input logic issue_instr_valid_i,
     // Issue stage acknowledge - TO_BE_COMPLETED
     output logic issue_ack_o,
+    // Backend Empty - scoreboard
+    input logic backend_empty_i,
     // rs1 operand address - scoreboard
     output logic [REG_ADDR_SIZE-1:0] rs1_o,
     // rs1 operand - scoreboard
@@ -172,6 +174,8 @@ module issue_read_operands
   logic [31:0] tinst_n, tinst_q;  // transformed instruction
   logic use_ddc_n, use_ddc_q;
   logic [CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
+  logic pcc_jump_change_valid_n, pcc_jump_change_valid_q;
+  logic [CVA6Cfg.PCLEN-1:0] pcc_jump_change_n, pcc_jump_change_q;
 
   // forwarding signals
   logic forward_rs1, forward_rs2, forward_rs3;
@@ -296,6 +300,9 @@ module issue_read_operands
         stall = 1'b1;
       end
     end
+
+    // Stall while there is an outstanding change to bounds.
+    if (CVA6Cfg.CheriPresent && pcc_jump_change_valid_q && !backend_empty_i) stall = 1'b1;
   end
 
   // third operand from fp regfile or gp regfile if NR_RGPR_PORTS == 3
@@ -328,15 +335,20 @@ module issue_read_operands
       rs1_n = issue_instr_i.rs1;
       rs2_n = issue_instr_i.rs2;
       use_ddc_n  = issue_instr_i.use_ddc;
-      pcc_n = eret_i ?
-                      epc_i : 
-              (set_pc_commit_i ?
-                      pcc_commit_i :
-              (ex_valid_i ?
-                      trap_vector_base_i :
-              ((resolved_branch_i.valid && resolved_branch_i.is_mispredict && (resolved_branch_i.cf_type == ariane_pkg::JumpR)) ?
-                      resolved_branch_i.target_address :
-                      pcc_q)));
+      
+      if      (eret_i) pcc_n = epc_i;
+      else if (set_pc_commit_i) pcc_n = pcc_commit_i;
+      else if (ex_valid_i) pcc_n = trap_vector_base_i;
+      else if (pcc_jump_change_valid_q && backend_empty_i) pcc_n = pcc_jump_change_q;
+      else pcc_n = pcc_q;
+
+      if (eret_i || set_pc_commit_i || ex_valid_i) pcc_jump_change_valid_n = 1'b0;
+      else if (resolved_branch_i.valid && (resolved_branch_i.target_address[CVA6Cfg.REGLEN-1:CVA6Cfg.XLEN] != pcc_q[CVA6Cfg.REGLEN-1:CVA6Cfg.XLEN]))
+        pcc_jump_change_valid_n = 1'b1;
+      else if (backend_empty_i) pcc_jump_change_valid_n = 1'b0;
+      else pcc_jump_change_valid_n = pcc_jump_change_valid_q;
+
+      if (resolved_branch_i.valid) pcc_jump_change_n = resolved_branch_i.target_address;
     end
     if (CVA6Cfg.RVH) begin
       tinst_n = issue_instr_i.ex.tinst;
@@ -679,6 +691,7 @@ module issue_read_operands
         rs2_q <= '0;
         use_ddc_q <= '0;
         pcc_q <= cva6_cheri_pkg::PCC_ROOT_CAP;
+        pcc_jump_change_valid_q <= '0;
       end
       pc_o                  <= '0;
       is_compressed_instr_o <= 1'b0;
@@ -699,6 +712,8 @@ module issue_read_operands
         rs2_q <= rs2_n;
         use_ddc_q <= use_ddc_n;
         pcc_q <= pcc_n;
+        pcc_jump_change_valid_q <= pcc_jump_change_valid_n;
+        pcc_jump_change_q <= pcc_jump_change_n;
       end
       pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc_q, issue_instr_i.pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q));
       is_compressed_instr_o <= issue_instr_i.is_compressed;
