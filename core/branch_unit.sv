@@ -73,6 +73,8 @@ module branch_unit #(
   cva6_cheri_pkg::addrw_t target_pcc_base;
   cva6_cheri_pkg::addrwe_t target_pcc_top;
   cva6_cheri_pkg::addrw_t target_pcc_address;
+  cva6_cheri_pkg::addrwe_t target_pcc_address_end;
+  cva6_cheri_pkg::addrwe_t min_instr_off;
   logic target_pcc_is_sealed;
   assign pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_t'(pc_i) : pc_i;
   assign pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc);
@@ -84,6 +86,10 @@ module branch_unit #(
   assign target_pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(target_pcc);
   assign target_pcc_base = cva6_cheri_pkg::get_cap_reg_base(target_pcc, target_pcc_meta);
   assign target_pcc_top = cva6_cheri_pkg::get_cap_reg_top(target_pcc, target_pcc_meta);
+  assign min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-1{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-2{1'b0}}, 3'h4});
+  assign target_pcc_address = target_pcc.addr;
+  assign target_pcc_address_end = {1'b0,target_pcc_address} + min_instr_off;
+
 
   // here we handle the various possibilities of mis-predicts
   always_comb begin : mispredict_handler
@@ -204,9 +210,7 @@ module branch_unit #(
     branch_exception_o.gva   = CVA6Cfg.RVH ? v_i : 1'b0;
 
      // Decode target address (next PCC) fields
-    target_pcc_address    = target_pcc.addr;
     target_pcc_is_sealed  = (operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP);
-    min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-3{1'b0}}, 3'h4});
     // Only throw instruction address misaligned exception if this is indeed a `taken` conditional branch or
     // an unconditional jump
     if (branch_valid_i && (target_address[0] || (!CVA6Cfg.RVC && target_address[1])) && jump_taken) begin
@@ -222,7 +226,7 @@ module branch_unit #(
                 end
             end
             // Check if target address is in bounds
-            if (target_pcc_address < target_pcc_base || ({1'b0,cva6_cheri_pkg::addrw_t'(target_pcc_address + min_instr_off)} >= target_pcc_top)) begin
+            if (target_pcc_address < target_pcc_base || target_pcc_address_end > target_pcc_top) begin
                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
                cheri_tval.cause         = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
                cheri_tval.cap_idx       = {6'b100000};
@@ -257,6 +261,7 @@ module branch_unit #(
                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
                cheri_tval.cause         = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
                cheri_tval.cap_idx       = {6'b100000};
+               branch_exception_o.tval = cheri_tval;
                branch_exception_o.valid = 1'b1;
             end
             else if (branch_valid_i) begin
