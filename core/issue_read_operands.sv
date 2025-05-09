@@ -244,7 +244,21 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
           issue_pcc_ex_o.tval  = cheri_tval;
           issue_pcc_ex_o.valid = 1'b1;
       end
-      else if (!pcc.tag) begin
+      if(!pcc.hperms.permit_execute) begin
+          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
+          cheri_tval.cap_idx   = {6'b100000};
+          issue_pcc_ex_o.tval  = cheri_tval;
+          issue_pcc_ex_o.valid     = 1'b1;
+      end
+      if((pcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc.tag) begin
+          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          cheri_tval.cause   = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+          cheri_tval.cap_idx   = {6'b100000};
+          issue_pcc_ex_o.tval  = cheri_tval;
+          issue_pcc_ex_o.valid     = 1'b1;
+      end
+      if (!pcc.tag) begin
           issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval.cause     = cva6_cheri_pkg::CAP_TAG_VIOLATION;
           cheri_tval.cap_idx   = {6'b100000};
