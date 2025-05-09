@@ -21,6 +21,7 @@ module issue_read_operands
     parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
     parameter type bp_resolve_t = logic,
     parameter type branchpredict_sbe_t = logic,
+    parameter type exception_t = logic,
     parameter type fu_data_t = logic,
     parameter type scoreboard_entry_t = logic,
     parameter type rs3_len_t = logic
@@ -41,6 +42,8 @@ module issue_read_operands
     input logic issue_instr_valid_i,
     // Issue stage acknowledge - TO_BE_COMPLETED
     output logic issue_ack_o,
+    // PCC exception - Execute
+    output exception_t issue_pcc_ex_o,
     // Backend Empty - scoreboard
     input logic backend_empty_i,
     // rs1 operand address - scoreboard
@@ -214,6 +217,43 @@ module issue_read_operands
   // ---------------
   // Issue Stage
   // ---------------
+
+if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
+  // check PCC bounds
+  always_comb begin : pcc_bounds
+    automatic cva6_cheri_pkg::cap_pcc_t pcc;
+    automatic cva6_cheri_pkg::cap_meta_data_t pcc_meta;
+    automatic cva6_cheri_pkg::addrw_t pcc_base;
+    automatic cva6_cheri_pkg::addrwe_t pcc_top;
+    automatic logic [CVA6Cfg.VLEN-1:0] next_pc_off;
+    automatic logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
+    automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+    pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_q);
+    pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q);
+    pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
+    pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q, pcc_meta);
+    next_pc_off = ((issue_instr_i.is_compressed) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
+    next_pc_addr = issue_instr_i.pc + next_pc_off;
+    issue_pcc_ex_o = 0;
+    // Check PCC bounds every instruction
+    if (!issue_instr_i.ex.valid) begin
+      if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top)) begin
+          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          cheri_tval.cause     = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
+          cheri_tval.cap_idx   = {6'b100000};
+          issue_pcc_ex_o.tval  = cheri_tval;
+          issue_pcc_ex_o.valid = 1'b1;
+      end
+      else if (!pcc.tag) begin
+          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          cheri_tval.cause     = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+          cheri_tval.cap_idx   = {6'b100000};
+          issue_pcc_ex_o.tval  = cheri_tval;
+          issue_pcc_ex_o.valid = 1'b1;
+      end
+    end
+  end
+end
 
   // select the right busy signal
   // this obviously depends on the functional unit we need

@@ -271,7 +271,7 @@ module ex_stage
   logic mult_valid;
   exception_t branch_exception, clu_exception;
   // Conditioning this on the result of the exception is likely to have timing problems.
-  assign flu_exception_o = (branch_exception.valid) ? branch_exception : clu_exception;
+  assign flu_exception_o = (branch_valid_i) ? branch_exception : clu_exception;
 
   cva6_cheri_pkg::cap_pcc_t pcc;
   assign pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);

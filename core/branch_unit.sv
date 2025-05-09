@@ -64,9 +64,6 @@ module branch_unit #(
   // Decode input capability operand a and pcc
   cva6_cheri_pkg::cap_pcc_t operand_a;
   cva6_cheri_pkg::cap_reg_t pcc;
-  cva6_cheri_pkg::cap_meta_data_t pcc_meta;
-  cva6_cheri_pkg::addrw_t pcc_base;
-  cva6_cheri_pkg::addrwe_t pcc_top;
 
   // Signals for CHERI exception handling
   cva6_cheri_pkg::cap_reg_t target_pcc;
@@ -78,9 +75,6 @@ module branch_unit #(
   cva6_cheri_pkg::addrwe_t min_instr_off;
   logic target_pcc_is_sealed;
   assign pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_t'(pc_i) : pc_i;
-  assign pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc);
-  assign pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc, pcc_meta);
-  assign pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc, pcc_meta);
   assign cap_mode = CVA6Cfg.CheriPresent ? (pcc.flags.cap_mode || fu_data_i.operation inside {ariane_pkg::CJALR, ariane_pkg::CINVOKE}) : 1'b0;
   assign operand_a = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_to_cap_pcc(fu_data_i.operand_a) : fu_data_i.operand_a;
   assign target_pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_t'(target_address) : target_address;
@@ -253,29 +247,12 @@ module branch_unit #(
                 end
             end
         end
-        if (CVA6Cfg.CheriPresent && (fu_valid_i || branch_valid_i)) begin
-            // Check PCC bounds every instruction
-            if((cva6_cheri_pkg::get_cap_mem_addr(cva6_cheri_pkg::cap_reg_to_cap_mem(pcc)) < pcc_base) || ({0,next_pc_addr} > pcc_top)) begin
-               branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-               cheri_tval.cause         = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
-               cheri_tval.cap_idx       = {6'b100000};
-               branch_exception_o.tval = cheri_tval;
-               branch_exception_o.valid = 1'b1;
-            end
-            else if (!pcc.tag) begin
-                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-                cheri_tval.cause         = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-                cheri_tval.cap_idx       = {6'b100000};
-                branch_exception_o.tval = cheri_tval;
-                branch_exception_o.valid = 1'b1;
-            end
-            else if (branch_valid_i) begin
-              // Update tval
-              branch_exception_o.tval = cheri_tval;
-              if (clu_exception_i.valid && fu_data_i.operation inside {ariane_pkg::CINVOKE}) begin
-                branch_exception_o = clu_exception_i;
-              end
-            end
+        if (CVA6Cfg.CheriPresent && branch_valid_i) begin
+          // Update tval
+          branch_exception_o.tval = cheri_tval;
+          if (clu_exception_i.valid && fu_data_i.operation inside {ariane_pkg::CINVOKE}) begin
+            branch_exception_o = clu_exception_i;
+          end
         end
   end
 endmodule

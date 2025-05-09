@@ -83,6 +83,8 @@ module scoreboard #(
     output logic                                                backend_empty_o,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input  logic              [ariane_pkg::SUPERSCALAR:0]       issue_ack_i,
+    // An exception has been detected in issue_read_operands - issue_read_operands
+    input  exception_t        [ariane_pkg::SUPERSCALAR:0]       issue_pcc_ex_i,
 
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input bp_resolve_t resolved_branch_i,
@@ -177,6 +179,9 @@ module scoreboard #(
           )),  // whether rd goes to the fpr
           decoded_instr_i[i]  // decoded instruction record
         };
+      end
+      if (CVA6Cfg.CheriPresent && issue_pcc_ex_i[i].valid) begin
+        mem_n[issue_pointer[i]].sbe.ex = issue_pcc_ex_i[i];
       end
     end
 
