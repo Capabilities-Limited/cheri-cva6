@@ -262,6 +262,13 @@ module branch_unit #(
                branch_exception_o.tval = cheri_tval;
                branch_exception_o.valid = 1'b1;
             end
+            else if (!pcc.tag) begin
+                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+                cheri_tval.cause         = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+                cheri_tval.cap_idx       = {6'b100000};
+                branch_exception_o.tval = cheri_tval;
+                branch_exception_o.valid = 1'b1;
+            end
             else if (branch_valid_i) begin
               // Update tval
               branch_exception_o.tval = cheri_tval;
