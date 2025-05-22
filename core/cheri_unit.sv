@@ -26,6 +26,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     input  logic                     v_i ,
     input  fu_data_t                 fu_data_i,
     input  cap_pcc_t                 pcc_i,          // Current PCC
+    input  cap_reg_t                 ddc_i,          // Current DDC
     input  logic                     clu_valid_i,
     input  addrw_t                   alu_result_i,
     output cap_reg_t                 clu_result_o,  // Return resulting cap
@@ -486,8 +487,16 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     // Decode Cap Operands Fields
     // ----------------
     always_comb begin
-        // Decode capability operand a fields
         operand_a = fu_data_i.operand_a;
+        operand_b = fu_data_i.operand_b;
+        // use the DDC as operand
+        if (fu_data_i.use_ddc) begin
+            if (fu_data_i.operation == ariane_pkg::CTO_PTR)
+                operand_b = ddc_i;
+            else if (fu_data_i.operation inside{ariane_pkg::CFROM_PTR, ariane_pkg::CTEST_SUBSET, ariane_pkg::CBUILD_CAP})
+                operand_a = ddc_i;
+        end
+        // Decode capability operand a fields
         op_a_meta_info = get_cap_reg_meta_data(operand_a);
         operand_a_address = operand_a.addr;
         operand_a_base   = get_cap_reg_base(operand_a, op_a_meta_info);
@@ -497,7 +506,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         operand_a_is_sealed = (operand_a.otype != UNSEALED_CAP);
         is_operand_a_rev_otype = operand_a.otype > OTYPE_MAX;
         // Decode capability operand b fields
-        operand_b = fu_data_i.operand_b;
         operand_b_address = operand_b.addr;
         op_b_meta_info = get_cap_reg_meta_data(operand_b);
         operand_b_base   = get_cap_reg_base(operand_b, op_b_meta_info);

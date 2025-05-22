@@ -77,8 +77,6 @@ module id_stage #(
     input logic tsr_i,
     // Hypervisor user mode - CSR_REGFILE
     input logic hu_i,
-    // CHERI Data Default capability - CSR_REGFILE
-    input logic[CVA6Cfg.REGLEN-1:0] ddc_i,
     // CHERI program counter capability; only used for metadata.
     input logic [CVA6Cfg.PCLEN-1:0] pcc_i
 );
@@ -183,7 +181,6 @@ module id_stage #(
         .irq_i,
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
-        .ddc_i                     (ddc_i),
         .pcc_i                     (pcc_i),
         .is_compressed_i           (is_compressed_cmp[i]),
         .is_macro_instr_i          (is_macro_instr_i[i]),

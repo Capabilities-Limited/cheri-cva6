@@ -266,7 +266,7 @@ module ex_stage
   logic [CVA6Cfg.XLEN-1:0] alu_result, mult_result;
   logic [CVA6Cfg.REGLEN-1:0]  clu_result, csr_result;
   logic [CVA6Cfg.REGLEN-1:0] branch_result;
-  logic csr_ready, mult_ready;
+  logic lsu_ready, csr_ready, mult_ready;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] mult_trans_id;
   logic mult_valid;
   exception_t branch_exception, clu_exception;
@@ -420,6 +420,7 @@ end
   // ready flags for FLU
   always_comb begin
     flu_ready_o = csr_ready & mult_ready;
+    lsu_ready_o = lsu_ready & csr_ready;
   end
 
   // 4. Multiplication (Sequential)
@@ -506,7 +507,7 @@ end
       .fu_data_i             (lsu_data),
       .ddc_i,
       .cap_mode_i(pcc.flags.cap_mode),
-      .lsu_ready_o,
+      .lsu_ready_o(lsu_ready),
       .lsu_valid_i,
       .load_trans_id_o,
       .load_result_o,
@@ -612,6 +613,7 @@ end
         .v_i,
         .fu_data_i        ( clu_data       ),
         .pcc_i            ( pc_i          ),
+        .ddc_i            ( ddc_i         ),
         .clu_valid_i      ( clu_valid_i    ),
         .alu_result_i     ( alu_result     ),
         .clu_result_o     ( clu_result     ),

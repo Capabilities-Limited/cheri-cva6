@@ -83,8 +83,6 @@ module decoder
     input logic tsr_i,
     // Hypervisor user mode - CSR_REGFILE
     input logic hu_i,
-    // Default Data Capability (DDC) - CSR_REGFILE
-    input  logic [CVA6Cfg.REGLEN-1:0] ddc_i,
     // CHERI program counter capability; only used for metadata.
     input logic [CVA6Cfg.PCLEN-1:0] pcc_i,
     // Instruction to be added to scoreboard entry - ISSUE_STAGE
@@ -197,7 +195,6 @@ module decoder
     instruction_o.vfp                      = 1'b0;
     if (CVA6Cfg.RVFI_DII) instruction_o.dii_id = dii_id_i;
     if (CVA6Cfg.CheriPresent) begin
-      instruction_o.ddc     = ddc_i;
       instruction_o.use_ddc = 1'b0;
       instruction_o.clr     = 1'b0;
       instruction_o.mask    = '0;
