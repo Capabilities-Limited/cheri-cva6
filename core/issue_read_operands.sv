@@ -445,13 +445,6 @@ end
         ))) begin
       operand_b_n = issue_instr_i.result;
     end
-    // use the DDC as operand
-    if (CVA6Cfg.CheriPresent && issue_instr_i.use_ddc) begin
-      if (issue_instr_i.op == ariane_pkg::CTO_PTR)
-        operand_b_n = issue_instr_i.ddc;
-      else if (issue_instr_i.op inside{ariane_pkg::CFROM_PTR, ariane_pkg::CTEST_SUBSET, ariane_pkg::CBUILD_CAP})
-        operand_a_n = issue_instr_i.ddc;
-    end
   end
 
   // FU select, assert the correct valid out signal (in the next cycle)

@@ -97,7 +97,6 @@ module cva6
     localparam type scoreboard_entry_t = struct packed {
       logic [CVA6Cfg.VLEN-1:0] pc;  // PC of instruction
       logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;  // DII ID of the instruction in the stream
-      logic [CVA6Cfg.REGLEN-1:0] ddc;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;      // this can potentially be simplified, we could index the scoreboard entry
       // with the transaction id in any case make the width more generic
       fu_t fu;  // functional unit to use
@@ -695,7 +694,6 @@ module cva6
       .vtw_i       (vtw_csr_id),
       .tsr_i       (tsr_csr_id),
       .hu_i        (hu),
-      .ddc_i       (ddc),
       .pcc_i       (pc_commit)
   );
 
