@@ -860,14 +860,6 @@ module issue_read_operands
           ))) begin
         fu_data_n[i].operand_b = issue_instr_i[i].result;
       end
-      // use the DDC as operand
-      if (CVA6Cfg.CheriPresent && issue_instr_i[i].use_ddc) begin
-        if (issue_instr_i[i].op == ariane_pkg::CTO_PTR) begin
-          fu_data_n[i].operand_b = issue_instr_i[i].ddc;
-        end else if (issue_instr_i[i].op inside{ariane_pkg::CFROM_PTR, ariane_pkg::CTEST_SUBSET, ariane_pkg::CBUILD_CAP}) begin
-          fu_data_n[i].operand_a = issue_instr_i[i].ddc;
-        end
-      end
     end
   end
 
