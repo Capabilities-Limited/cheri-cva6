@@ -217,8 +217,8 @@ module branch_unit #(
                     branch_exception_o.valid = 1'b1;
                 end
             end
-            // Check if target address is in bounds
-            if (target_pcc_address < target_pcc_base || target_pcc_address_end > target_pcc_top) begin
+            // Check if target address is in bounds (or has become unrepresentable)
+            if (target_pcc_address < target_pcc_base || target_pcc_address_end > target_pcc_top || !target_pcc.tag) begin
                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
                cheri_tval.cause         = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
                cheri_tval.cap_idx       = {6'b100000};
