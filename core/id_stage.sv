@@ -110,8 +110,6 @@ module id_stage #(
     input dcache_req_o_t dcache_req_ports_i,
     // Data cache request input - CACHE
     output dcache_req_i_t dcache_req_ports_o,
-    // CHERI Data Default capability - CSR_REGFILE
-    input logic[CVA6Cfg.REGLEN-1:0] ddc_i,
     // CHERI program counter capability; only used for metadata - ISSUE_STAGE
     input cva6_cheri_pkg::cap_pcc_t pcc_i
 );
@@ -336,7 +334,6 @@ module id_stage #(
         .irq_i,
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
-        .ddc_i                     (ddc_i),
         .pcc_i                     (pcc_i),
         .is_compressed_i           (is_compressed_deco[i]),
         .is_macro_instr_i          (is_macro_instr[i]),
