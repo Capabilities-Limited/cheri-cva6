@@ -126,6 +126,7 @@ module cva6
       branchpredict_sbe_t bp;  // branch predict scoreboard data structure
       logic                     is_compressed; // signals a compressed instructions, we need this information at the commit stage if
                                                // we want jump accordingly e.g.: +4, +2
+      logic needs_asr; // Instruction is privileged and must trap if PCC does not have ASR
       logic is_macro_instr;  // is an instruction executed as predefined sequence of instructions called macro definition
       logic is_last_macro_instr;  // is last decoded 32bit instruction of macro definition
       logic is_double_rd_macro_instr;  // is double move decoded 32bit instruction of macro definition
