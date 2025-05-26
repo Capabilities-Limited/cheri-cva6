@@ -463,6 +463,13 @@ module issue_read_operands
               issue_pcc_ex_o.tval  = cheri_tval;
               issue_pcc_ex_o.valid = 1'b1;
           end
+          if (issue_instr_i[i].needs_asr && !pcc.hperms.access_sys_regs) begin
+              issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+              cheri_tval.cause     = cva6_cheri_pkg::CAP_PERM_ACCESS_SYS_REGS;
+              cheri_tval.cap_idx   = {6'b100000};
+              issue_pcc_ex_o.tval  = cheri_tval;
+              issue_pcc_ex_o.valid = 1'b1;
+          end
           if(!pcc.hperms.permit_execute) begin
               issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
               cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
