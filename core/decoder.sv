@@ -2311,13 +2311,7 @@ module decoder
           instruction_o.ex.cause = riscv::ENV_CALL_MMODE;
         end
       end else if (ret) begin
-        if (CVA6Cfg.CheriPresent && !asr_i) begin
-          instruction_o.ex.valid = 1'b1;
-          instruction_o.ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval.cause       = cva6_cheri_pkg::CAP_PERM_ACCESS_SYS_REGS;
-          cheri_tval.cap_idx     = {6'b100000};
-          instruction_o.ex.tval  = cheri_tval;
-        end
+        if (CVA6Cfg.CheriPresent) instruction_o.needs_asr = 1'b1;
       end else if (ebreak) begin
         // this exception is valid
         instruction_o.ex.valid = 1'b1;
