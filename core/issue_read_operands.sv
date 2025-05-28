@@ -181,6 +181,8 @@ module issue_read_operands
   logic [CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
   logic pcc_jump_change_valid_n, pcc_jump_change_valid_q;
   logic [CVA6Cfg.PCLEN-1:0] pcc_jump_change_n, pcc_jump_change_q;
+  cva6_cheri_pkg::cap_pcc_t pcc;
+  cva6_cheri_pkg::cap_meta_data_t pcc_meta;
 
   // forwarding signals
   logic forward_rs1, forward_rs2, forward_rs3;
@@ -223,14 +225,13 @@ module issue_read_operands
 if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
   // check PCC bounds
   always_comb begin : pcc_bounds
-    automatic cva6_cheri_pkg::cap_pcc_t pcc;
-    automatic cva6_cheri_pkg::cap_meta_data_t pcc_meta;
     automatic cva6_cheri_pkg::addrw_t pcc_base;
     automatic cva6_cheri_pkg::addrwe_t pcc_top;
     automatic logic [CVA6Cfg.VLEN-1:0] next_pc_off;
     automatic logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
     automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
     pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_q);
+    pcc.flags.int_mode = issue_instr_i.int_mode;
     pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q);
     pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
     pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q, pcc_meta);
@@ -772,7 +773,7 @@ end
         pcc_jump_change_valid_q <= pcc_jump_change_valid_n;
         pcc_jump_change_q <= pcc_jump_change_n;
       end
-      pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc_q, issue_instr_i.pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q));
+      pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc, issue_instr_i.pc, pcc_meta);
       is_compressed_instr_o <= issue_instr_i.is_compressed;
       branch_predict_o      <= issue_instr_i.bp;
       if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i.dii_id;

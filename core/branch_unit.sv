@@ -124,7 +124,6 @@ module branch_unit #(
       if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
         next_pc_tmp = next_pc;
         next_pc_tmp.otype = cva6_cheri_pkg::SENTRY_CAP;
-        next_pc_tmp.flags.int_mode = 1'b0;
         next_pc = next_pc_tmp;
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
           target_address_tmp =  target_address;

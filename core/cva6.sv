@@ -116,6 +116,7 @@ module cva6
       logic use_zimm;  // use zimm as operand a
       logic use_pc;  // set if we need to use the PC as operand a, PC from exception
       logic                     use_ddc;       // use DDC as the default cap for load and stores
+      logic int_mode; // Instruction was decoded in integer decoding mode (as opposed to capability mode)
       exception_t ex;  // exception has occurred
       branchpredict_sbe_t bp;  // branch predict scoreboard data structure
       logic                     is_compressed; // signals a compressed instructions, we need this information at the commit stage if
