@@ -196,21 +196,26 @@ module cva6_hpdcache_subsystem
     userCfg.wordWidth = CVA6Cfg.XLEN;
     userCfg.sets = CVA6Cfg.DCACHE_NUM_WORDS;
     userCfg.ways = CVA6Cfg.DCACHE_SET_ASSOC;
-    userCfg.clWords = CVA6Cfg.DCACHE_LINE_WIDTH / CVA6Cfg.XLEN;
-    userCfg.reqWords = CVA6Cfg.CLEN / CVA6Cfg.XLEN;
+    userCfg.clWords = CVA6Cfg.DCACHE_LINE_WIDTH / userCfg.wordWidth;
+    userCfg.reqUserWidth = 1;  // 1 cheri tag bit for every CLEN (2 XLEN) word
+    userCfg.reqWords = CVA6Cfg.CLEN / userCfg.wordWidth;
     userCfg.reqTransIdWidth = CVA6Cfg.DcacheIdWidth;
     userCfg.reqSrcIdWidth = 3;  // Up to 8 requesters
     userCfg.victimSel = hpdcache_pkg::HPDCACHE_VICTIM_RANDOM;
-    userCfg.dataWaysPerRamWord = __minu(CVA6Cfg.DCACHE_SET_ASSOC, 128 / CVA6Cfg.XLEN);
+    userCfg.dataWaysPerRamWord = __minu(CVA6Cfg.DCACHE_SET_ASSOC, 128 / userCfg.wordWidth);
     userCfg.dataSetsPerRam = CVA6Cfg.DCACHE_NUM_WORDS;
     userCfg.dataRamByteEnable = 1'b1;
-    userCfg.accessWords = __maxu(CVA6Cfg.AxiDataWidth / CVA6Cfg.XLEN, userCfg.reqWords);
+    userCfg.accessWords =
+        __maxu(CVA6Cfg.AxiDataWidth / userCfg.wordWidth, userCfg.reqWords  /* 1? */);
+    userCfg.accessUserWidth =
+        __minu((userCfg.accessWords / userCfg.reqWords) * userCfg.reqUserWidth, 1);
     userCfg.mshrSets = CVA6Cfg.NrLoadBufEntries < 16 ? 1 : CVA6Cfg.NrLoadBufEntries / 2;
     userCfg.mshrWays = CVA6Cfg.NrLoadBufEntries < 16 ? CVA6Cfg.NrLoadBufEntries : 2;
     userCfg.mshrWaysPerRamWord = CVA6Cfg.NrLoadBufEntries < 16 ? CVA6Cfg.NrLoadBufEntries : 2;
     userCfg.mshrSetsPerRam = CVA6Cfg.NrLoadBufEntries < 16 ? 1 : CVA6Cfg.NrLoadBufEntries / 2;
     userCfg.mshrRamByteEnable = 1'b1;
     userCfg.mshrUseRegbank = (CVA6Cfg.NrLoadBufEntries < 16);
+    userCfg.cbufEntries = 8;
     userCfg.refillCoreRspFeedthrough = 1'b1;
     userCfg.refillFifoDepth = 2 * (CVA6Cfg.DCACHE_LINE_WIDTH / CVA6Cfg.AxiDataWidth);
     userCfg.wbufDirEntries = CVA6Cfg.WtDcacheWbufDepth;
@@ -225,6 +230,7 @@ module cva6_hpdcache_subsystem
     userCfg.memAddrWidth = CVA6Cfg.AxiAddrWidth;
     userCfg.memIdWidth = CVA6Cfg.MEM_TID_WIDTH;
     userCfg.memDataWidth = CVA6Cfg.AxiDataWidth;
+    userCfg.memUserWidth = CVA6Cfg.AxiDataWidth / CVA6Cfg.CLEN;
     userCfg.wtEn =
         (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT) ||
         (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT_WB);
@@ -239,21 +245,23 @@ module cva6_hpdcache_subsystem
       HPDcacheUserCfg
   );
 
-  `HPDCACHE_TYPEDEF_MEM_ATTR_T(hpdcache_mem_addr_t, hpdcache_mem_id_t, hpdcache_mem_data_t,
-                               hpdcache_mem_be_t, HPDcacheCfg);
+  `HPDCACHE_TYPEDEF_MEM_ATTR_T(hpdcache_mem_addr_t, hpdcache_mem_id_t, hpdcache_mem_user_t,
+                               hpdcache_mem_data_t, hpdcache_mem_be_t, HPDcacheCfg);
   `HPDCACHE_TYPEDEF_MEM_REQ_T(hpdcache_mem_req_t, hpdcache_mem_addr_t, hpdcache_mem_id_t);
-  `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_data_t);
-  `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_data_t, hpdcache_mem_be_t);
+  `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_user_t,
+                                 hpdcache_mem_data_t);
+  `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_user_t, hpdcache_mem_data_t,
+                                hpdcache_mem_be_t);
   `HPDCACHE_TYPEDEF_MEM_RESP_W_T(hpdcache_mem_resp_w_t, hpdcache_mem_id_t);
 
   `HPDCACHE_TYPEDEF_REQ_ATTR_T(hpdcache_req_offset_t, hpdcache_data_word_t, hpdcache_data_be_t,
-                               hpdcache_req_data_t, hpdcache_req_be_t, hpdcache_req_sid_t,
-                               hpdcache_req_tid_t, hpdcache_tag_t, HPDcacheCfg);
-  `HPDCACHE_TYPEDEF_REQ_T(hpdcache_req_t, hpdcache_req_offset_t, hpdcache_req_data_t,
-                          hpdcache_req_be_t, hpdcache_req_sid_t, hpdcache_req_tid_t,
-                          hpdcache_tag_t);
-  `HPDCACHE_TYPEDEF_RSP_T(hpdcache_rsp_t, hpdcache_req_data_t, hpdcache_req_sid_t,
-                          hpdcache_req_tid_t);
+                               hpdcache_req_user_t, hpdcache_req_data_t, hpdcache_req_be_t,
+                               hpdcache_req_sid_t, hpdcache_req_tid_t, hpdcache_tag_t, HPDcacheCfg);
+  `HPDCACHE_TYPEDEF_REQ_T(hpdcache_req_t, hpdcache_req_offset_t, hpdcache_req_user_t,
+                          hpdcache_req_data_t, hpdcache_req_be_t, hpdcache_req_sid_t,
+                          hpdcache_req_tid_t, hpdcache_tag_t);
+  `HPDCACHE_TYPEDEF_RSP_T(hpdcache_rsp_t, hpdcache_req_user_t, hpdcache_req_data_t,
+                          hpdcache_req_sid_t, hpdcache_req_tid_t);
 
   typedef logic [HPDcacheCfg.u.wbufTimecntWidth-1:0] hpdcache_wbuf_timecnt_t;
 
