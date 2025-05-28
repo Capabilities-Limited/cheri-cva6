@@ -307,7 +307,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CSetEqualExact
             ariane_pkg::SCEQ: begin
-                clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}}, (operand_a == operand_b) ? 1'b1 : 1'b0});
+                clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}}, (cap_reg_to_cap_mem(operand_a) == cap_reg_to_cap_mem(operand_b)) ? 1'b1 : 1'b0});
             end
             // CSetFlags
             ariane_pkg::SCMODE: begin
@@ -319,8 +319,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CSetHigh
             ariane_pkg::SCHI: begin
                 cap_mem = cap_reg_to_cap_mem(operand_a);
-                cap_mem[((CVA6Cfg.XLEN * 2) - 1):CVA6Cfg.XLEN] = operand_b[XLEN-1:0] ^ MEM_NULL_CAP[((CVA6Cfg.XLEN * 2) - 1):CVA6Cfg.XLEN];
-                //cap_mem = operand_b ^ MEM_NULL_CAP[((CVA6Cfg.XLEN * 2) - 1):CVA6Cfg.XLEN];
+                cap_mem[((CVA6Cfg.XLEN * 2) - 1):CVA6Cfg.XLEN] = operand_b[XLEN-1:0];
                 clu_result = cap_mem_to_cap_reg(cap_mem);
                 clu_result.tag = 1'b0;
             end
