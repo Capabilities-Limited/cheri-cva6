@@ -231,7 +231,7 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     automatic logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
     automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
     pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_q);
-    pcc.flags.int_mode = issue_instr_i.int_mode;
+    pcc = cva6_cheri_pkg::set_cap_reg_flags(pcc, issue_instr_i.int_mode);
     pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q);
     pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
     pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q, pcc_meta);

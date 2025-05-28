@@ -127,7 +127,11 @@ module commit_stage
     assign waddr_o[i] = commit_instr_i[i].rd[4:0];
   end
 
-  assign pc_o = cva6_cheri_pkg::set_cap_reg_addr(pcc_i, commit_instr_i[0].pc);
+  always_comb begin : prepare_pc_o
+    automatic cva6_cheri_pkg::cap_pcc_t pcc_o = cva6_cheri_pkg::set_cap_reg_addr(pcc_i, commit_instr_i[0].pc);
+    pcc_o = cva6_cheri_pkg::set_cap_reg_flags(pcc_o, commit_instr_i[0].int_mode);
+    pc_o = pcc_o;
+  end
   if (CVA6Cfg.RVFI_DII) assign dii_id_o = commit_instr_i[0].dii_id;
   // Dirty the FP state if we are committing anything related to the FPU
   always_comb begin : dirty_fp_state
