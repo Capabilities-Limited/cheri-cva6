@@ -203,6 +203,7 @@ module decoder
     if (CVA6Cfg.RVFI_DII) instruction_o.dii_id = dii_id_i;
     if (CVA6Cfg.CheriPresent) begin
       instruction_o.use_ddc = 1'b0;
+      instruction_o.int_mode = !cap_mode_i;
       instruction_o.clr     = 1'b0;
       instruction_o.mask    = '0;
       instruction_o.quarter = '0;

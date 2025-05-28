@@ -246,6 +246,8 @@ module issue_read_operands
   logic [CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
   logic pcc_jump_change_valid_n, pcc_jump_change_valid_q;
   logic [CVA6Cfg.PCLEN-1:0] pcc_jump_change_n, pcc_jump_change_q;
+  cva6_cheri_pkg::cap_pcc_t pcc [CVA6Cfg.NrIssuePorts-1:0];
+  cva6_cheri_pkg::cap_meta_data_t pcc_meta;
 
   // forwarding signals
   logic [CVA6Cfg.NrIssuePorts-1:0] forward_rs1, forward_rs2, forward_rs3;
@@ -437,13 +439,18 @@ module issue_read_operands
   end
 
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
+    // Update PCC with correct int mode
+    always_comb begin : pcc_int_mode
+      for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
+        pcc[i] = cva6_cheri_pkg::cap_pcc_t'(pcc_q);
+        pcc[i].flags.int_mode = issue_instr_i[i].int_mode;
+      end
+    end
+
     // check PCC bounds
     always_comb begin : pcc_bounds
-      automatic cva6_cheri_pkg::cap_pcc_t pcc;
-      automatic cva6_cheri_pkg::cap_meta_data_t pcc_meta;
       automatic cva6_cheri_pkg::addrw_t pcc_base;
       automatic cva6_cheri_pkg::addrwe_t pcc_top;
-      pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_q);
       pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q);
       pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
       pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q, pcc_meta);
@@ -463,28 +470,28 @@ module issue_read_operands
               issue_pcc_ex_o.tval  = cheri_tval;
               issue_pcc_ex_o.valid = 1'b1;
           end
-          if (issue_instr_i[i].needs_asr && !pcc.hperms.access_sys_regs) begin
+          if (issue_instr_i[i].needs_asr && !pcc[i].hperms.access_sys_regs) begin
               issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
               cheri_tval.cause     = cva6_cheri_pkg::CAP_PERM_ACCESS_SYS_REGS;
               cheri_tval.cap_idx   = {6'b100000};
               issue_pcc_ex_o.tval  = cheri_tval;
               issue_pcc_ex_o.valid = 1'b1;
           end
-          if(!pcc.hperms.permit_execute) begin
+          if(!pcc[i].hperms.permit_execute) begin
               issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
               cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
               cheri_tval.cap_idx   = {6'b100000};
               issue_pcc_ex_o.tval  = cheri_tval;
               issue_pcc_ex_o.valid     = 1'b1;
           end
-          if((pcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc.tag) begin
+          if((pcc[i].otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc[i].tag) begin
               issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
               cheri_tval.cause   = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
               cheri_tval.cap_idx   = {6'b100000};
               issue_pcc_ex_o.tval  = cheri_tval;
               issue_pcc_ex_o.valid     = 1'b1;
           end
-          if (!pcc.tag) begin
+          if (!pcc[i].tag) begin
               issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
               cheri_tval.cause     = cva6_cheri_pkg::CAP_TAG_VIOLATION;
               cheri_tval.cap_idx   = {6'b100000};
@@ -1193,14 +1200,14 @@ module issue_read_operands
       end
       if (CVA6Cfg.SuperscalarEn) begin
         if (issue_instr_i[1].fu == CTRL_FLOW) begin
-          pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc_q, issue_instr_i[1].pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q));
+          pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc[1], issue_instr_i[1].pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q));
           is_compressed_instr_o <= issue_instr_i[1].is_compressed;
           branch_predict_o      <= issue_instr_i[1].bp;
           if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[1].dii_id;
         end
       end
       if (issue_instr_i[0].fu == CTRL_FLOW) begin
-        pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc_q, issue_instr_i[0].pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q));
+        pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc[0], issue_instr_i[0].pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q));
         is_compressed_instr_o <= issue_instr_i[0].is_compressed;
         branch_predict_o      <= issue_instr_i[0].bp;
         if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[0].dii_id;
