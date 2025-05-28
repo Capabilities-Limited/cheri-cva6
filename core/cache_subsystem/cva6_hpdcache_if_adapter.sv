@@ -80,6 +80,7 @@ module cva6_hpdcache_if_adapter
       //    Request forwarding
       assign hpdcache_req_valid_o = cva6_req_i.data_req,
           hpdcache_req_o.addr_offset = cva6_req_i.address_index,
+          hpdcache_req_o.wuser = '0,
           hpdcache_req_o.wdata = '0,
           hpdcache_req_o.op = hpdcache_pkg::HPDCACHE_REQ_LOAD,
           hpdcache_req_o.be = cva6_req_i.data_be,
@@ -98,6 +99,7 @@ module cva6_hpdcache_if_adapter
 
       //    Response forwarding
       assign cva6_req_o.data_rvalid = hpdcache_rsp_valid_i,
+          cva6_req_o.data_ruser = hpdcache_rsp_i.ruser,
           cva6_req_o.data_rdata = hpdcache_rsp_i.rdata,
           cva6_req_o.data_rid = hpdcache_rsp_i.tid,
           cva6_req_o.data_gnt = hpdcache_req_ready_i;
@@ -165,6 +167,7 @@ module cva6_hpdcache_if_adapter
 
       assign hpdcache_req_valid_o = forward_store | (forward_amo & ~amo_pending_q);
       assign hpdcache_req_o.addr_offset = forward_amo ? amo_addr_offset : cva6_req_i.address_index;
+      assign hpdcache_req_o.wuser = cva6_req_i.data_wuser;
       assign hpdcache_req_o.wdata = forward_amo ? amo_data : cva6_req_i.data_wdata;
       assign hpdcache_req_o.op = forward_amo ? amo_op : hpdcache_pkg::HPDCACHE_REQ_STORE;
       assign hpdcache_req_o.be = forward_amo ? amo_data_be : cva6_req_i.data_be;
@@ -192,6 +195,7 @@ module cva6_hpdcache_if_adapter
       end
 
       assign cva6_req_o.data_rvalid = hpdcache_rsp_valid_i && (hpdcache_rsp_i.tid != '1);
+      assign cva6_req_o.data_ruser = hpdcache_rsp_i.ruser;
       assign cva6_req_o.data_rdata = hpdcache_rsp_i.rdata;
       assign cva6_req_o.data_rid = hpdcache_rsp_i.tid;
       assign cva6_req_o.data_gnt = hpdcache_req_ready_i;

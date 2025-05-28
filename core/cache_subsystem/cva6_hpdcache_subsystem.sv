@@ -196,6 +196,7 @@ module cva6_hpdcache_subsystem
       sets: CVA6Cfg.DCACHE_NUM_WORDS,
       ways: CVA6Cfg.DCACHE_SET_ASSOC,
       clWords: CVA6Cfg.DCACHE_LINE_WIDTH / CVA6Cfg.XLEN,
+      reqUserWidth: 1, // 1 cheri tag bit for every CLEN (2 XLEN) word
       //reqWords: 1,
       reqWords: CVA6Cfg.CLEN / CVA6Cfg.XLEN,
       reqTransIdWidth: CVA6Cfg.DcacheIdWidth,
@@ -238,13 +239,14 @@ module cva6_hpdcache_subsystem
   `HPDCACHE_TYPEDEF_MEM_RESP_W_T(hpdcache_mem_resp_w_t, hpdcache_mem_id_t);
 
   `HPDCACHE_TYPEDEF_REQ_ATTR_T(hpdcache_req_offset_t, hpdcache_data_word_t, hpdcache_data_be_t,
-                               hpdcache_req_data_t, hpdcache_req_be_t, hpdcache_req_sid_t,
-                               hpdcache_req_tid_t, hpdcache_tag_t, hpdcacheCfg);
-  `HPDCACHE_TYPEDEF_REQ_T(hpdcache_req_t, hpdcache_req_offset_t, hpdcache_req_data_t,
-                          hpdcache_req_be_t, hpdcache_req_sid_t, hpdcache_req_tid_t,
-                          hpdcache_tag_t);
-  `HPDCACHE_TYPEDEF_RSP_T(hpdcache_rsp_t, hpdcache_req_data_t, hpdcache_req_sid_t,
-                          hpdcache_req_tid_t);
+                               hpdcache_req_user_t, hpdcache_req_data_t, hpdcache_req_be_t,
+                               hpdcache_req_sid_t, hpdcache_req_tid_t, hpdcache_tag_t,
+                               hpdcacheCfg);
+  `HPDCACHE_TYPEDEF_REQ_T(hpdcache_req_t, hpdcache_req_offset_t,
+                          hpdcache_req_user_t, hpdcache_req_data_t, hpdcache_req_be_t,
+                          hpdcache_req_sid_t, hpdcache_req_tid_t, hpdcache_tag_t);
+  `HPDCACHE_TYPEDEF_RSP_T(hpdcache_rsp_t, hpdcache_req_user_t, hpdcache_req_data_t,
+                          hpdcache_req_sid_t, hpdcache_req_tid_t);
 
   typedef logic [hpdcacheCfg.u.wbufTimecntWidth-1:0] hpdcache_wbuf_timecnt_t;
 
