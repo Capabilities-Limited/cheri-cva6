@@ -90,6 +90,7 @@ module cva6_hpdcache_if_adapter
       //    Request forwarding
       assign hpdcache_req_valid_o = cva6_req_i.data_req;
       assign hpdcache_req.addr_offset = cva6_req_i.address_index;
+      assign hpdcache_req_o.wuser = '0;
       assign hpdcache_req.wdata = '0;
       assign hpdcache_req.op = hpdcache_pkg::HPDCACHE_REQ_LOAD;
       assign hpdcache_req.be = cva6_req_i.data_be;
@@ -111,6 +112,7 @@ module cva6_hpdcache_if_adapter
 
       //    Response forwarding
       assign cva6_req_o.data_rvalid = hpdcache_rsp_valid_i;
+      assign cva6_req_o.data_ruser = hpdcache_rsp_i.ruser;
       assign cva6_req_o.data_rdata = hpdcache_rsp_i.rdata;
       assign cva6_req_o.data_rid = hpdcache_rsp_i.tid;
       assign cva6_req_o.data_gnt = hpdcache_req_ready_i;
@@ -133,6 +135,7 @@ module cva6_hpdcache_if_adapter
       hpdcache_tag_t               amo_tag;
       logic amo_is_word, amo_is_word_hi;
       logic                           [63:0] amo_data;
+      logic                                  amo_user;
       logic                           [ 7:0] amo_data_be;
       hpdcache_pkg::hpdcache_req_op_t        amo_op;
       logic                           [31:0] amo_resp_word;
@@ -221,6 +224,7 @@ module cva6_hpdcache_if_adapter
 
       assign amo_is_word = (cva6_amo_req_i.size == 2'b10);
       assign amo_is_word_hi = cva6_amo_req_i.operand_a[2];
+      assign amo_user = cva6_cheri_pkg::is_cap_reg_valid(cva6_amo_req_i.operand_b);
       if (CVA6Cfg.XLEN == 64) begin : amo_data_64_gen
         assign amo_data    = amo_is_word ? {2{cva6_amo_req_i.operand_b[0+:32]}} : cva6_amo_req_i.operand_b;
         assign amo_data_be = amo_is_word_hi ? 8'hf0 : amo_is_word ? 8'h0f : 8'hff;
@@ -232,6 +236,7 @@ module cva6_hpdcache_if_adapter
       assign hpdcache_req_amo = '{
               addr_offset: amo_addr_offset,
               wdata: amo_data,
+              wuser: amo_user,
               op: amo_op,
               be: amo_data_be,
               size: cva6_amo_req_i.size,
@@ -250,6 +255,7 @@ module cva6_hpdcache_if_adapter
       assign hpdcache_req_store = '{
               addr_offset: cva6_req_i.address_index,
               wdata: cva6_req_i.data_wdata,
+              wuser: cva6_req_i.data_wuser,
               op: hpdcache_pkg::HPDCACHE_REQ_STORE,
               be: cva6_req_i.data_be,
               size: cva6_req_i.data_size,
@@ -269,6 +275,7 @@ module cva6_hpdcache_if_adapter
               addr_offset: '0,
               addr_tag: '0,
               wdata: '0,
+              wuser: '0,
               op:
               InvalidateOnFlush
               ?
@@ -314,6 +321,7 @@ module cva6_hpdcache_if_adapter
       end
 
       assign cva6_req_o.data_rvalid = hpdcache_rsp_valid_i && (hpdcache_rsp_i.tid != '1);
+      assign cva6_req_o.data_ruser = hpdcache_rsp_i.ruser;
       assign cva6_req_o.data_rdata = hpdcache_rsp_i.rdata;
       assign cva6_req_o.data_rid = hpdcache_rsp_i.tid;
       assign cva6_req_o.data_gnt = hpdcache_req_ready_i;
