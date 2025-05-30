@@ -796,8 +796,10 @@ module cva6
       // DCACHE interfaces
       .dcache_req_ports_i  (dcache_req_ports_cache_id),
       .dcache_req_ports_o  (dcache_req_ports_id_cache),
-      .pcc_i               (pc_commit)
-      .int_mode_i          (int_mode_issue_id)
+      .pcc_i               (pc_commit),
+      .int_mode_issue_i    (int_mode_issue_id),
+      .int_mode_resolved_branch_i (cva6_cheri_pkg::get_cap_reg_flags(resolved_branch.target_address)),
+      .is_mispredict_i     (resolved_branch.is_mispredict)
   );
 
   logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_ex_id;
