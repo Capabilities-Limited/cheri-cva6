@@ -78,8 +78,10 @@ module id_stage #(
     input logic tsr_i,
     // Hypervisor user mode - CSR_REGFILE
     input logic hu_i,
-    // CHERI program counter capability; only used for metadata - ISSUE_STAGE
-    input cva6_cheri_pkg::cap_pcc_t pcc_i
+    // CHERI program counter capability; only used for metadata - COMMIT_STAGE
+    input cva6_cheri_pkg::cap_pcc_t pcc_i,
+    // Current int_mode flag in last-written PCC - ISSUE
+    input logic int_mode_i
 );
   // ID/ISSUE register stage
   typedef struct packed {
@@ -106,15 +108,15 @@ module id_stage #(
   logic                                                is_double_rd_macro_instr_o;
 
   logic              [ariane_pkg::SUPERSCALAR:0]       cap_mode_decode_o;
-  logic              [ariane_pkg::SUPERSCALAR:0]       cap_mode_decode_i;
+  logic              [ariane_pkg::SUPERSCALAR:0]       cap_mode_decode;
   logic                                                cap_mode_d;
   logic                                                cap_mode_q;
   logic                                                cap_mode_reset_d;
   logic                                                cap_mode_reset_q;
 
   for (genvar i = 0; i <= ariane_pkg::SUPERSCALAR; i++) begin
-    assign cap_mode_decode_i[i] = (i==0) ?
-                        (cap_mode_reset_q ? !pcc_i.flags.int_mode : cap_mode_q)
+    assign cap_mode_decode[i] = (i==0) ?
+                        (cap_mode_reset_q ? !int_mode_i : cap_mode_q)
                         : cap_mode_decode_o[i-1];
   end
 
@@ -127,7 +129,7 @@ module id_stage #(
           .CVA6Cfg(CVA6Cfg)
       ) compressed_decoder_i (
           .instr_i         (fetch_entry_i[i].instruction),
-          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? cap_mode_decode_i[i] : 1'b0),
+          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? cap_mode_decode[i] : 1'b0),
           .instr_o         (compressed_instr[i]),
           .illegal_instr_o (is_illegal[i]),
           .is_compressed_o (is_compressed[i]),
@@ -196,7 +198,7 @@ module id_stage #(
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
         .asr_i                     ((CVA6Cfg.CheriPresent) ? pcc_i.hperms.access_sys_regs : 1'b0), // TODO(pdr32) this could be out of date
-        .cap_mode_i                ((CVA6Cfg.CheriPresent) ? cap_mode_decode_i[i] : 1'b0),
+        .cap_mode_i                ((CVA6Cfg.CheriPresent) ? cap_mode_decode[i] : 1'b0),
         .is_compressed_i           (is_compressed_cmp[i]),
         .is_macro_instr_i          (is_macro_instr_i[i]),
         .is_last_macro_instr_i     (is_last_macro_instr_o),

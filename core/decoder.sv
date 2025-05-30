@@ -86,7 +86,7 @@ module decoder
     input logic hu_i,
     // CHERI access system registers - ISSUE_STAGE
     input logic asr_i,
-    // CHERI cap decoding mode - ISSUE_STAGE
+    // CHERI cap decoding mode - ID_STAGE
     input logic cap_mode_i,
     // Instruction to be added to scoreboard entry - ISSUE_STAGE
     output scoreboard_entry_t instruction_o,

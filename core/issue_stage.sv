@@ -47,6 +47,8 @@ module issue_stage
     input logic [SUPERSCALAR:0] is_ctrl_flow_i,
     // Handshake's acknowlege with decode stage - ID_STAGE
     output logic [SUPERSCALAR:0] decoded_instr_ack_o,
+    // Int mode flag in PCC register - ID_STAGE
+    output logic int_mode_o,
     // rs1 forwarding - EX_STAGE
     output logic [CVA6Cfg.REGLEN-1:0] rs1_forwarding_o,
     // rs2 forwarding - EX_STAGE

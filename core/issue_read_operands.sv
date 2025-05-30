@@ -41,8 +41,10 @@ module issue_read_operands
     input logic [31:0] orig_instr_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input logic issue_instr_valid_i,
-    // Issue stage acknowledge - TO_BE_COMPLETED
+    // Issue stage acknowledge - ID_STAGE
     output logic issue_ack_o,
+    // Int mode flag in PCC register - ID_STAGE
+    output logic int_mode_o,
     // PCC exception - Execute
     output exception_t issue_pcc_ex_o,
     // Backend Empty - scoreboard
@@ -218,6 +220,7 @@ module issue_read_operands
   assign cvxif_off_instr_o = CVA6Cfg.CvxifEn ? cvxif_off_instr_q : '0;
   assign stall_issue_o = stall;
   assign tinst_o = CVA6Cfg.RVH ? tinst_q : '0;
+  assign int_mode_o = cva6_cheri_pkg::get_cap_reg_flags(pcc_q);
   // ---------------
   // Issue Stage
   // ---------------
@@ -231,13 +234,13 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     automatic logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
     automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
     pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_q);
-    pcc = cva6_cheri_pkg::set_cap_reg_flags(pcc, issue_instr_i.int_mode);
     pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q);
     pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
     pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q, pcc_meta);
     next_pc_off = ((issue_instr_i.is_compressed) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
     next_pc_addr = issue_instr_i.pc + next_pc_off;
     issue_pcc_ex_o = 0;
+    if (!issue_instr_valid_i) pcc = cva6_cheri_pkg::set_cap_reg_flags(pcc, issue_instr_i.int_mode);
     // Check PCC bounds every instruction
     if (!issue_instr_i.ex.valid) begin
       if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top)) begin
