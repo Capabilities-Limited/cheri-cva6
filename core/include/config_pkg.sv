@@ -27,11 +27,19 @@ package config_pkg;
   } noc_type_e;
 
   /// Cache type parameter
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     WB = 0,
     WT = 1,
-    HPDCACHE = 2
+    HPDCACHE_WT = 2,
+    HPDCACHE_WB = 3,
+    HPDCACHE_WT_WB = 4
   } cache_type_t;
+
+  /// Branch predictor parameter
+  typedef enum logic {
+    BHT = 0,  // Bimodal predictor
+    PH_BHT = 1  // Private History Bimodal predictor
+  } bp_type_t;
 
   /// Data and Address length
   typedef enum logic [3:0] {
@@ -43,15 +51,25 @@ package config_pkg;
     ModeSv64 = 11
   } vm_mode_t;
 
+  /// Coprocessor type parameter
+  typedef enum {
+    COPRO_NONE,
+    COPRO_EXAMPLE
+  } copro_type_t;
+
   localparam NrMaxRules = 16;
 
   typedef struct packed {
     // General Purpose Register Size (in bits)
     int unsigned                 XLEN;
+    // Virtual address Size (in bits)
+    int unsigned                 VLEN;
     // Atomic RISC-V extension
     bit                          RVA;
     // Bit manipulation RISC-V extension
     bit                          RVB;
+    // Scalar Cryptography RISC-V entension
+    bit                          ZKN;
     // Vector RISC-V extension
     bit                          RVV;
     // Compress RISC-V extension
@@ -62,12 +80,18 @@ package config_pkg;
     bit                          RVZCB;
     // Zcmp RISC-V extension
     bit                          RVZCMP;
+    // Zcmt RISC-V extension
+    bit                          RVZCMT;
     // Zicond RISC-V extension
     bit                          RVZiCond;
     // Zcheripurecap RISC-V extension
     bit                          RVZcheripurecap;
     // Zcherihybrid RISC-V extension
     bit                          RVZcherihybrid;
+    // Zicntr RISC-V extension
+    bit                          RVZicntr;
+    // Zihpm RISC-V extension
+    bit                          RVZihpm;
     // Floating Point
     bit                          RVF;
     // Floating Point
@@ -88,6 +112,8 @@ package config_pkg;
     bit                          RVS;
     // User mode
     bit                          RVU;
+    // Software interrupts are enabled
+    bit                          SoftwareInterruptEn;
     // Debug support
     bit                          DebugEn;
     // Base address of the debug module
@@ -98,14 +124,18 @@ package config_pkg;
     logic [63:0]                 ExceptionAddress;
     // Tval Support Enable
     bit                          TvalEn;
+    // MTVEC CSR supports only direct mode
+    bit                          DirectVecOnly;
     // PMP entries number
     int unsigned                 NrPMPEntries;
     // PMP CSR configuration reset values
-    logic [15:0][63:0]           PMPCfgRstVal;
+    logic [63:0][63:0]           PMPCfgRstVal;
     // PMP CSR address reset values
-    logic [15:0][63:0]           PMPAddrRstVal;
+    logic [63:0][63:0]           PMPAddrRstVal;
     // PMP CSR read-only bits
-    bit [15:0]                   PMPEntryReadOnly;
+    bit [63:0]                   PMPEntryReadOnly;
+    // PMP NA4 and NAPOT mode enable
+    bit                          PMPNapotEn;
     // PMA non idempotent rules number
     int unsigned                 NrNonIdempotentRules;
     // PMA NonIdempotent region base address
@@ -126,6 +156,8 @@ package config_pkg;
     logic [NrMaxRules-1:0][63:0] CachedRegionLength;
     // CV-X-IF coprocessor interface enable
     bit                          CvxifEn;
+    // Coprocessor type
+    copro_type_t                 CoproType;
     // NOC bus type
     noc_type_e                   NOCType;
     // AXI address width
@@ -156,6 +188,10 @@ package config_pkg;
     int unsigned                 DcacheSetAssoc;
     // Data cache line width
     int unsigned                 DcacheLineWidth;
+    // Data cache flush on fence
+    bit                          DcacheFlushOnFence;
+    // Data cache invalidate on flush
+    bit                          DcacheInvalidateOnFlush;
     // User field on data bus enable
     int unsigned                 DataUserEn;
     // Write-through data cache write buffer depth
@@ -164,9 +200,15 @@ package config_pkg;
     int unsigned                 FetchUserEn;
     // Width of fetch user field
     int unsigned                 FetchUserWidth;
-    // Is FPGA optimization of CV32A6
+    // Is FPGA optimization of CV32A6 for Xilinx and Altera
     bit                          FpgaEn;
-    // Number of commit ports
+    // Is FPGA optimization for Altera FPGA
+    bit                          FpgaAlteraEn;
+    // Is Techno Cut instanciated
+    bit                          TechnoCut;
+    // Enable superscalar* with 2 issue ports and 2 commit ports.
+    bit                          SuperscalarEn;
+    // Number of commit ports. Forced to 2 if SuperscalarEn.
     int unsigned                 NrCommitPorts;
     // Load cycle latency number
     int unsigned                 NrLoadPipeRegs;
@@ -182,8 +224,12 @@ package config_pkg;
     int unsigned                 RASDepth;
     // Branch target buffer entries
     int unsigned                 BTBEntries;
+    // Branch predictor type
+    bp_type_t                    BPType;
     // Branch history entries
     int unsigned                 BHTEntries;
+    // Branch history bits
+    int unsigned                 BHTHist;
     // MMU instruction TLB entries
     int unsigned                 InstrTlbEntries;
     // MMU data TLB entries
@@ -215,12 +261,15 @@ package config_pkg;
     int unsigned ASID_WIDTH;
     int unsigned VMID_WIDTH;
 
-    bit          FpgaEn;
-    /// Number of commit ports, i.e., maximum number of instructions that the
-    /// core can retire per cycle. It can be beneficial to have more commit
-    /// ports than issue ports, for the scoreboard to empty out in case one
-    /// instruction stalls a little longer.
+    bit FpgaEn;
+    bit FpgaAlteraEn;
+    bit TechnoCut;
+
+    bit          SuperscalarEn;
     int unsigned NrCommitPorts;
+    int unsigned NrIssuePorts;
+    bit          SpeculativeSb;
+
     int unsigned NrLoadPipeRegs;
     int unsigned NrStorePipeRegs;
     /// AXI parameters.
@@ -237,16 +286,21 @@ package config_pkg;
     bit          XF8;
     bit          RVA;
     bit          RVB;
+    bit          ZKN;
     bit          RVV;
     bit          RVC;
     bit          RVH;
     bit          RVZCB;
     bit          RVZCMP;
+    bit          RVZCMT;
     bit          XFVec;
     bit          CvxifEn;
+    copro_type_t CoproType;
     bit          RVZiCond;
     bit          RVZcheripurecap;
     bit          RVZcherihybrid;
+    bit          RVZicntr;
+    bit          RVZihpm;
 
     int unsigned NR_SB_ENTRIES;
     int unsigned TRANS_ID_BITS;
@@ -264,14 +318,17 @@ package config_pkg;
     bit          EnableAccelerator;
     bit          PerfCounterEn;
     bit          MmuPresent;
-    bit          RVS;                //Supervisor mode
-    bit          RVU;                //User mode
+    bit          RVS;                  //Supervisor mode
+    bit          RVU;                  //User mode
+    bit          SoftwareInterruptEn;
 
     logic [63:0] HaltAddress;
     logic [63:0] ExceptionAddress;
     int unsigned RASDepth;
     int unsigned BTBEntries;
+    bp_type_t    BPType;
     int unsigned BHTEntries;
+    int unsigned BHTHist;
     int unsigned InstrTlbEntries;
     int unsigned DataTlbEntries;
     bit unsigned UseSharedTlb;
@@ -281,10 +338,12 @@ package config_pkg;
 
     logic [63:0]                 DmBaseAddress;
     bit                          TvalEn;
+    bit                          DirectVecOnly;
     int unsigned                 NrPMPEntries;
-    logic [15:0][63:0]           PMPCfgRstVal;
-    logic [15:0][63:0]           PMPAddrRstVal;
-    bit [15:0]                   PMPEntryReadOnly;
+    logic [63:0][63:0]           PMPCfgRstVal;
+    logic [63:0][63:0]           PMPAddrRstVal;
+    bit [63:0]                   PMPEntryReadOnly;
+    bit                          PMPNapotEn;
     noc_type_e                   NOCType;
     int unsigned                 NrNonIdempotentRules;
     logic [NrMaxRules-1:0][63:0] NonIdempotentAddrBase;
@@ -321,6 +380,9 @@ package config_pkg;
 
     int unsigned DCACHE_MAX_TX;
 
+    bit DcacheFlushOnFence;
+    bit DcacheInvalidateOnFlush;
+
     int unsigned DATA_USER_EN;
     int unsigned WtDcacheWbufDepth;
     int unsigned FETCH_USER_WIDTH;
@@ -344,6 +406,17 @@ package config_pkg;
     vm_mode_t MODE_SV;
     int unsigned SV;
     int unsigned SVX;
+
+    int unsigned X_NUM_RS;
+    int unsigned X_ID_WIDTH;
+    int unsigned X_RFR_WIDTH;
+    int unsigned X_RFW_WIDTH;
+    int unsigned X_NUM_HARTS;
+    int unsigned X_HARTID_WIDTH;
+    int unsigned X_DUALREAD;
+    int unsigned X_DUALWRITE;
+    int unsigned X_ISSUE_REGISTER_SPLIT;
+
   } cva6_cfg_t;
 
   /// Empty configuration to sanity check proper parameter passing. Whenever
@@ -354,15 +427,21 @@ package config_pkg;
   /// sense for all parameters, here is the place to sanity check them.
   function automatic void check_cfg(cva6_cfg_t Cfg);
     // pragma translate_off
-`ifndef VERILATOR
     assert (Cfg.RASDepth > 0);
     assert (Cfg.BTBEntries == 0 || (2 ** $clog2(Cfg.BTBEntries) == Cfg.BTBEntries));
     assert (Cfg.BHTEntries == 0 || (2 ** $clog2(Cfg.BHTEntries) == Cfg.BHTEntries));
     assert (Cfg.NrNonIdempotentRules <= NrMaxRules);
     assert (Cfg.NrExecuteRegionRules <= NrMaxRules);
     assert (Cfg.NrCachedRegionRules <= NrMaxRules);
-    assert (Cfg.NrPMPEntries <= 16);
-`endif
+    assert (Cfg.NrPMPEntries <= 64);
+    assert (!(Cfg.SuperscalarEn && Cfg.RVF));
+    assert (Cfg.FETCH_WIDTH == 32 || Cfg.FETCH_WIDTH == 64)
+    else $fatal(1, "[frontend] fetch width != not supported");
+    // Support for disabling MIP.MSIP and MIE.MSIE in Hypervisor and Supervisor mode is not supported
+    // Software Interrupt can be disabled when there is only M machine mode in CVA6.
+    assert (!(Cfg.RVS && !Cfg.SoftwareInterruptEn));
+    assert (!(Cfg.RVH && !Cfg.SoftwareInterruptEn));
+    assert (!(Cfg.RVZCMT && ~Cfg.MmuPresent));
     // pragma translate_on
   endfunction
 
@@ -385,11 +464,15 @@ package config_pkg;
   function automatic logic is_inside_execute_regions(cva6_cfg_t Cfg, logic [63:0] address);
     // if we don't specify any region we assume everything is accessible
     logic [NrMaxRules-1:0] pass;
-    pass = '0;
-    for (int unsigned k = 0; k < Cfg.NrExecuteRegionRules; k++) begin
-      pass[k] = range_check(Cfg.ExecuteRegionAddrBase[k], Cfg.ExecuteRegionLength[k], address);
+    if (Cfg.NrExecuteRegionRules != 0) begin
+      pass = '0;
+      for (int unsigned k = 0; k < Cfg.NrExecuteRegionRules; k++) begin
+        pass[k] = range_check(Cfg.ExecuteRegionAddrBase[k], Cfg.ExecuteRegionLength[k], address);
+      end
+      return |pass;
+    end else begin
+      return 1;
     end
-    return |pass;
   endfunction : is_inside_execute_regions
 
   function automatic logic is_inside_cacheable_regions(cva6_cfg_t Cfg, logic [63:0] address);
