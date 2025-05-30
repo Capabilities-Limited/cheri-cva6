@@ -99,7 +99,9 @@ module id_stage #(
     // Data cache request input - CACHE
     output dcache_req_i_t dcache_req_ports_o,
     // CHERI program counter capability; only used for metadata - ISSUE_STAGE
-    input cva6_cheri_pkg::cap_pcc_t pcc_i
+    input cva6_cheri_pkg::cap_pcc_t pcc_i,
+    // Current int_mode flag in last-written PCC - ISSUE_STAGE
+    input logic int_mode_i
 );
   // ID/ISSUE register stage
   typedef struct packed {
@@ -156,15 +158,15 @@ module id_stage #(
   logic              [CVA6Cfg.NrIssuePorts-1:0]       is_compressed_deco;
 
   logic              [CVA6Cfg.NrIssuePorts-1:0]       cap_mode_decode_o;
-  logic              [CVA6Cfg.NrIssuePorts-1:0]       cap_mode_decode_i;
+  logic              [CVA6Cfg.NrIssuePorts-1:0]       cap_mode_decode;
   logic                                               cap_mode_d;
   logic                                               cap_mode_q;
   logic                                               cap_mode_reset_d;
   logic                                               cap_mode_reset_q;
 
   for (genvar i = 0; i <= CVA6Cfg.NrIssuePorts; i++) begin
-    assign cap_mode_decode_i[i] = (i==0) ?
-                        (cap_mode_reset_q ? !pcc_i.flags.int_mode : cap_mode_q)
+    assign cap_mode_decode[i] = (i==0) ?
+                        (cap_mode_reset_q ? !int_mode_i : cap_mode_q)
                         : cap_mode_decode_o[i-1];
   end
 
@@ -177,7 +179,7 @@ module id_stage #(
           .CVA6Cfg(CVA6Cfg)
       ) compressed_decoder_i (
           .instr_i         (fetch_entry_i[i].instruction),
-          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? cap_mode_decode_i[i] : 1'b0),
+          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? cap_mode_decode[i] : 1'b0),
           .instr_o         (instruction_rvc[i]),
           .illegal_instr_o (is_illegal_rvc[i]),
           .is_compressed_o (is_compressed_rvc[i]),
@@ -334,7 +336,7 @@ module id_stage #(
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
         .asr_i                     ((CVA6Cfg.CheriPresent) ? pcc_i.hperms.access_sys_regs : 1'b0), // TODO(pdr32) this could be out of date
-        .cap_mode_i                ((CVA6Cfg.CheriPresent) ? cap_mode_decode_i[i] : 1'b0),
+        .cap_mode_i                ((CVA6Cfg.CheriPresent) ? cap_mode_decode[i] : 1'b0),
         .is_compressed_i           (is_compressed_deco[i]),
         .is_macro_instr_i          (is_macro_instr[i]),
         .is_zcmt_i                 (is_zcmt_instr[i]),
