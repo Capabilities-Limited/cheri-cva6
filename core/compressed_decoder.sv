@@ -25,7 +25,7 @@ module compressed_decoder #(
     // Input instruction coming from fetch stage - FRONTEND
     input  logic [31:0] instr_i,
     // Input Capability Mode - FRONTEND
-    input  logic        cap_mode_i,
+    input  logic        int_mode_i,
     // Output instruction in uncompressed format - decoder
     output logic [31:0] instr_o,
     // Input instruction is illegal - decoder
@@ -54,7 +54,7 @@ module compressed_decoder #(
         unique case (instr_i[15:13])
           riscv::OpcodeC0Addi4spn: begin
             // c.cincoffsetimm4cspn cd, csp, offset -> cincoffsetimm cd', cs2, imm
-            if (CVA6Cfg.CheriPresent && cap_mode_i) begin
+            if (CVA6Cfg.CheriPresent && !int_mode_i) begin
                 instr_o = {
                   2'b0,
                   instr_i[10:7],
@@ -88,7 +88,7 @@ module compressed_decoder #(
           end
 
           riscv::OpcodeC0Fld: begin
-            if (CVA6Cfg.CheriPresent && cap_mode_i) begin
+            if (CVA6Cfg.CheriPresent && !int_mode_i) begin
                 instr_o = {
                   3'b000,
                   instr_i[10],
@@ -273,7 +273,7 @@ module compressed_decoder #(
 
           riscv::OpcodeC0Fsd: begin
             // c.csc -> sc cd, offset(cs1') in capability mode
-            if (CVA6Cfg.CheriPresent && cap_mode_i) begin
+            if (CVA6Cfg.CheriPresent && !int_mode_i) begin
               instr_o = {
                 3'b0,
                 instr_i[10],
@@ -446,7 +446,7 @@ module compressed_decoder #(
             instr_o = {{15{instr_i[12]}}, instr_i[6:2], instr_i[11:7], riscv::OpcodeLui};
             // c.cincoffsetimm16csp -> cincoffsetimm cs2, cs2, nzimm
              if (instr_i[11:7] == 5'h02) begin
-              if (CVA6Cfg.CheriPresent && cap_mode_i) begin
+              if (CVA6Cfg.CheriPresent && !int_mode_i) begin
                 instr_o = {
                   {3{instr_i[12]}},
                   instr_i[4:3],
@@ -820,7 +820,7 @@ module compressed_decoder #(
           end
 
           riscv::OpcodeC2Fldsp: begin
-            if (CVA6Cfg.CheriPresent && cap_mode_i) begin
+            if (CVA6Cfg.CheriPresent && !int_mode_i) begin
               instr_o = {
                 2'b00,
                 instr_i[5:2],
@@ -932,7 +932,7 @@ module compressed_decoder #(
           end
 
           riscv::OpcodeC2Fsdsp: begin
-            if (CVA6Cfg.CheriPresent && cap_mode_i) begin
+            if (CVA6Cfg.CheriPresent && !int_mode_i) begin
               instr_o = {
                 3'b0,
                 instr_i[10:7],

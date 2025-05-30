@@ -776,7 +776,7 @@ end
         pcc_jump_change_valid_q <= pcc_jump_change_valid_n;
         pcc_jump_change_q <= pcc_jump_change_n;
       end
-      pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc, issue_instr_i.pc, pcc_meta);
+      pc_o                  <= cva6_cheri_pkg::set_cap_reg_flags(cva6_cheri_pkg::set_cap_reg_address(pcc, issue_instr_i.pc, pcc_meta),issue_instr_i.int_mode);
       is_compressed_instr_o <= issue_instr_i.is_compressed;
       branch_predict_o      <= issue_instr_i.bp;
       if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i.dii_id;

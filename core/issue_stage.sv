@@ -186,6 +186,7 @@ module issue_stage
   assign rs2_forwarding_o = rs2_forwarding_xlen;
 
   assign issue_instr_hs_o = issue_instr_valid_sb_iro[0] & issue_ack_iro_sb[0];
+  assign issue_instr_o = issue_instr_sb_iro;
 
 
   // ---------------------------------------------------------
