@@ -216,6 +216,7 @@ module issue_stage
   exception_t                                         issue_pcc_ex;
 
   assign issue_instr_hs_o = issue_instr_valid_sb_iro[0] & issue_ack_iro_sb[0];
+  assign issue_instr_o = issue_instr_sb_iro;
 
   logic x_transaction_accepted_iro_sb, x_issue_writeback_iro_sb;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] x_id_iro_sb;

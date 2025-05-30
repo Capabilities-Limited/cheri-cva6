@@ -99,7 +99,11 @@ module id_stage #(
     // CHERI program counter capability; only used for metadata - ISSUE_STAGE
     input cva6_cheri_pkg::cap_pcc_t pcc_i,
     // Current int_mode flag in last-written PCC - ISSUE_STAGE
-    input logic int_mode_i
+    input logic int_mode_issue_i,
+    // int_mode flag in redirected PCC - EXECUTE
+    input logic int_mode_resolved_branch_i,
+    // PCC is being redirected - EXECUTE
+    input logic is_mispredict_i
 );
   // ID/ISSUE register stage
   typedef struct packed {
@@ -155,17 +159,13 @@ module id_stage #(
   logic              [CVA6Cfg.NrIssuePorts-1:0][31:0] instruction_deco;
   logic              [CVA6Cfg.NrIssuePorts-1:0]       is_compressed_deco;
 
-  logic              [CVA6Cfg.NrIssuePorts-1:0]       cap_mode_decode_o;
-  logic              [CVA6Cfg.NrIssuePorts-1:0]       cap_mode_decode;
-  logic                                               cap_mode_d;
-  logic                                               cap_mode_q;
-  logic                                               cap_mode_reset_d;
-  logic                                               cap_mode_reset_q;
+  logic              [CVA6Cfg.NrIssuePorts-1:0]       int_mode_decode_o;
+  logic              [CVA6Cfg.NrIssuePorts-1:0]       int_mode_decode;
+  logic                                               int_mode_d;
+  logic                                               int_mode_q;
 
   for (genvar i = 0; i <= CVA6Cfg.NrIssuePorts; i++) begin
-    assign cap_mode_decode[i] = (i==0) ?
-                        (cap_mode_reset_q ? !int_mode_i : cap_mode_q)
-                        : cap_mode_decode_o[i-1];
+    assign int_mode_decode[i] = (i==0) ? int_mode_q : int_mode_decode_o[i-1];
   end
 
   if (CVA6Cfg.RVC) begin
@@ -177,7 +177,7 @@ module id_stage #(
           .CVA6Cfg(CVA6Cfg)
       ) compressed_decoder_i (
           .instr_i         (fetch_entry_i[i].instruction),
-          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? cap_mode_decode[i] : 1'b0),
+          .int_mode_i      ((CVA6Cfg.CheriPresent) ? !int_mode_decode[i] : 1'b0),
           .instr_o         (instruction_rvc[i]),
           .illegal_instr_o (is_illegal_rvc[i]),
           .is_compressed_o (is_compressed_rvc[i]),
@@ -334,7 +334,7 @@ module id_stage #(
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
         .asr_i                     ((CVA6Cfg.CheriPresent) ? pcc_i.hperms.access_sys_regs : 1'b0), // TODO(pdr32) this could be out of date
-        .cap_mode_i                ((CVA6Cfg.CheriPresent) ? cap_mode_decode[i] : 1'b0),
+        .int_mode_i                ((CVA6Cfg.CheriPresent) ? int_mode_decode[i] : 1'b0),
         .is_compressed_i           (is_compressed_deco[i]),
         .is_macro_instr_i          (is_macro_instr[i]),
         .is_zcmt_i                 (is_zcmt_instr[i]),
@@ -361,7 +361,7 @@ module id_stage #(
         .instruction_o             (decoded_instruction[i]),
         .orig_instr_o              (orig_instr[i]),
         .is_control_flow_instr_o   (is_control_flow_instr[i]),
-        .cap_mode_o                (cap_mode_decode_o[i])
+        .int_mode_o                (int_mode_decode_o[i])
     );
   end
 
@@ -467,14 +467,15 @@ module id_stage #(
     end
   end
   always_comb begin
-    cap_mode_d = cap_mode_q;
-    cap_mode_reset_d = cap_mode_reset_q;
-    if (flush_i) cap_mode_reset_d = 1'b1;
+    int_mode_d = int_mode_q;
+    //int_mode_reset_d = int_mode_reset_q;
+    if (is_mispredict_i) int_mode_d = int_mode_resolved_branch_i;  // Probably the wrong priority, but flush_i also happens on mispredict.
+    else if (flush_i) int_mode_d = int_mode_issue_i;
     else begin
       for (int i = 0; i <= CVA6Cfg.NrIssuePorts; i++) begin
         if (fetch_entry_ready_o[i]) begin
-          cap_mode_d = cap_mode_decode_o[i];
-          cap_mode_reset_d = 1'b0;
+          int_mode_d = int_mode_decode_o[i];
+          //int_mode_reset_d = 1'b0;
         end
       end
     end
@@ -485,13 +486,13 @@ module id_stage #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
       issue_q <= '0;
-      cap_mode_q <= '0;
-      cap_mode_reset_q <= '0;
+      int_mode_q <= '1;
+      //int_mode_reset_q <= '0;
     end else begin
       issue_q <= issue_n;
       if (CVA6Cfg.CheriPresent) begin
-        cap_mode_q <= cap_mode_d;
-        cap_mode_reset_q <= cap_mode_reset_d;
+        int_mode_q <= int_mode_d;
+        //int_mode_reset_q <= int_mode_reset_d;
       end
     end
   end
