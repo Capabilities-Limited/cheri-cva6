@@ -92,6 +92,10 @@ package config_pkg;
     bit                          RVZcheripurecap;
     // Zcherihybrid RISC-V extension
     bit                          RVZcherihybrid;
+    // Zicntr RISC-V extension
+    bit                          RVZicntr;
+    // Zihpm RISC-V extension
+    bit                          RVZihpm;
     // Floating Point
     bit                          RVF;
     // Floating Point
@@ -310,6 +314,8 @@ package config_pkg;
     bit          RVZihpm;
     bit          RVZcheripurecap;
     bit          RVZcherihybrid;
+    bit          RVZicntr;
+    bit          RVZihpm;
 
     int unsigned NR_SB_ENTRIES;
     int unsigned TRANS_ID_BITS;

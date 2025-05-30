@@ -90,7 +90,7 @@ module cva6_hpdcache_if_adapter
       //    Request forwarding
       assign hpdcache_req_valid_o = cva6_req_i.data_req;
       assign hpdcache_req.addr_offset = cva6_req_i.address_index;
-      assign hpdcache_req_o.wuser = '0;
+      assign hpdcache_req.wuser = '0;
       assign hpdcache_req.wdata = '0;
       assign hpdcache_req.op = hpdcache_pkg::HPDCACHE_REQ_LOAD;
       assign hpdcache_req.be = cva6_req_i.data_be;
@@ -310,6 +310,7 @@ module cva6_hpdcache_if_adapter
       assign hpdcache_req_pma_o.wr_policy_hint = hpdcache_pkg::HPDCACHE_WR_POLICY_AUTO;
       //  }}}
 
+      // TODO support wider AMOs ?
       //  Response forwarding
       //  {{{
       if (CVA6Cfg.XLEN == 64) begin : amo_resp_64_gen
@@ -321,8 +322,8 @@ module cva6_hpdcache_if_adapter
       end
 
       assign cva6_req_o.data_rvalid = hpdcache_rsp_valid_i && (hpdcache_rsp_i.tid != '1);
-      assign cva6_req_o.data_ruser = hpdcache_rsp_i.ruser;
       assign cva6_req_o.data_rdata = hpdcache_rsp_i.rdata;
+      assign cva6_req_o.data_ruser = hpdcache_rsp_i.ruser;
       assign cva6_req_o.data_rid = hpdcache_rsp_i.tid;
       assign cva6_req_o.data_gnt = hpdcache_req_ready_i;
 
