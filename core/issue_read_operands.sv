@@ -50,6 +50,8 @@ module issue_read_operands
     input logic [CVA6Cfg.NrIssuePorts-1:0] issue_instr_valid_i,
     // Issue stage acknowledge - SCOREBOARD
     output logic [CVA6Cfg.NrIssuePorts-1:0] issue_ack_o,
+    // Int mode flag in PCC register - ID_STAGE
+    output logic int_mode_o,
     // PCC exception - Execute
     output exception_t issue_pcc_ex_o,
     // Backend Empty - scoreboard
@@ -330,6 +332,7 @@ module issue_read_operands
   assign cvxif_off_instr_o = CVA6Cfg.CvxifEn ? cvxif_off_instr_q : '0;
   assign stall_issue_o = stall_raw[0];
   assign tinst_o = CVA6Cfg.RVH ? tinst_q : '0;
+  assign int_mode_o = cva6_cheri_pkg::get_cap_reg_flags(pcc_q);
   // ---------------
   // Issue Stage
   // ---------------
@@ -441,8 +444,9 @@ module issue_read_operands
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     // Update PCC with correct int mode
     always_comb begin : pcc_int_mode
-      for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_q, issue_instr_i[i].int_mode);
+      pcc [0] = issue_instr_valid_i[0] ? cva6_cheri_pkg::set_cap_reg_flags(pcc_q, issue_instr_i[0].int_mode) : pcc_q;
+      for (int unsigned i = 1; i < CVA6Cfg.NrIssuePorts; i++) begin
+        pcc[i] = issue_instr_valid_i[i] ? cva6_cheri_pkg::set_cap_reg_flags(pcc_q, issue_instr_i[i].int_mode) : pcc[i-1];
       end
     end
 
