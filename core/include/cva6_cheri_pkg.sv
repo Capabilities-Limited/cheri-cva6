@@ -559,8 +559,7 @@ package cva6_cheri_pkg;
     endfunction
 
     function automatic cap_flags_t get_cap_reg_flags(cap_reg_t cap);
-        cap_mem_t ret = cap;
-        return ret.flags;
+        return cap.flags;
     endfunction
 
     function automatic cap_reg_t set_cap_reg_flags(cap_reg_t cap, cap_flags_t flags);

@@ -662,6 +662,7 @@ module cva6
   logic flush_tlb_ctrl_ex;
   logic flush_tlb_vvma_ctrl_ex;
   logic flush_tlb_gvma_ctrl_ex;
+  logic int_mode_issue_id;
   logic fence_i_commit_controller;
   logic fence_commit_controller;
   logic sfence_vma_commit_controller;
@@ -810,6 +811,7 @@ module cva6
       .dcache_req_ports_i  (dcache_req_ports_cache_id),
       .dcache_req_ports_o  (dcache_req_ports_id_cache),
       .pcc_i               (pc_commit)
+      .int_mode_i          (int_mode_issue_id)
   );
 
   logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_ex_id;
@@ -913,6 +915,7 @@ module cva6
       .decoded_instr_valid_i   (issue_entry_valid_id_issue),
       .is_ctrl_flow_i          (is_ctrl_fow_id_issue),
       .decoded_instr_ack_o     (issue_instr_issue_id),
+      .int_mode_o              (int_mode_issue_id),
       // Functional Units
       .rs1_forwarding_o        (rs1_forwarding_id_ex),
       .rs2_forwarding_o        (rs2_forwarding_id_ex),
