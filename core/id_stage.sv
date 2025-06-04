@@ -98,12 +98,14 @@ module id_stage #(
     output dcache_req_i_t dcache_req_ports_o,
     // CHERI program counter capability; only used for metadata - ISSUE_STAGE
     input cva6_cheri_pkg::cap_pcc_t pcc_i,
+    // PCC is being redirected from commit - COMMIT_STAGE
+    input logic commit_redirect_i,
     // Current int_mode flag in last-written PCC - ISSUE_STAGE
     input logic int_mode_issue_i,
     // int_mode flag in redirected PCC - EXECUTE
     input logic int_mode_resolved_branch_i,
-    // PCC is being redirected - EXECUTE
-    input logic is_mispredict_i
+    // PCC is being redirected due to a misprediction - EXECUTE
+    input logic mispredict_redirect_i
 );
   // ID/ISSUE register stage
   typedef struct packed {
@@ -163,9 +165,11 @@ module id_stage #(
   logic              [CVA6Cfg.NrIssuePorts-1:0]       int_mode_decode;
   logic                                               int_mode_d;
   logic                                               int_mode_q;
+  logic                                               commit_redirect_q;
 
-  for (genvar i = 0; i <= CVA6Cfg.NrIssuePorts; i++) begin
-    assign int_mode_decode[i] = (i==0) ? int_mode_q : int_mode_decode_o[i-1];
+  assign int_mode_decode[0] = int_mode_q;
+  for (genvar i = 1; i <= CVA6Cfg.NrIssuePorts; i++) begin
+    assign int_mode_decode[i] = int_mode_decode_o[i-1];
   end
 
   if (CVA6Cfg.RVC) begin
@@ -468,14 +472,12 @@ module id_stage #(
   end
   always_comb begin
     int_mode_d = int_mode_q;
-    //int_mode_reset_d = int_mode_reset_q;
-    if (is_mispredict_i) int_mode_d = int_mode_resolved_branch_i;  // Probably the wrong priority, but flush_i also happens on mispredict.
-    else if (flush_i) int_mode_d = int_mode_issue_i;
+    if (commit_redirect_q) int_mode_d = int_mode_issue_i;
+    else if (mispredict_redirect_i) int_mode_d = int_mode_resolved_branch_i;
     else begin
       for (int i = 0; i <= CVA6Cfg.NrIssuePorts; i++) begin
         if (fetch_entry_ready_o[i]) begin
           int_mode_d = int_mode_decode_o[i];
-          //int_mode_reset_d = 1'b0;
         end
       end
     end
@@ -487,12 +489,12 @@ module id_stage #(
     if (~rst_ni) begin
       issue_q <= '0;
       int_mode_q <= '1;
-      //int_mode_reset_q <= '0;
+      commit_redirect_q <= '0;
     end else begin
       issue_q <= issue_n;
       if (CVA6Cfg.CheriPresent) begin
         int_mode_q <= int_mode_d;
-        //int_mode_reset_q <= int_mode_reset_d;
+        commit_redirect_q <= commit_redirect_i; // Delay by one cycle so that we pick up the update to PCC from the issue stage.
       end
     end
   end
