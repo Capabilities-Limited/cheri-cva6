@@ -183,7 +183,7 @@ module id_stage #(
           .CVA6Cfg(CVA6Cfg)
       ) compressed_decoder_i (
           .instr_i         (fetch_entry_i[i].instruction),
-          .int_mode_i      ((CVA6Cfg.CheriPresent) ? !int_mode_decode[i] : 1'b0),
+          .int_mode_i      ((CVA6Cfg.CheriPresent) ? int_mode_decode[i] : 1'b0),
           .instr_o         (instruction_rvc[i]),
           .illegal_instr_o (is_illegal_rvc[i]),
           .is_compressed_o (is_compressed_rvc[i]),
