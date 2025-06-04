@@ -385,7 +385,7 @@ module decoder
                   instruction_o.rd = instr.itype.rd;
                 end
                 if (CVA6Cfg.CheriPresent) begin
-                  instruction_o.use_ddc = !int_mode_i ? 1'b0 : 1'b1;
+                  instruction_o.use_ddc = int_mode_i;
                 end else begin
                   instruction_o.use_ddc = 1'b0;
                 end
@@ -576,7 +576,7 @@ module decoder
                       imm_select = IIMM;
                       instruction_o.rs1[4:0] = instr.itype.rs1;
                       instruction_o.rd[4:0]  = instr.itype.rd;
-                      instruction_o.use_ddc  = !int_mode_i ? 1'b0 : 1'b1;
+                      instruction_o.use_ddc  = int_mode_i;
                       instruction_o.op  = ariane_pkg::LC;
                       tinst = {17'b0, instr.itype.funct3, instr.itype.rd, instr.itype.opcode};
                       tinst[1] = is_compressed_i ? 1'b0 : 'b1;
@@ -1446,7 +1446,7 @@ module decoder
           instruction_o.rs1 = instr.stype.rs1;
           instruction_o.rs2 = instr.stype.rs2;
           if (CVA6Cfg.CheriPresent) begin
-            instruction_o.use_ddc = !int_mode_i ? 1'b0 : 1'b1;
+            instruction_o.use_ddc = int_mode_i;
           end else begin
             instruction_o.use_ddc = 1'b0;
           end
@@ -1474,7 +1474,7 @@ module decoder
           instruction_o.rs1 = instr.itype.rs1;
           instruction_o.rd = instr.itype.rd;
           if (CVA6Cfg.CheriPresent) begin
-            instruction_o.use_ddc = !int_mode_i ? 1'b0 : 1'b1;
+            instruction_o.use_ddc = int_mode_i;
           end else begin
             instruction_o.use_ddc = 1'b0;
           end
@@ -1509,7 +1509,7 @@ module decoder
             instruction_o.rs1 = instr.stype.rs1;
             instruction_o.rs2 = instr.stype.rs2;
             if (CVA6Cfg.CheriPresent) begin
-              instruction_o.use_ddc = !int_mode_i ? 1'b0 : 1'b1;
+              instruction_o.use_ddc = int_mode_i;
             end else begin
               instruction_o.use_ddc = 1'b0;
             end
@@ -1544,7 +1544,7 @@ module decoder
             instruction_o.rs1 = instr.itype.rs1;
             instruction_o.rd = instr.itype.rd;
             if (CVA6Cfg.CheriPresent) begin
-              instruction_o.use_ddc = !int_mode_i ? 1'b0 : 1'b1;
+              instruction_o.use_ddc = int_mode_i;
             end else begin
               instruction_o.use_ddc = 1'b0;
             end
@@ -1786,7 +1786,7 @@ module decoder
           instruction_o.rs2 = instr.atype.rs2;
           instruction_o.rd = instr.atype.rd;
           if (CVA6Cfg.CheriPresent) begin
-            instruction_o.use_ddc = !int_mode_i ? 1'b0 : 1'b1;
+            instruction_o.use_ddc = int_mode_i;
           end else begin
             instruction_o.use_ddc = 1'b0;
           end
@@ -1903,7 +1903,7 @@ module decoder
           instruction_o.op        = ariane_pkg::JALR;
           instruction_o.rs1       = instr.itype.rs1;
           if (CVA6Cfg.CheriPresent) begin
-            instruction_o.op      = !int_mode_i ? ariane_pkg::CJALR : ariane_pkg::JALR;
+            instruction_o.op      = int_mode_i ? ariane_pkg::JALR : ariane_pkg::CJALR;
           end else begin
             instruction_o.op      = ariane_pkg::JALR;
           end
@@ -1917,7 +1917,7 @@ module decoder
         riscv::OpcodeJal: begin
           instruction_o.fu        = CTRL_FLOW;
           if (CVA6Cfg.CheriPresent) begin
-            instruction_o.op      = !int_mode_i ? ariane_pkg::CJAL : ariane_pkg::JAL;
+            instruction_o.op      = int_mode_i ? ariane_pkg::JAL : ariane_pkg::CJAL;
           end else begin
             instruction_o.op      = ariane_pkg::JAL;
           end
