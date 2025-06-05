@@ -115,9 +115,6 @@ module cva6
       // for unfinished floating-point fused operations (FMADD, FMSUB, FNMADD, FNMSUB)
       // this field holds the address of the third operand from the floating-point register file
       logic valid;  // is the result valid
-      logic                     clr;
-        logic [7:0]               mask;
-        logic [1:0]               quarter;
       logic use_imm;  // should we use the immediate as operand b?
       logic use_zimm;  // use zimm as operand a
       logic use_pc;  // set if we need to use the PC as operand a, PC from exception
@@ -578,9 +575,6 @@ module cva6
   logic [CVA6Cfg.REGLEN-1:0] [CVA6Cfg.NrCommitPorts-1:0] wdata_commit_id;
   logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_commit_id;
   logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_commit_id;
-  logic [CVA6Cfg.NrCommitPorts-1:0]       clr_commit_id;
-  logic [CVA6Cfg.NrCommitPorts-1:0][7:0]  mask_commit_id;
-  logic [CVA6Cfg.NrCommitPorts-1:0][1:0]  quarter_commit_id;
   // --------------
   // CSR <-> *
   // --------------
@@ -989,9 +983,6 @@ module cva6
 
       .waddr_i              (waddr_commit_id),
       .wdata_i              (wdata_commit_id),
-      .clr_i                      ( clr_commit_id                ),
-      .mask_i                     ( mask_commit_id               ),
-      .quarter_i                  ( quarter_commit_id            ),
       .we_gpr_i             (we_gpr_commit_id),
       .we_fpr_i             (we_fpr_commit_id),
       .commit_instr_o       (commit_instr_id_commit),
@@ -1190,9 +1181,6 @@ module cva6
       .commit_macro_ack_o  (commit_macro_ack),
       .waddr_o             (waddr_commit_id),
       .wdata_o             (wdata_commit_id),
-      .clr_o               (clr_commit_id),
-      .mask_o              (mask_commit_id),
-      .quarter_o           (quarter_commit_id),
       .we_gpr_o            (we_gpr_commit_id),
       .we_fpr_o            (we_fpr_commit_id),
       .amo_resp_i          (amo_resp),
