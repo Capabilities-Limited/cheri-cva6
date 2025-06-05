@@ -37,7 +37,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     cap_reg_t operand_a;
     addrw_t operand_a_base;
     addrwe_t operand_a_top;
-    addrwe_t operand_a_length;
+    addrw_t operand_a_length;
     addrw_t operand_a_address;
     logic operand_a_is_sealed;
     cap_meta_data_t op_a_meta_info;
@@ -46,9 +46,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     cap_reg_t operand_b;
     addrw_t operand_b_base;
     addrwe_t operand_b_top;
-    addrwe_t operand_b_length;
+    //addrw_t operand_b_length;
     addrw_t operand_b_address;
-    addrw_t operand_b_offset;
+    //addrw_t operand_b_offset;
     logic operand_b_is_sealed;
     cap_meta_data_t op_b_meta_info;
 
@@ -148,8 +148,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CTestSubset
             ariane_pkg::CBLD,ariane_pkg::SCSS: begin
                 tmp_cap = operand_b;
-                if (fu_data_i.operation == ariane_pkg::SCSS) tmp_cap.tag = 1'b1;
-                if(operand_a.tag != operand_b.tag) begin
+                tmp_cap.tag = 1'b1;
+                if(operand_a.tag != operand_b.tag && fu_data_i.operation == ariane_pkg::SCSS) begin
                     tmp_cap.tag = 1'b0;
                 end
                 if(operand_b_base < operand_a_base) begin
@@ -183,9 +183,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             ariane_pkg::GCMODE: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a.flags});
             end
-            // CGetFlags
+            // CGetLength
             ariane_pkg::GCLEN: begin
-                clu_result = set_cap_reg_addr(REG_NULL_CAP, (operand_a_length[CVA6Cfg.XLEN]) ? {CVA6Cfg.XLEN{1'b1}} : operand_a_length[CVA6Cfg.XLEN-1:0]);
+                clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_length);
             end
             // CGetHigh
             ariane_pkg::GCHI: begin
@@ -296,15 +296,15 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         operand_a_address = operand_a.addr;
         operand_a_base   = get_cap_reg_base(operand_a, op_a_meta_info);
         operand_a_top    = get_cap_reg_top(operand_a, op_a_meta_info);
-        operand_a_length = operand_a_top - {1'b0, operand_a_base};
+        operand_a_length = get_cap_reg_length(operand_a, op_a_meta_info);
         operand_a_is_sealed = (operand_a.otype != UNSEALED_CAP);
         // Decode capability operand b fields
         operand_b_address = operand_b.addr;
         op_b_meta_info = get_cap_reg_meta_data(operand_b);
         operand_b_base   = get_cap_reg_base(operand_b, op_b_meta_info);
         operand_b_top    = get_cap_reg_top(operand_b, op_b_meta_info);
-        operand_b_length = operand_b_top - {1'b0, operand_b_base}; //get_cap_reg_length(operand_b, op_b_meta_info);
-        operand_b_offset = get_cap_reg_offset(operand_b, op_b_meta_info);
+        //operand_b_length = get_cap_reg_length(operand_b, op_b_meta_info};
+        //operand_b_offset = get_cap_reg_offset(operand_b, op_b_meta_info);
         operand_b_is_sealed = (operand_b.otype != UNSEALED_CAP);
         // Decode pc metadata fields
         op_pc_meta_info = get_cap_reg_meta_data(pcc);
