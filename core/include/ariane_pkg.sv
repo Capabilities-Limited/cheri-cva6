@@ -323,20 +323,18 @@ package ariane_pkg;
     //Special Capabilty Register Access Instructions
     SCR_READ, SCR_READWRITE,
     // 41 Capability-Inspection Instructions
-    GCPERM, GCTYPE, GCBASE, CGET_TOP, GCLEN, GCTAG, CGET_SEALED, CGET_OFFSET, GCMODE, GCHI, CGET_ADDR,
-    // 51 Capability-Modification Instructions
-    CSEAL, CUNSEAL, ACPERM, SCMODE, SCHI, CSET_OFFSET, SCADDR, CADD, CADDI, SCBNDSR,
-    // 61
-    SCBNDS, SCBNDSI, CCLEAR_TAG, CBLD, CCOPY_TYPE, CCSEAL, SENTRY,
-    // 69 Pointer-Arithmetic Instructions
+    GCPERM, GCTYPE, GCBASE, GCLEN, GCTAG, CGET_SEALED, GCMODE, GCHI, CGET_ADDR,
+    // 49 Capability-Modification Instructions
+    ACPERM, SCMODE, SCHI, SCADDR, CADD, CADDI, SCBNDSR,
+    // 56
+    SCBNDS, SCBNDSI, CBLD, SENTRY,
+    // 61 Pointer-Arithmetic Instructions
     CTO_PTR, CFROM_PTR, CSUB, CMV,
-    // 73 Pointer-Comparison Instructions
+    // 65 Pointer-Comparison Instructions
     SCSS, SCEQ,
-    // 75 Control-Flow Instructions
+    // 67 Control-Flow Instructions
     MODESW_CAP, MODESW_INT, CINVOKE, CJAL, CJALR,
-    // 80 Fast Register-Clearing Instructions
-    CLEAR, CCLEAR, FPCLEAR,
-    // 83 Adjusting to Compressed Capability Precision Instructions
+    // 75 Adjusting to Compressed Capability Precision Instructions
     CRND_REPRESENTABLE_LEN, CRAM,
     // Tag-Memory Access Instructions
     CLOAD_TAGS, CCLEAR_TAGS,
