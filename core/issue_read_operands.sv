@@ -1009,7 +1009,8 @@ module issue_read_operands
         .CVA6Cfg      (CVA6Cfg),
         .DATA_WIDTH   (CVA6Cfg.REGLEN),
         .NR_READ_PORTS(CVA6Cfg.NrRgprPorts),
-        .ZERO_REG_ZERO(1)
+        .ZERO_REG_ZERO(1),
+        .EN_CHERI_CAP(CVA6Cfg.CheriPresent)
     ) i_ariane_regfile_fpga (
         .clk_i,
         .rst_ni,
