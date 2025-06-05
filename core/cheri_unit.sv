@@ -173,7 +173,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 if(operand_a.res_lo != 0 | operand_a.res_hi != 0 | operand_b.res_lo != 0 | operand_b.res_hi != 0) begin
                     tmp_cap.tag = 1'b0;
                 end
-                clu_result = (fu_data_i.operation == ariane_pkg::CBLD) ? tmp_cap : set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}}, tmp_cap.tag});
+                if (fu_data_i.operation == ariane_pkg::CBLD) clu_result = tmp_cap;
+                // fu_data_i.operation == ariane_pkg::SCSS
+                else clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, tmp_cap.tag};
             end
             // CGetBase
             ariane_pkg::GCBASE: begin
