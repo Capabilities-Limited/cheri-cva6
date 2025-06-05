@@ -41,38 +41,19 @@ module ariane_regfile #(
     input  logic [CVA6Cfg.NrCommitPorts-1:0][           4:0] waddr_i,
     input  logic [CVA6Cfg.NrCommitPorts-1:0][DATA_WIDTH-1:0] wdata_i,
     input  logic [CVA6Cfg.NrCommitPorts-1:0]                 we_i,
-    input  logic [CVA6Cfg.NrCommitPorts-1:0]                 clr_i,
-    input  logic [CVA6Cfg.NrCommitPorts-1:0][7:0]            mask_i,   // mask bit
-    input  logic [CVA6Cfg.NrCommitPorts-1:0][1:0]            quarter_i // quarter selection
 );
 
   localparam ADDR_WIDTH = 5;
   localparam NUM_WORDS = 2 ** ADDR_WIDTH;
 
   logic [            NUM_WORDS-1:0][DATA_WIDTH-1:0] mem;
-  logic [NUM_WORDS-1:0]                             v;
   logic [CVA6Cfg.NrCommitPorts-1:0][NUM_WORDS-1:0]         sel;
-  logic [CVA6Cfg.NrCommitPorts-1:0][NUM_WORDS-1:0]         mask;
   logic [CVA6Cfg.NrCommitPorts-1:0][NUM_WORDS-1:0] we_dec;
-
-  generate
-    if (EN_CHERI_CAP) begin : gen_cheri_clear_caps
-      genvar k;
-      for (k = 0; k < CVA6Cfg.NrCommitPorts; k++) begin
-        assign sel[k]  = (8'b11111111 << (quarter_i << 3));
-        assign mask[k] = (mask_i << (quarter_i << 3));
-      end
-    end else begin
-       assign sel = '0;
-       assign mask = '0;
-    end
-  endgenerate
 
   always_comb begin : we_decoder
     for (int unsigned j = 0; j < CVA6Cfg.NrCommitPorts; j++) begin
       for (int unsigned i = 0; i < NUM_WORDS; i++) begin
         if (waddr_i[j] == i) we_dec[j][i] = we_i[j];
-        else if (EN_CHERI_CAP && (clr_i[j] && sel[j][i])) we_dec[j][i] = we_i[j] & mask[j][i];
         else we_dec[j][i] = 1'b0;
       end
     end
@@ -83,14 +64,12 @@ module ariane_regfile #(
     if (~rst_ni) begin
       for (int unsigned i = 0; i < NUM_WORDS; i++) begin
         mem[i] <= (EN_CHERI_CAP) ? (CVA6Cfg.RVFI_DII ? cva6_cheri_pkg::REG_ROOT_CAP : cva6_cheri_pkg::REG_NULL_CAP) : '0;
-        v[i]   <= '0;
       end
     end else begin
       for (int unsigned j = 0; j < CVA6Cfg.NrCommitPorts; j++) begin
         for (int unsigned i = 0; i < NUM_WORDS; i++) begin
           if (we_dec[j][i]) begin
             mem[i] <= wdata_i[j];
-            if (EN_CHERI_CAP) v[i] <= clr_i[j] ? 1'b0 : 1'b1;
           end
         end
         if (ZERO_REG_ZERO) begin
@@ -101,11 +80,7 @@ module ariane_regfile #(
   end
 
   for (genvar i = 0; i < NR_READ_PORTS; i++) begin : gen_read_register
-    if (EN_CHERI_CAP) begin : gen_cheri_read_regs
-      assign rdata_o[i] = !v[raddr_i[i]] ? ((CVA6Cfg.RVFI_DII && raddr_i[i] != 0)  ? cva6_cheri_pkg::REG_ROOT_CAP : cva6_cheri_pkg::REG_NULL_CAP) : mem[raddr_i[i]];
-    end else begin : gen_no_cheri_read_regs
-      assign rdata_o[i] = mem[raddr_i[i]];
-    end
+    assign rdata_o[i] = mem[raddr_i[i]];
   end
 
 endmodule

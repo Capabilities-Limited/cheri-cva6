@@ -117,12 +117,6 @@ module issue_stage
     input logic [CVA6Cfg.NrCommitPorts-1:0][4:0] waddr_i,
     // TO_BE_COMPLETED - EX_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.REGLEN-1:0] wdata_i,
-    // Fast-Register Clear - EX_STAGE
-    output  logic [CVA6Cfg.NrCommitPorts-1:0]              clr_i,
-    // Fast-Register Clear Mask - EX_STAGE
-    output  logic [CVA6Cfg.NrCommitPorts-1:0][7:0]         mask_i,
-    // Fast-Register Clear Quarter - EX_STAGE
-    output  logic [CVA6Cfg.NrCommitPorts-1:0][1:0]         quarter_i,
     // GPR write enable - EX_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_i,
     // FPR write enable - EX_STAGE

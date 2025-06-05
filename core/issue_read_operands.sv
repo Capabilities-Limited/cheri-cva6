@@ -122,12 +122,6 @@ module issue_read_operands
     input logic [CVA6Cfg.NrCommitPorts-1:0][4:0] waddr_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.REGLEN-1:0] wdata_i,
-    // Clear Register file - TO_BE_COMPLETED
-    input  logic [CVA6Cfg.NrCommitPorts-1:0]             clr_i,
-    // Mask Clear Register file - TO_BE_COMPLETED
-    input  logic [CVA6Cfg.NrCommitPorts-1:0][7:0]        mask_i,
-    // Quarter Clear Register file - TO_BE_COMPLETED
-    input  logic [CVA6Cfg.NrCommitPorts-1:0][1:0]        quarter_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
