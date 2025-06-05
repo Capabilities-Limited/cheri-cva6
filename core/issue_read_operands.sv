@@ -628,7 +628,8 @@ end
         .CVA6Cfg      (CVA6Cfg),
         .DATA_WIDTH   (CVA6Cfg.REGLEN),
         .NR_READ_PORTS(CVA6Cfg.NrRgprPorts),
-        .ZERO_REG_ZERO(1)
+        .ZERO_REG_ZERO(1),
+        .EN_CHERI_CAP(CVA6Cfg.CheriPresent)
     ) i_ariane_regfile_fpga (
         .test_en_i(1'b0),
         .raddr_i  (raddr_pack),
