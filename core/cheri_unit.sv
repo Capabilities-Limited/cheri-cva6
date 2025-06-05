@@ -69,8 +69,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     addrw_t   offset;
     cap_reg_t res_set_offset;
     // Operation set bounds;
-    addrw_t set_bounds_base;
-    addrwe_t set_bounds_len, set_bounds_top;
+    addrw_t set_bounds_len;
     cap_reg_t op_set_bounds;
     cap_reg_set_bounds_ret_t res_set_bounds;
     cap_meta_data_t res_set_bounds_meta_data;
@@ -114,10 +113,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         offset                     = '{default:0};
 
         // Set bounds operation reset signals
-        op_set_bounds              = fu_data_i.operation inside {ariane_pkg::CRAM} ? REG_NULL_CAP : operand_a;
-        set_bounds_base            = '{default:0};
-        set_bounds_top             = '{default:0};
-        set_bounds_len             = '{default:0};
+        op_set_bounds              = operand_a;
+        set_bounds_len             = (fu_data_i.operation == ariane_pkg::SCBNDSI) ? fu_data_i.imm : $unsigned(operand_b_address);
 
         // Output reset values
         clu_result                 = REG_NULL_CAP;
@@ -175,7 +172,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 end
                 if (fu_data_i.operation == ariane_pkg::CBLD) clu_result = tmp_cap;
                 // fu_data_i.operation == ariane_pkg::SCSS
-                else clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, tmp_cap.tag};
+                else clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}}, tmp_cap.tag});
             end
             // CGetBase
             ariane_pkg::GCBASE: begin
@@ -236,29 +233,20 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = res_set_addr;
             end
             // CSetBounds, CSetBoundsExact, CSetBoundsImm,
-            // CRepresentableAlignmentMask and CRepresentableLength
+            // CRepresentableAlignmentMask
             ariane_pkg::SCBNDSR,
             ariane_pkg::SCBNDS,
             ariane_pkg::SCBNDSI,
             ariane_pkg::CRAM: begin
-                if (fu_data_i.operation == ariane_pkg::CRAM) begin
-                   set_bounds_base = 0;
-                   set_bounds_len = $unsigned(operand_a_address);
-                   set_bounds_top = set_bounds_len;
-                end else begin
-                    set_bounds_base = operand_a_address;
-                    set_bounds_len =  ((fu_data_i.operation == ariane_pkg::SCBNDSI) ? fu_data_i.imm : $unsigned(operand_b_address));
-                    set_bounds_top = {1'b0,set_bounds_base} + set_bounds_len;
-                    check_operand_a_violations = (1 << CAP_TAG_VIOLATION)   |
-                                                 (1 << CAP_LENGTH_VIOLATION)|
-                                                 (1 << CAP_SEAL_VIOLATION);
-                end
-                op_set_bounds = operand_a;
+                check_operand_a_violations = (1 << CAP_TAG_VIOLATION)   |
+                                             (1 << CAP_LENGTH_VIOLATION)|
+                                             (1 << CAP_SEAL_VIOLATION);
                 if (fu_data_i.operation == ariane_pkg::CRAM)
                     clu_result = set_cap_reg_addr(REG_NULL_CAP, res_set_bounds.mask);
                 else
                     clu_result = res_set_bounds.cap;
-
+                    
+                // If the result is inexact, and needed to be
                 if ((!res_set_bounds.exact && fu_data_i.operation == ariane_pkg::SCBNDS))
                     clu_result.tag = 1'b0;
             end
@@ -331,7 +319,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                                             op_meta_set_offset,
                                             set_offset
                                         );
-        res_set_bounds = set_cap_reg_bounds(op_set_bounds, set_bounds_base, set_bounds_len);
+        res_set_bounds = set_cap_reg_bounds(op_set_bounds, operand_a_address, set_bounds_len);
     end
 
     // ----------------
@@ -355,6 +343,16 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
 
         if (operand_b_is_sealed) begin
             operand_b_violations[CAP_SEAL_VIOLATION] = 1'b1;
+        end
+
+        if ((fu_data_i.operation inside {ariane_pkg::SCBNDSR,ariane_pkg::SCBNDS,ariane_pkg::SCBNDSI})) begin
+            if (operand_a_address < operand_a_base) begin
+                operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
+            end
+
+            if ((operand_b_base + set_bounds_len) > operand_a_top) begin
+                operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
+            end
         end
     end
 
