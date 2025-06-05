@@ -901,7 +901,11 @@ module decoder
                     5'b00101:   instruction_o.op = ariane_pkg::GCBASE;
                     5'b00110:   instruction_o.op = ariane_pkg::GCLEN;
                     5'b00100:   instruction_o.op = ariane_pkg::GCHI;
-                    5'b00111:   instruction_o.op = ariane_pkg::CRAM;
+                    5'b00111: begin
+                      instruction_o.op = ariane_pkg::CRAM;
+                      instruction_o.rs1[4:0] = 5'b0; // Use C0 as the capability operand for SetBounds function.
+                      instruction_o.rs2[4:0] = instr.rtype.rs1;
+                    end
                     5'b01000:   instruction_o.op = ariane_pkg::SENTRY;
                     default: begin
                       illegal_instr_cheri = 1'b1;

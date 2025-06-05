@@ -319,17 +319,17 @@ package ariane_pkg;
     SCR_READ, SCR_READWRITE,
     // 41 Capability-Inspection Instructions
     GCPERM, GCTYPE, GCBASE, GCLEN, GCTAG, GCMODE, GCHI,
-    // 49 Capability-Modification Instructions
+    // 48 Capability-Modification Instructions
     ACPERM, SCMODE, SCHI, SCADDR, CADD, CADDI, SCBNDSR,
-    // 56
+    // 55
     SCBNDS, SCBNDSI, CBLD, SENTRY,
-    // 61 Pointer-Arithmetic Instructions
+    // 59 Pointer-Arithmetic Instructions
     CMV,
-    // 62 Pointer-Comparison Instructions
+    // 60 Pointer-Comparison Instructions
     SCSS, SCEQ,
-    // 64 Control-Flow Instructions
+    // 62 Control-Flow Instructions
     MODESW_CAP, MODESW_INT, CJAL, CJALR,
-    // 71 Adjusting to Compressed Capability Precision Instructions
+    // 66 Adjusting to Compressed Capability Precision Instructions
     CRAM,
     // LSU functions
     LC,
