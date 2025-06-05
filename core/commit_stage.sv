@@ -52,12 +52,6 @@ module commit_stage
     output logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_o,
     // Floating point register enable - ISSUE_STAGE
     output logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_o,
-    // Clear Register File - ISSUE_STAGE
-    output  logic [CVA6Cfg.NrCommitPorts-1:0] clr_o,
-    // Clear Register File Mask - ISSUE_STAGE
-    output  logic [CVA6Cfg.NrCommitPorts-1:0][7:0] mask_o,
-    // Clear Register File Quarter - ISSUE_STAGE
-    output  logic [CVA6Cfg.NrCommitPorts-1:0][1:0] quarter_o,
     // Result of AMO operation - CACHE
     input amo_resp_t amo_resp_i,
     // Current PCC - ISSUE_STAGE
@@ -115,17 +109,6 @@ module commit_stage
   //     .probe8(1'b0), // input wire [0:0]  probe8
   //     .probe9(1'b0) // input wire [0:0]  probe9
   // );
-  if (CVA6Cfg.CheriPresent) begin: gen_cheri_fst_reg_clr
-    for (genvar i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin : gen_clear
-      assign clr_o[i]     = commit_instr_i[i].clr;
-      assign mask_o[i]    = commit_instr_i[i].mask;
-      assign quarter_o[i] = commit_instr_i[i].quarter;
-    end
-  end else begin: gen_no_cheri_fst_reg_clr
-    assign clr_o     = '0;
-    assign mask_o    = '0;
-    assign quarter_o = '0;
-  end
 
   for (genvar i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin : gen_waddr
     assign waddr_o[i] = commit_instr_i[i].rd;

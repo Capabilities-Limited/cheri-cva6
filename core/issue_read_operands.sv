@@ -133,12 +133,6 @@ module issue_read_operands
     input logic [CVA6Cfg.NrCommitPorts-1:0][4:0] waddr_i,
     // Value to write to register file - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.REGLEN-1:0] wdata_i,
-    // Clear Register file - COMMIT_STAGE
-    input  logic [CVA6Cfg.NrCommitPorts-1:0]             clr_i,
-    // Mask Clear Register file - COMMIT_STAGE
-    input  logic [CVA6Cfg.NrCommitPorts-1:0][7:0]        mask_i,
-    // Quarter Clear Register file - COMMIT_STAGE
-    input  logic [CVA6Cfg.NrCommitPorts-1:0][1:0]        quarter_i,
     // GPR write enable - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_i,
     // FPR write enable - COMMIT_STAGE
@@ -1024,10 +1018,7 @@ module issue_read_operands
         .rdata_o  (rdata),
         .waddr_i  (waddr_pack),
         .wdata_i  (wdata_pack),
-        .we_i     (we_pack),
-        .clr_i,
-        .mask_i,
-        .quarter_i
+        .we_i     (we_pack)
     );
   end else begin : gen_asic_regfile
     ariane_regfile #(
@@ -1044,10 +1035,7 @@ module issue_read_operands
         .rdata_o  (rdata),
         .waddr_i  (waddr_pack),
         .wdata_i  (wdata_pack),
-        .we_i     (we_pack),
-        .clr_i,
-        .mask_i,
-        .quarter_i
+        .we_i     (we_pack)
     );
   end
 
@@ -1093,10 +1081,7 @@ module issue_read_operands
             .rdata_o  (fprdata),
             .waddr_i  (waddr_pack),
             .wdata_i  (fp_wdata_pack),
-            .we_i     (we_fpr_i),
-            .clr_i,
-            .mask_i,
-            .quarter_i
+            .we_i     (we_fpr_i)
         );
       end else begin : gen_asic_fp_regfile
         ariane_regfile #(
@@ -1112,10 +1097,7 @@ module issue_read_operands
             .rdata_o  (fprdata),
             .waddr_i  (waddr_pack),
             .wdata_i  (fp_wdata_pack),
-            .we_i     (we_fpr_i),
-            .clr_i,
-            .mask_i,
-            .quarter_i
+            .we_i     (we_fpr_i)
         );
       end
     end else begin : no_fpr_gen

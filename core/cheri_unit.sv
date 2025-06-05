@@ -38,7 +38,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     addrw_t operand_a_base;
     addrwe_t operand_a_top;
     addrwe_t operand_a_length;
-    addrw_t operand_a_offset;
     addrw_t operand_a_address;
     logic operand_a_is_sealed;
     cap_meta_data_t op_a_meta_info;
@@ -194,13 +193,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                     clu_result.tag = 1'b0;
                 end
             end
-            // CClearTag
-            ariane_pkg::CCLEAR_TAG: begin
-                tmp_cap = operand_a;
-                // clear operand_a capability tag bit
-                tmp_cap.tag = 1'b0;
-                clu_result = tmp_cap;
-            end
             // CGetAddr
             ariane_pkg::CGET_ADDR: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_address);
@@ -209,10 +201,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             ariane_pkg::GCBASE: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_base);
             end
-            // CGetTop
-            ariane_pkg::CGET_TOP: begin
-                clu_result = set_cap_reg_addr(REG_NULL_CAP, (operand_a_top[CVA6Cfg.XLEN]) ? {CVA6Cfg.XLEN{1'b1}} : operand_a_top[CVA6Cfg.XLEN-1:0]);
-            end
             // CGetFlags
             ariane_pkg::GCMODE: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a.flags});
@@ -220,10 +208,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CGetFlags
             ariane_pkg::GCLEN: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, (operand_a_length[CVA6Cfg.XLEN]) ? {CVA6Cfg.XLEN{1'b1}} : operand_a_length[CVA6Cfg.XLEN-1:0]);
-            end
-            // CGetOffset
-            ariane_pkg::CGET_OFFSET: begin
-               clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_offset);
             end
             // CGetHigh
             ariane_pkg::GCHI: begin
@@ -323,18 +307,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = cap_mem_to_cap_reg(cap_mem);
                 clu_result.tag = 1'b0;
             end
-            // CSetOffset
-            // TODO-cheri(ninolomata): use ALU to compute offset
-            ariane_pkg::CSET_OFFSET: begin
-                check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
-                address = operand_a_base + operand_b_address;
-                offset = operand_b_address;
-                op_set_offset = operand_a;
-                op_meta_set_offset = op_a_meta_info;
-                set_offset = 1'b1;
-                tmp_cap = res_set_offset;
-                clu_result = tmp_cap;
-            end
             // CSub
             ariane_pkg::CSUB: begin
                 clu_result.addr = operand_a_address - operand_b_address;
@@ -387,7 +359,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         operand_a_base   = get_cap_reg_base(operand_a, op_a_meta_info);
         operand_a_top    = get_cap_reg_top(operand_a, op_a_meta_info);
         operand_a_length = operand_a_top - {1'b0, operand_a_base};
-        operand_a_offset = get_cap_reg_offset(operand_a, op_a_meta_info);
         operand_a_is_sealed = (operand_a.otype != UNSEALED_CAP);
         // Decode capability operand b fields
         operand_b_address = operand_b.addr;
