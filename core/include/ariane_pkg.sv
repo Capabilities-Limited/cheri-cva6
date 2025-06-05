@@ -318,21 +318,19 @@ package ariane_pkg;
     //Special Capabilty Register Access Instructions
     SCR_READ, SCR_READWRITE,
     // 41 Capability-Inspection Instructions
-    GCPERM, GCTYPE, GCBASE, GCLEN, GCTAG, CGET_SEALED, GCMODE, GCHI, CGET_ADDR,
+    GCPERM, GCTYPE, GCBASE, GCLEN, GCTAG, GCMODE, GCHI,
     // 49 Capability-Modification Instructions
     ACPERM, SCMODE, SCHI, SCADDR, CADD, CADDI, SCBNDSR,
     // 56
     SCBNDS, SCBNDSI, CBLD, SENTRY,
     // 61 Pointer-Arithmetic Instructions
-    CTO_PTR, CFROM_PTR, CSUB, CMV,
-    // 65 Pointer-Comparison Instructions
+    CMV,
+    // 62 Pointer-Comparison Instructions
     SCSS, SCEQ,
-    // 67 Control-Flow Instructions
-    MODESW_CAP, MODESW_INT, CINVOKE, CJAL, CJALR,
-    // 75 Adjusting to Compressed Capability Precision Instructions
-    CRND_REPRESENTABLE_LEN, CRAM,
-    // Tag-Memory Access Instructions
-    CLOAD_TAGS, CCLEAR_TAGS,
+    // 64 Control-Flow Instructions
+    MODESW_CAP, MODESW_INT, CJAL, CJALR,
+    // 71 Adjusting to Compressed Capability Precision Instructions
+    CRAM,
     // LSU functions
     LC,
     SC,
@@ -691,7 +689,7 @@ package ariane_pkg;
 
   function automatic logic is_cap (fu_op op);
         case (op) inside
-            LC, SC, CLOAD_TAGS, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
+            LC, SC, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
                 return 1'b1;
             end
             default: return 1'b0;
@@ -869,7 +867,7 @@ package ariane_pkg;
   // ----------------------
   function automatic logic [2:0] extract_transfer_size(fu_op op);
     case (op)
-      AMO_LRC, AMO_SCC, LC, SC, CLOAD_TAGS, AMO_SWAPC: begin
+      AMO_LRC, AMO_SCC, LC, SC, AMO_SWAPC: begin
         return 3'b100;
       end
       LD, HLV_D, SD, HSV_D, FLD, FSD,
