@@ -145,53 +145,35 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 tmp_cap.hperms = cap_hperms_t'(tmp_cap.hperms & operand_b_address[CAP_HPERMS_WIDTH-1:0]);
                 clu_result = tmp_cap;
             end
-            // CBuildCap
-            ariane_pkg::CBLD: begin
-                tmp_cap = operand_a;
-                req_cap = operand_b;
-                req_cap.tag = 1'b1;
-                req_cap.otype = (operand_b.otype == SENTRY_CAP) ? SENTRY_CAP : UNSEALED_CAP;
-                check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
-
-                // Set bounds
-                set_bounds_base = operand_b_base;
-                set_bounds_len =  operand_b_top - operand_b_base;
-                set_bounds_top = {1'b0,set_bounds_base} + set_bounds_len;
-                op_set_bounds = operand_a;
-                // Set offset
-                address = operand_b_address;
-                offset = operand_b_offset;
-                op_set_offset = res_set_bounds.cap;
-                op_meta_set_offset = res_set_bounds_meta_data;
-                set_offset = 1'b1;
-                tmp_cap = res_set_offset;
-
-                // Set permission bits
-                tmp_cap.uperms = operand_b.uperms & operand_a.uperms;
-                tmp_cap.hperms = operand_b.hperms & operand_a.hperms;
-                tmp_cap.flags.int_mode = operand_b.flags.int_mode;
-                tmp_cap.otype = (operand_b.otype == SENTRY_CAP) ? SENTRY_CAP : UNSEALED_CAP;
-
-                if( tmp_cap.tag == 1'b1                              &&
-                    tmp_cap.addr == req_cap.addr                     &&
-                    tmp_cap.res_hi == req_cap.res_hi                 &&
-                    tmp_cap.res_lo == req_cap.res_lo                 &&
-                    tmp_cap.EF == req_cap.EF                         &&
-                    tmp_cap.otype == req_cap.otype                   &&
-                    tmp_cap.bounds == req_cap.bounds                 &&
-                    tmp_cap.hperms == req_cap.hperms                 &&
-                    tmp_cap.uperms == req_cap.uperms                 &&
-                    tmp_cap.flags == req_cap.flags                   &&
-                    !operand_b_violations[CAP_LENGTH_VIOLATION]       &&
-                    !operand_b_violations[CAP_USER_DEF_PERM_VIOLATION]) begin
-                    clu_result = tmp_cap;
-                    clu_result.res_hi = operand_b.res_hi;
-                    clu_result.res_lo = operand_b.res_lo;
-                    clu_result.tag = 1'b1;
-                end else begin
-                    clu_result = req_cap;
-                    clu_result.tag = 1'b0;
+            // CTestSubset
+            ariane_pkg::CBLD,ariane_pkg::SCSS: begin
+                tmp_cap = operand_b;
+                if (fu_data_i.operation == ariane_pkg::SCSS) tmp_cap.tag = 1'b1;
+                if(operand_a.tag != operand_b.tag) begin
+                    tmp_cap.tag = 1'b0;
                 end
+                if(operand_b_base < operand_a_base) begin
+                    tmp_cap.tag = 1'b0;
+                end
+                if(operand_b_top > operand_a_top) begin
+                    tmp_cap.tag = 1'b0;
+                end
+                if((operand_a.uperms & operand_b.uperms) != operand_b.uperms) begin
+                    tmp_cap.tag = 1'b0;
+                end
+                if((operand_a.hperms & operand_b.hperms) != operand_b.hperms) begin
+                    tmp_cap.tag = 1'b0;
+                end
+                if(!are_cap_reg_bounds_valid(operand_a, op_a_meta_info) | !are_cap_reg_bounds_valid(operand_b, op_b_meta_info)) begin
+                    tmp_cap.tag = 1'b0;
+                end
+                if(operand_a.hperms != legalize_arch_perms(operand_a.hperms) | operand_b.hperms != legalize_arch_perms(operand_b.hperms)) begin
+                    tmp_cap.tag = 1'b0;
+                end
+                if(operand_a.res_lo != 0 | operand_a.res_hi != 0 | operand_b.res_lo != 0 | operand_b.res_hi != 0) begin
+                    tmp_cap.tag = 1'b0;
+                end
+                clu_result = (fu_data_i.operation == ariane_pkg::CBLD) ? tmp_cap : set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}}, tmp_cap.tag});
             end
             // CGetBase
             ariane_pkg::GCBASE: begin
@@ -296,35 +278,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 clu_result = cap_mem_to_cap_reg(cap_mem);
                 clu_result.tag = 1'b0;
             end
-            // CTestSubset
-            ariane_pkg::SCSS: begin
-                clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b1};
-                if(operand_a.tag != operand_b.tag) begin
-                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
-                end
-                if(operand_b_base < operand_a_base) begin
-                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
-                end
-                if(operand_b_top > operand_a_top) begin
-                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
-                end
-                if((operand_a.uperms & operand_b.uperms) != operand_b.uperms) begin
-                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
-                end
-                if((operand_a.hperms & operand_b.hperms) != operand_b.hperms) begin
-                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
-                end
-                if(!are_cap_reg_bounds_valid(operand_a, op_a_meta_info) | !are_cap_reg_bounds_valid(operand_b, op_b_meta_info)) begin
-                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
-                end
-                if(operand_a.hperms != legalize_arch_perms(operand_a.hperms) | operand_b.hperms != legalize_arch_perms(operand_b.hperms)) begin
-                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
-                end
-                if(operand_a.res_lo != 0 | operand_a.res_hi != 0 | operand_b.res_lo != 0 | operand_b.res_hi != 0) begin
-                    clu_result.addr = {{CVA6Cfg.XLEN-1{1'b0}}, 1'b0};
-                end
-                set_cap_reg_addr(clu_result, clu_result.addr);
-            end
             default: ; // default case to suppress unique warning
         endcase
 
@@ -400,36 +353,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
 
         if (operand_b_is_sealed) begin
             operand_b_violations[CAP_SEAL_VIOLATION] = 1'b1;
-        end
-
-        if ((fu_data_i.operation inside {ariane_pkg::CBLD})) begin
-            if (operand_b_base < operand_a_base) begin
-                operand_b_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-
-            if (operand_b_top > operand_a_top) begin
-                operand_b_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-
-            if (operand_b_length > operand_a_length) begin
-                operand_b_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-
-            if ({1'b0,operand_b_base} > operand_a_top) begin
-                operand_b_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
-
-            if ((operand_a.uperms & operand_b.uperms) != operand_b.uperms) begin
-                operand_b_violations[CAP_USER_DEF_PERM_VIOLATION] = 1'b1;
-            end
-
-            if ((operand_a.hperms & operand_b.hperms) != operand_b.hperms) begin
-                operand_b_violations[CAP_USER_DEF_PERM_VIOLATION] = 1'b1;
-            end
-
-            /* if ((operand_b.otype & operand_b.hperms) != operand_b.hperms) begin
-                operand_a_violations[CAP_USER_DEF_PERM_VIOLATION] = 1'b1;
-            end */
         end
 
         if ((fu_data_i.operation inside {ariane_pkg::SCBNDSR,ariane_pkg::SCBNDS,ariane_pkg::SCBNDSI})) begin
