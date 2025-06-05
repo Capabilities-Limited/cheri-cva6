@@ -492,7 +492,7 @@ module decoder
 
             default: begin
               if (CVA6Cfg.CheriPresent) begin
-                if (instruction_o.rs1[4:0] != 0) begin
+                if (instr.itype.rs1 != 0) begin
                   case (instr.stype.funct3)
                     3'b100: begin
                       instruction_o.fu  = LOAD;
