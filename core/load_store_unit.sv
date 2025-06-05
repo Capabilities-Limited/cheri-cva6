@@ -758,7 +758,7 @@ module load_store_unit
       if (CVA6Cfg.IS_XLEN64) begin
         case (lsu_ctrl.operation)
           // capability width
-          LC, SC, AMO_LRC, AMO_SCC, CLOAD_TAGS, AMO_SWAPC: begin
+          LC, SC, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
             if (CVA6Cfg.CheriPresent && lsu_ctrl.vaddr[3:0] != 4'b0000) begin
               data_misaligned = 1'b1;
             end
@@ -892,8 +892,8 @@ module load_store_unit
     // TODO: ddc must be incremented
     // Consider moving this to CHERI unit
     always_comb begin
-      check_cap             = (lsu_ctrl.use_ddc && lsu_ctrl.operation != ariane_pkg::CLOAD_TAGS) ? ddc_i : lsu_ctrl.operand_a;
-      fault_cap_idx         = (lsu_ctrl.use_ddc && lsu_ctrl.operation != ariane_pkg::CLOAD_TAGS) ? {6'b100001} : {1'b0,lsu_ctrl.rs1};
+      check_cap             = (lsu_ctrl.use_ddc) ? ddc_i : lsu_ctrl.operand_a;
+      fault_cap_idx         = (lsu_ctrl.use_ddc) ? {6'b100001} : {1'b0,lsu_ctrl.rs1};
       check_cap_meta_data   = cva6_cheri_pkg::get_cap_reg_meta_data(check_cap);
       // TODO-cheri: add relocation check_cap.addr
       check_cap_address     = lsu_ctrl.vaddr;
@@ -939,7 +939,7 @@ module load_store_unit
             ariane_pkg::HLV_D: begin
                 size = 8;
             end
-            ariane_pkg::LC, ariane_pkg::SC, ariane_pkg::AMO_LRC, ariane_pkg::AMO_SCC, ariane_pkg::CLOAD_TAGS: begin
+            ariane_pkg::LC, ariane_pkg::SC, ariane_pkg::AMO_LRC, ariane_pkg::AMO_SCC: begin
                 size = cva6_cheri_pkg::CLEN/8;
             end
             default:    size = 1;
@@ -949,11 +949,6 @@ module load_store_unit
             cheri_tval.cap_idx = fault_cap_idx;
             if((check_cap_address < check_cap_base) || ((lsu_ctrl.vaddr +  size) > check_cap_top)) begin
                 cheri_tval.cause   = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
-                cheri_exception.valid     = 1'b1;
-            end
-
-            if (!(check_cap.hperms.permit_load && check_cap.hperms.permit_cap) && (lsu_ctrl.fu == LOAD) && lsu_ctrl.operation inside{ariane_pkg::CLOAD_TAGS}) begin
-                cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_LD_CAP_VIOLATION;
                 cheri_exception.valid     = 1'b1;
             end
 

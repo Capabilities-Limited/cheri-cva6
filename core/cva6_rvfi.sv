@@ -538,7 +538,7 @@ module cva6_rvfi
       end else begin
         rvfi_instr_o[i].pc_wdata <= (exception) ? {csr.mtcc_q[63:2], 2'b00} : (commit_instr_fu[i] == CTRL_FLOW) ? commit_instr_next_pc[i] : commit_instr_pc[i] + (instr[1:0] == 2'b11 ? 4 : 2);
       end
-      rvfi_instr_o[i].mem_addr <= mem_q[commit_pointer[i]].lsu_addr + ((commit_instr_op[i] == ariane_pkg::CLOAD_TAGS) ? 0 : 0);
+      rvfi_instr_o[i].mem_addr <= mem_q[commit_pointer[i]].lsu_addr;
       // So far, only write paddr is reported. TODO: read paddr
       rvfi_instr_o[i].mem_paddr <= mem_paddr;
       rvfi_instr_o[i].mem_wmask <= (is_amo_sc(commit_instr_op[i])  && wdata[i] == 1) ? '0 : mem_q[commit_pointer[i]].lsu_wmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
