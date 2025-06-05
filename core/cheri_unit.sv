@@ -345,14 +345,12 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             operand_b_violations[CAP_SEAL_VIOLATION] = 1'b1;
         end
 
-        if ((fu_data_i.operation inside {ariane_pkg::SCBNDSR,ariane_pkg::SCBNDS,ariane_pkg::SCBNDSI})) begin
-            if (operand_a_address < operand_a_base) begin
-                operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
+        if (operand_a_address < operand_a_base) begin
+            operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
+        end
 
-            if ((operand_b_base + set_bounds_len) > operand_a_top) begin
-                operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
-            end
+        if ((operand_b_base + set_bounds_len) > operand_a_top) begin
+            operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
         end
     end
 
