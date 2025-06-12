@@ -140,19 +140,6 @@ package cva6_cheri_pkg;
     typedef logic [CAP_E_HALF_WIDTH-1:0]                      hew_t;
 
     /**
-      * Capability Control and Status Registers (CCSRs)
-      */
-
-    typedef struct packed {
-        logic [63:16]   wiri2;
-        logic [15:10]   cap_idx;
-        logic [9:5]     cause;
-        logic [4:2]     wiri1;
-        bool_t          d;
-        bool_t          e;
-    } ccsr_t;
-
-    /**
       * CHERI exception tval layout fields
       */
     typedef struct packed {
