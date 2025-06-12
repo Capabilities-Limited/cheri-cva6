@@ -454,8 +454,6 @@ package riscv;
     CSR_VSTVAL           = 12'h243,
     CSR_VSIP             = 12'h244,
     CSR_VSATP            = 12'h280,
-    // CHERI: Supervisor Mode CCSRs
-    CSR_VSCCSR           = 12'hAC0,
     // Supervisor Mode CSRs
     CSR_SSTATUS          = 12'h100,
     CSR_SIE              = 12'h104,
@@ -468,8 +466,6 @@ package riscv;
     CSR_STVAL            = 12'h143,
     CSR_SIP              = 12'h144,
     CSR_SATP             = 12'h180,
-    // CHERI: Supervisor Mode CCSRs
-    CSR_SCCSR            = 12'h9C0,
     // Hypervisor-extended Supervisor Mode CSRs
     CSR_HSTATUS          = 12'h600,
     CSR_HEDELEG          = 12'h602,
@@ -684,8 +680,6 @@ package riscv;
     CSR_MHPM_COUNTER_29H = 12'hB9D,  // reserved
     CSR_MHPM_COUNTER_30H = 12'hB9E,  // reserved
     CSR_MHPM_COUNTER_31H = 12'hB9F,  // reserved
-    //CHERI: Machine Mode CCSRs
-    CSR_MCCSR            = 12'hBC0,
     // Cache Control (platform specifc)
     CSR_DCACHE           = 12'h7C1,
     CSR_ICACHE           = 12'h7C0,
