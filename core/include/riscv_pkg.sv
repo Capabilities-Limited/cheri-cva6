@@ -530,6 +530,8 @@ package riscv;
     CSR_MIP              = 12'h344,
     CSR_MTINST           = 12'h34A,
     CSR_MTVAL2           = 12'h34B,
+    CSR_MSECCFG          = 12'h747,
+    CSR_MSECCFGH         = 12'h757,
     CSR_MENVCFG          = 12'h30A,
     CSR_MENVCFGH         = 12'h31A,
     CSR_PMPCFG0          = 12'h3A0,
