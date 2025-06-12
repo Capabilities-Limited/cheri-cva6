@@ -308,6 +308,14 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] icache_q, icache_d;
   logic [CVA6Cfg.XLEN-1:0] acc_cons_q, acc_cons_d;
 
+  // Dynamic CHERI enables: TODO currently hardwired to 1
+  logic mseccre;
+  assign mseccre = CVA6Cfg.CheriPresent;
+  logic menvcre;
+  assign menvcre = CVA6Cfg.CheriPresent;
+  logic senvcre;
+  assign senvcre = CVA6Cfg.CheriPresent;
+
       // Default data capability
     cap_pcc_t pcc_d, pcc_q;
     cap_reg_t ddc_d, ddc_q;
@@ -691,6 +699,9 @@ end
               csr_rdata[5:4] = scbie_q;
               csr_rdata[6]   = scbcfe_q;
             end
+            if (CVA6Cfg.CheriPresent) begin
+              csr_rdata[28]  = senvcre;
+            end
           end else begin
             read_access_exception = 1'b1;
           end
@@ -798,6 +809,9 @@ end
             csr_rdata[5:4] = mcbie_q;
             csr_rdata[6]   = mcbcfe_q;
           end
+          if (CVA6Cfg.CheriPresent) begin
+            csr_rdata[28]  = menvcre;
+          end
           if (!CVA6Cfg.RVU && !CVA6Cfg.RVZiCbom) begin
             read_access_exception = 1'b1;
           end
@@ -806,6 +820,8 @@ end
           if (CVA6Cfg.RVU && CVA6Cfg.XLEN == 32) csr_rdata = '0;
           else read_access_exception = 1'b1;
         end
+        riscv::CSR_MSECCFG: csr_rdata = {{CVA6Cfg.XLEN - 4{1'b0}}, mseccre, 3'b0};
+        riscv::CSR_MSECCFGH: csr_rdata = '0;
         riscv::CSR_MVENDORID: csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, OPENHWGROUP_MVENDORID};
         riscv::CSR_MARCHID: csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, ARIANE_MARCHID};
         riscv::CSR_MIMPID: csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, ARIANE_MIMPID};
@@ -2060,6 +2076,8 @@ end
           end
           mip_d = (mip_q & ~mask) | (csr_wdata & mask);
         end
+        riscv::CSR_MSECCFG: ;
+        riscv::CSR_MSECCFGH: if(CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
         riscv::CSR_MENVCFG: begin
           if (CVA6Cfg.RVU) begin
             fiom_d = csr_wdata[0];
