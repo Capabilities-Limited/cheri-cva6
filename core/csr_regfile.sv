@@ -262,7 +262,6 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] mtval_q, mtval_d;
   logic [CVA6Cfg.XLEN-1:0] mtinst_q, mtinst_d;
   logic [CVA6Cfg.XLEN-1:0] mtval2_q, mtval2_d;
-  logic [CVA6Cfg.XLEN-1:0] mccsr_q, mccsr_d;
   logic fiom_d, fiom_q;
 
   logic [CVA6Cfg.XLEN-1:0] stvec_q, stvec_d;
@@ -271,7 +270,6 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] sepc_q, sepc_d;
   logic [CVA6Cfg.XLEN-1:0] scause_q, scause_d;
   logic [CVA6Cfg.XLEN-1:0] stval_q, stval_d;
-  logic [CVA6Cfg.XLEN-1:0] sccsr_q, sccsr_d;
 
   logic [CVA6Cfg.XLEN-1:0] hedeleg_q, hedeleg_d;
   logic [CVA6Cfg.XLEN-1:0] hideleg_q, hideleg_d;
@@ -285,7 +283,6 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] vsepc_q, vsepc_d;
   logic [CVA6Cfg.XLEN-1:0] vscause_q, vscause_d;
   logic [CVA6Cfg.XLEN-1:0] vstval_q, vstval_d;
-  logic [CVA6Cfg.XLEN-1:0] vsccsr_q, vsccsr_d;
 
   logic [CVA6Cfg.XLEN-1:0] dcache_q, dcache_d;
   logic [CVA6Cfg.XLEN-1:0] icache_q, icache_d;
@@ -322,10 +319,6 @@ module csr_regfile
   logic [15:0][CVA6Cfg.PLEN-3:0] pmpaddr_q, pmpaddr_d, pmpaddr_next;
   logic [MHPMCounterNum+3-1:0] mcountinhibit_d, mcountinhibit_q;
   logic [3:0] index;
-
-  localparam logic [CVA6Cfg.XLEN-1:0] XCCSR = (CVA6Cfg.XLEN'(CVA6Cfg.RVFI_DII) << 0)
-  | (CVA6Cfg.XLEN'(1) << 30) // NR - no-relocation for integer addresses
-  | (CVA6Cfg.XLEN'(1) << 31); // TC - attempt to update a capability non-monotonically clears the tag
 
   localparam logic [CVA6Cfg.XLEN-1:0] IsaCode = (CVA6Cfg.XLEN'(CVA6Cfg.RVA) <<  0)                // A - Atomic Instructions extension
   | (CVA6Cfg.XLEN'(CVA6Cfg.RVB) << 1)  // C - Bitmanip extension
@@ -570,9 +563,6 @@ end
         end else begin
           read_access_exception = 1'b1;
         end
-        riscv::CSR_VSCCSR:
-        if (CVA6Cfg.CheriPresent) csr_rdata = vsccsr_q;
-        else read_access_exception = 1'b1;
         // supervisor registers
         riscv::CSR_SSTATUS: begin
           if (CVA6Cfg.RVS) csr_rdata = mstatus_extended & SMODE_STATUS_READ_MASK[CVA6Cfg.XLEN-1:0];
@@ -629,10 +619,6 @@ end
           end
         end
         riscv::CSR_SENVCFG:
-        if (CVA6Cfg.RVS) csr_rdata = '0 | fiom_q;
-        else read_access_exception = 1'b1;
-        riscv::CSR_SCCSR:
-        if (CVA6Cfg.CheriPresent) csr_rdata = sccsr_q;
         else read_access_exception = 1'b1;
         // hypervisor mode registers
         riscv::CSR_HSTATUS:
@@ -720,9 +706,6 @@ end
           if (CVA6Cfg.RVU) csr_rdata = '0 | fiom_q;
           else read_access_exception = 1'b1;
         end
-        riscv::CSR_MCCSR:
-        if (CVA6Cfg.CheriPresent) csr_rdata = mccsr_q;
-        else read_access_exception = 1'b1;
         riscv::CSR_MENVCFGH: begin
           if (CVA6Cfg.RVU && CVA6Cfg.XLEN == 32) csr_rdata = '0;
           else read_access_exception = 1'b1;
@@ -1108,7 +1091,6 @@ end
     mtval_d                  = mtval_q;
     mtinst_d                 = mtinst_q;
     mtval2_d                 = mtval2_q;
-    mccsr_d                  = mccsr_q;
     fiom_d                   = fiom_q;
     dcache_d                 = dcache_q;
     icache_d                 = icache_q;
@@ -1121,7 +1103,6 @@ end
     vscause_d                = vscause_q;
     vstval_d                 = vstval_q;
     vsatp_d                  = vsatp_q;
-    vsccsr_d                 = vsccsr_q;
 
     sepc_d                   = sepc_q;
     scause_d                 = scause_q;
@@ -1130,7 +1111,6 @@ end
     sscratch_d               = sscratch_q;
     stval_d                  = stval_q;
     satp_d                   = satp_q;
-    sccsr_d                  = sccsr_q;
     hedeleg_d                = hedeleg_q;
     hideleg_d                = hideleg_q;
     hgeie_d                  = hgeie_q;
@@ -1396,9 +1376,6 @@ end
             update_access_exception = 1'b1;
           end
         end
-        riscv::CSR_VSCCSR:
-        if (CVA6Cfg.CheriPresent) vsccsr_d = csr_wdata | XCCSR;
-        else  update_access_exception = 1'b1;
         // sstatus is a subset of mstatus - mask it accordingly
         riscv::CSR_SSTATUS: begin
           if (CVA6Cfg.RVS) begin
@@ -1504,9 +1481,6 @@ end
         riscv::CSR_SENVCFG:
         if (CVA6Cfg.RVU) fiom_d = csr_wdata[0];
         else update_access_exception = 1'b1;
-        riscv::CSR_SCCSR:
-        if (CVA6Cfg.CheriPresent) sccsr_d = csr_wdata | XCCSR;
-        else  update_access_exception = 1'b1;
         //hypervisor mode registers
         riscv::CSR_HSTATUS: begin
           if (CVA6Cfg.RVH) begin
@@ -1780,9 +1754,6 @@ end
         riscv::CSR_MENVCFGH: begin
           if (!CVA6Cfg.RVU || CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
         end
-        riscv::CSR_MCCSR:
-        if (CVA6Cfg.CheriPresent) mccsr_d = csr_wdata | XCCSR;
-        else  update_access_exception = 1'b1;
         riscv::CSR_MCOUNTINHIBIT:
         if (CVA6Cfg.PerfCounterEn)
           mcountinhibit_d = {csr_wdata[MHPMCounterNum+2:2], 1'b0, csr_wdata[0]};
@@ -2938,20 +2909,17 @@ end
           vstcc_q                 <= cva6_cheri_pkg::REG_ROOT_CAP;
           vstdc_q                 <= cva6_cheri_pkg::REG_NULL_CAP;
           vsscratchc_q            <= cva6_cheri_pkg::REG_NULL_CAP;
-          vsccsr_q                <= XCCSR;
         end
         if (CVA6Cfg.RVS) begin
           sepcc_q                <= cva6_cheri_pkg::REG_ROOT_CAP;
           stcc_q                 <= cva6_cheri_pkg::REG_ROOT_CAP;
           stdc_q                 <= cva6_cheri_pkg::REG_NULL_CAP;
           sscratchc_q            <= cva6_cheri_pkg::REG_NULL_CAP;
-          sccsr_q                <= XCCSR;
         end
         mtcc_q                 <= cva6_cheri_pkg::REG_ROOT_CAP;
         mtdc_q                 <= cva6_cheri_pkg::REG_NULL_CAP;
         mscratchc_q            <= cva6_cheri_pkg::REG_NULL_CAP;
         mepcc_q                <= cva6_cheri_pkg::REG_ROOT_CAP;
-        mccsr_q                <= XCCSR;
       end
     end else begin
       priv_lvl_q <= priv_lvl_d;
@@ -3035,20 +3003,17 @@ end
           vstdc_q                 <= vstdc_d;
           vsscratchc_q            <= vsscratchc_d;
           vsepcc_q                <= vsepcc_d;
-          vsccsr_q                <= vsccsr_d;
         end
         if (CVA6Cfg.RVS) begin
           stcc_q                 <= stcc_d;
           stdc_q                 <= stdc_d;
           sscratchc_q            <= sscratchc_d;
           sepcc_q                <= sepcc_d;
-          sccsr_q                <= sccsr_d;
         end
         mtcc_q                 <= mtcc_d;
         mtdc_q                 <= mtdc_d;
         mscratchc_q            <= mscratchc_d;
         mepcc_q                <= mepcc_d;
-        mccsr_q                <= mccsr_d;
       end
     end
   end
