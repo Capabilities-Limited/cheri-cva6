@@ -288,6 +288,14 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] icache_q, icache_d;
   logic [CVA6Cfg.XLEN-1:0] acc_cons_q, acc_cons_d;
 
+  // Dynamic CHERI enables: TODO currently hardwired to 1
+  logic mseccre;
+  assign mseccre = CVA6Cfg.CheriPresent;
+  logic menvcre;
+  assign menvcre = CVA6Cfg.CheriPresent;
+  logic senvcre;
+  assign senvcre = CVA6Cfg.CheriPresent;
+
       // Default data capability
     cap_pcc_t pcc_d, pcc_q;
     cap_reg_t ddc_d, ddc_q;
@@ -619,6 +627,7 @@ end
           end
         end
         riscv::CSR_SENVCFG:
+        if (CVA6Cfg.RVS) csr_rdata = {{CVA6Cfg.XLEN - 29{1'b0}}, senvcre, 27'b0, fiom_q};
         else read_access_exception = 1'b1;
         // hypervisor mode registers
         riscv::CSR_HSTATUS:
@@ -703,13 +712,15 @@ end
         else read_access_exception = 1'b1;
         riscv::CSR_MIP: csr_rdata = mip_q;
         riscv::CSR_MENVCFG: begin
-          if (CVA6Cfg.RVU) csr_rdata = '0 | fiom_q;
+          if (CVA6Cfg.RVU) csr_rdata = {{CVA6Cfg.XLEN - 29{1'b0}}, menvcre, 27'b0, fiom_q};
           else read_access_exception = 1'b1;
         end
         riscv::CSR_MENVCFGH: begin
           if (CVA6Cfg.RVU && CVA6Cfg.XLEN == 32) csr_rdata = '0;
           else read_access_exception = 1'b1;
         end
+        riscv::CSR_MSECCFG: csr_rdata = {{CVA6Cfg.XLEN - 4{1'b0}}, mseccre, 3'b0};
+        riscv::CSR_MSECCFGH: csr_rdata = '0;
         riscv::CSR_MVENDORID: csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, OPENHWGROUP_MVENDORID};
         riscv::CSR_MARCHID: csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, ARIANE_MARCHID};
         riscv::CSR_MIMPID: csr_rdata = '0;  // not implemented
@@ -1750,6 +1761,9 @@ end
           end
           mip_d = (mip_q & ~mask) | (csr_wdata & mask);
         end
+        // MSECCFG is WARL (Write Any Value, Reads Legal Value)
+        riscv::CSR_MSECCFG: ;
+        riscv::CSR_MSECCFGH: if(CFA6Cfg.XLEN != 32) update_access_exception = 1'b1;
         riscv::CSR_MENVCFG: if (CVA6Cfg.RVU) fiom_d = csr_wdata[0];
         riscv::CSR_MENVCFGH: begin
           if (!CVA6Cfg.RVU || CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
