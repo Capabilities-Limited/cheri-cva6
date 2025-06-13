@@ -141,7 +141,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 check_operand_a_violations = (1 << SEAL_CHECK_IDX);
                 tmp_cap = operand_a;
                 tmp_cap.uperms = (tmp_cap.uperms & (operand_b_address[CAP_UPERMS_WIDTH+CAP_UPERMS_SHIFT-1:CAP_UPERMS_SHIFT]));
-                tmp_cap.hperms = cap_hperms_t'(tmp_cap.hperms & operand_b_address[CAP_HPERMS_WIDTH-1:0]);
+                tmp_cap.hperms = cap_hperms_t'(tmp_cap.hperms & report_perms_to_hperms(operand_b_address));
                 clu_result = tmp_cap;
             end
             // CTestSubset
