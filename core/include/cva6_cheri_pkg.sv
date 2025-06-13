@@ -30,7 +30,7 @@ package cva6_cheri_pkg;
     localparam CAP_HPERMS_WIDTH     = 9;
     localparam CAP_FLAGS_WIDTH      = 1;
     localparam CAP_RSERV_HI_WIDTH   = 7;
-    localparam CAP_RSERV_LO_WIDTH   = 18;//15;
+    localparam CAP_RSERV_LO_WIDTH   = 15;
     localparam CAP_M_WIDTH          = 14;
     localparam CAP_E_WIDTH          = 6;
     localparam CAP_E_HALF_WIDTH     = CAP_E_WIDTH/2;
@@ -92,25 +92,18 @@ package cva6_cheri_pkg;
       */
     typedef struct packed {
         logic [3:0] fault_type; /* Type of check being performed */
-        logic [11:0] wpri_lo;
+        logic [11:0] wpri;
         logic [3:0] fault_cause; /* Reason for failed check */
     } cap_tval2_t;
 
     /**
       * Capability encoded architectural permission bits
       */
-    //typedef struct packed {
-    //  bool_t SL; // TODO in newer spec
-    //  bool_t EL; // TODO in newer spec
-    //  bool_t LM;
-    //  bool_t ASR;
-    //  bool_t X;
-    //  bool_t R;
-    //  bool_t W;
-    //  bool_t C;
-    //  bool_t CL; // TODO in newer spec
-    //} cap_hperms_t;
     typedef struct packed {
+        // Allow loading capabilities with non-zero cap_level
+        bool_t permit_store_level;
+        // Allow loading capabilities with permit_store_level greater than this one
+        bool_t permit_elevate_level;
         // Allow loading writeable capabilites through unwriteable ones.
         bool_t permit_load_mutable;
         /**
@@ -133,6 +126,8 @@ package cva6_cheri_pkg;
         bool_t permit_store;
         /// Permit capability memory operations (respecting permit_load/store)
         bool_t permit_cap;
+        // Allow this capability to be loaded without permit_store_level
+        bool_t cap_level;
     } cap_hperms_t;
     /**
       * Capability reported architectural permission bits
@@ -145,9 +140,9 @@ package cva6_cheri_pkg;
         logic [10-CAP_UPERMS_WIDTH-1:0] reserved_lo;
         upermsw_t                       uperms;
         bool_t                          permit_cap;
-        bool_t                          capability_level; // TODO in newer spec
-        bool_t                          store_level;      // TODO in newer spec
-        bool_t                          elevate_level;    // TODO in newer spec
+        bool_t                          cap_level;
+        bool_t                          permit_store_level;
+        bool_t                          permit_elevate_level;
         bool_t                          permit_load_mutable;
         bool_t                          permit_store;
     } cap_report_perms_t;
@@ -219,7 +214,6 @@ package cva6_cheri_pkg;
         upermsw_t                       uperms;
         cap_flags_t                     flags;
         cap_hperms_t                    hperms;
-        //bool_t                          CL;
         resw_lo_t                       res_lo;
         otypew_t                        otype;
         cap_fmt_t                       EF;
@@ -235,7 +229,6 @@ package cva6_cheri_pkg;
         upermsw_t                       uperms;
         cap_flags_t                     flags;
         cap_hperms_t                    hperms;
-        //bool_t                          CL;
         resw_lo_t                       res_lo;
         otypew_t                        otype;
         cap_fmt_t                       EF;
@@ -268,7 +261,6 @@ package cva6_cheri_pkg;
         addr_mid        : '{default: 0},
         uperms          : '{default: '1},
         hperms          : '{default: '1},
-        //CL              : 0,
         flags           : 1'b1,
         res_hi          : '0,
         res_lo          : '0,
@@ -283,7 +275,6 @@ package cva6_cheri_pkg;
         addr_mid        : '{default: 0},
         uperms          : '{default: 0},
         hperms          : '{default: 0},
-        //CL              : 0,
         flags           : 1'b0,
         res_hi          : '0,
         res_lo          : '0,
@@ -302,7 +293,6 @@ package cva6_cheri_pkg;
         uperms          : '{default: 0},
         flags           : 1'b0,
         hperms          : '{default: 0},
-        //CL              : 0,
         res_lo          : '0,
         otype           : UNSEALED_CAP,
         EF              : EMBEDDED_EXP,
@@ -334,22 +324,12 @@ package cva6_cheri_pkg;
         return ret;
     endfunction
 
-    //function automatic cap_hperms_t legalize_arch_perms (cap_hperms_t p);
-    //    cap_hperms_t ap = p;
-    //    ap.C = (p.R || p.W) ? p.C : 0;
-    //    ap.EL = (p.C && p.R) ? p.EL : 0;
-    //    ap.LM = (p.C && p.R) ? p.LM : 0;
-    //    ap.SL = p.C ? p.SL : 0;
-    //    ap.ASR = p.X ? p.ASR : 0;
-    //    return ap;
-    //endfunction
-
     function automatic cap_hperms_t legalize_arch_perms (cap_hperms_t p);
         cap_hperms_t ap = p;
-        ap.permit_cap = (p.permit_load || p.permit_store) ? p.permit_cap : 0;
-        //ap.EL = (p.C && p.R) ? p.EL : 0;
-        ap.permit_load_mutable = (p.permit_cap && p.permit_load) ? p.permit_load_mutable : 0;
-        //ap.SL = p.C ? p.SL : 0;
+        ap.permit_cap = (ap.permit_load || ap.permit_store) ? ap.permit_cap : 0;
+        ap.permit_elevate_level = (ap.permit_cap && ap.permit_load) ? ap.permit_elevate_level : 0;
+        ap.permit_load_mutable = (ap.permit_cap && ap.permit_load) ? ap.permit_load_mutable : 0;
+        ap.permit_store_level = ap.permit_cap ? ap.permit_store_level : 0;
         ap.access_sys_regs = p.permit_execute ? p.access_sys_regs : 0;
         return ap;
     endfunction
@@ -874,7 +854,6 @@ package cva6_cheri_pkg;
             tag:       cap.tag,
             uperms:    cap.uperms,
             hperms:    cap.hperms,
-            //CL:        cap.CL,
             res_hi:    cap.res_hi,
             res_lo:    cap.res_lo,
             flags:     cap.flags,
@@ -900,7 +879,6 @@ package cva6_cheri_pkg;
             tag:       cap.tag,
             uperms:    cap.uperms,
             hperms:    cap.hperms,
-            //CL:        cap.CL,
             flags:     cap.flags,
             res_hi:    cap.res_hi,
             res_lo:    cap.res_lo,
@@ -937,9 +915,9 @@ package cva6_cheri_pkg;
             reserved_lo          : 0,//Newer spec:'1,
             uperms               : up,
             permit_cap           : hp.permit_cap,
-            capability_level     : 0,//Newer spec: 1, or hp.capability_level,
-            store_level          : 0,//Newer spec: 1, or hp.store_level,
-            elevate_level        : 0,//Newer spec: 1, or hp.elevate_level,
+            cap_level            : hp.cap_level,
+            permit_store_level   : hp.permit_store_level,
+            permit_elevate_level : hp.permit_elevate_level,
             permit_load_mutable  : hp.permit_load_mutable,
             permit_store         : hp.permit_store
         };
@@ -953,12 +931,15 @@ package cva6_cheri_pkg;
       */
     function automatic cap_hperms_t report_perms_to_hperms (cap_report_perms_t rp);
         cap_hperms_t hp = '{
-            permit_load_mutable  : hp.permit_load_mutable,
-            access_sys_regs      : hp.access_sys_regs,
-            permit_execute       : hp.permit_execute,
-            permit_load          : hp.permit_load,
-            permit_store         : hp.permit_store,
-            permit_cap           : rp.permit_cap
+            permit_store_level   : rp.permit_store_level,
+            permit_elevate_level : rp.permit_elevate_level,
+            permit_load_mutable  : rp.permit_load_mutable,
+            access_sys_regs      : rp.access_sys_regs,
+            permit_execute       : rp.permit_execute,
+            permit_load          : rp.permit_load,
+            permit_store         : rp.permit_store,
+            permit_cap           : rp.permit_cap,
+            cap_level            : rp.cap_level
         };
         return legalize_arch_perms(hp);
     endfunction
