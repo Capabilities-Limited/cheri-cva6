@@ -231,6 +231,7 @@ module branch_unit #(
         end
         if (CVA6Cfg.CheriPresent && branch_valid_i) begin
           // Update tval
+          branch_exception_o.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{target_pcc_address[CVA6Cfg.VLEN-1]}}, target_pcc_address};
           branch_exception_o.tval2 = {'0, cheri_tval2};
         end
   end
