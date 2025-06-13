@@ -746,13 +746,10 @@ module load_store_unit
                 cheri_exception.valid = 1'b1;
             end
 
-            // XXX TODO(pdr32) Removed while levels are not supported. Add back in for newer version of zcheri spec
-            /*
-            if (!check_cap.hperms.permit_store_local_cap && !operand_b.hperms.gbl && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
-                cheri_tval2.fault_cause   = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-                cheri_exception.valid     = 1'b1;
+            if (!check_cap.hperms.permit_store_level && !operand_b.hperms.cap_level && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
+                cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+                cheri_exception.valid = 1'b1;
             end
-            */
 
             if (!(check_cap.hperms.permit_store && check_cap.hperms.permit_cap) && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
                 cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
@@ -783,11 +780,24 @@ module load_store_unit
   // ------------------
   // new data arrives here
   lsu_ctrl_t lsu_req_i;
+  logic ld_cap;
   logic ld_clr_tag;
-  if (CVA6Cfg.CheriPresent)
-    assign ld_clr_tag = (!(check_cap.hperms.permit_load && check_cap.hperms.permit_cap) && (((lsu_ctrl.fu == LOAD) && (lsu_ctrl.operation inside{ariane_pkg::LC})) || ((lsu_ctrl.fu == STORE) && lsu_ctrl.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC})));
-  else
+  logic ld_clr_elevate;
+  logic ld_clr_cap_level;
+  logic ld_clr_load_mutable;
+  if (CVA6Cfg.CheriPresent) begin
+    assign ld_cap = ((lsu_ctrl.fu == LOAD) && (lsu_ctrl.operation inside{ariane_pkg::LC})) || ((lsu_ctrl.fu == STORE) && lsu_ctrl.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
+    assign ld_clr_tag = !(check_cap.hperms.permit_load && check_cap.hperms.permit_cap) && ld_cap;
+    assign ld_clr_elevate = !check_cap.hperms.permit_elevate_level && ld_cap && !ld_clr_tag;
+    assign ld_clr_cap_level = ld_clr_elevate && !check_cap.hperms.cap_level;
+    assign ld_clr_load_mutable = !check_cap.hperms.permit_load_mutable && ld_cap;
+  end else begin
+    assign ld_cap = 1'b0;
     assign ld_clr_tag = 1'b0;
+    assign ld_clr_elevate = 1'b0;
+    assign ld_clr_cap_level = 1'b0;
+    assign ld_clr_load_mutable = 1'b0;
+  end
 
   assign lsu_req_i = {
     lsu_valid_i,
@@ -805,7 +815,10 @@ module load_store_unit
     fu_data_i.trans_id,
     fu_data_i.rs1,
     fu_data_i.use_ddc,
-    ld_clr_tag
+    ld_clr_tag,
+    ld_clr_elevate,
+    ld_clr_cap_level,
+    ld_clr_load_mutable
   };
 
   lsu_bypass #(
