@@ -389,7 +389,7 @@ if (CVA6Cfg.CheriPresent) begin
         wr_cap_addr = '0;
         wr_cap_meta_data = '0;
         wr_cap = mepcc_q;
-        if (csr_we) begin
+        if (csr_we && pcc.hperms.access_sys_regs) begin
             unique case (conv_csr_addr.address)
                 riscv::CSR_MEPC: begin
                   wr_cap = mepcc_q;
@@ -1148,7 +1148,7 @@ end
         mscratchc_d = mscratchc_q;
         mepcc_d     = mepcc_q;
 
-        if(csr_we_cap) begin
+        if(csr_we_cap && (pcc.hperms.access_sys_regs || csr_addr==riscv::CSR_DDC)) begin
             unique case (csr_addr)
                     riscv::CSR_DDC: begin
                         ddc_d = scr_wdata;
@@ -1206,7 +1206,7 @@ end
         end
 
     // check for correct access rights and that we are writing
-    if (csr_we) begin
+    if (csr_we && pcc.hperms.access_sys_regs) begin
       unique case (conv_csr_addr.address)
         // Floating-Point
         riscv::CSR_FFLAGS: begin
