@@ -1277,7 +1277,7 @@ end
             /* stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00}); */
             // we are in vector mode, this implementation requires the additional
             // alignment constraint of 64 * 4 bytes
-            if (scr_wdata[0] && !CVA6Cfg.RVFI_DII) vstcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]});
+            if (scr_wdata[0]) vstcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]});
           end
           riscv::CSR_VSSCRATCH: begin
             vsscratchc_d = scr_wdata;
@@ -1293,7 +1293,7 @@ end
             /* stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00}); */
             // we are in vector mode, this implementation requires the additional
             // alignment constraint of 64 * 4 bytes
-            if (scr_wdata[0] && !CVA6Cfg.RVFI_DII) stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]});
+            if (scr_wdata[0]) stcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]});
           end
           riscv::CSR_SSCRATCH: begin
             sscratchc_d = scr_wdata;
@@ -1308,7 +1308,7 @@ end
             /* mtcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:2], 2'b00}); */
             // we are in vector mode, this implementation requires the additional
             // alignment constraint of 64 * 4 bytes
-            if (scr_wdata[0] && !CVA6Cfg.RVFI_DII) mtcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]});
+            if (scr_wdata[0]) mtcc_d = cva6_cheri_pkg::set_cap_reg_addr(scr_wdata, {scr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, scr_wdata[0]});
           end
           riscv::CSR_MSCRATCH: begin
             mscratchc_d = scr_wdata;
