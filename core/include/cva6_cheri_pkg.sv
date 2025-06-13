@@ -38,7 +38,6 @@ package cva6_cheri_pkg;
     localparam CAP_RESET_EXP        = 0;
     localparam CAP_MAX_EXP          = 52;
     localparam CAP_RESET_TOP        = {2'b01,{CAP_M_WIDTH-2{1'b0}}};
-    localparam CAP_EXP_NUM          = 29;
 
     // -----
     // CSRs
@@ -91,26 +90,15 @@ package cva6_cheri_pkg;
 
     /* Capabilities Exception Codes */
 
-    localparam logic [4:0] CAP_LENGTH_VIOLATION            = 1;
-    localparam logic [4:0] CAP_TAG_VIOLATION               = 2;
-    localparam logic [4:0] CAP_SEAL_VIOLATION              = 3;
-    localparam logic [4:0] CAP_TYPE_VIOLATION              = 4;
-    localparam logic [4:0] CAP_USER_DEF_PERM_VIOLATION     = 8;
-    localparam logic [4:0] CAP_REPRE_VIOLATION             = 10;
-    localparam logic [4:0] CAP_UNLIGNED_BASE               = 11;
-    localparam logic [4:0] CAP_GLOBAL_VIOLATION            = 16;
-    localparam logic [4:0] CAP_PERM_EXEC_VIOLATION         = 17;
-    localparam logic [4:0] CAP_PERM_LD_VIOLATION           = 18;
-    localparam logic [4:0] CAP_PERM_ST_VIOLATION           = 19;
-    localparam logic [4:0] CAP_PERM_LD_CAP_VIOLATION       = 20;
-    localparam logic [4:0] CAP_PERM_ST_CAP_VIOLATION       = 21;
-    localparam logic [4:0] CAP_PERM_ST_CAP_LOCAL_VIOLATION = 22;
-    localparam logic [4:0] CAP_PERM_SEAL                   = 23;
-    localparam logic [4:0] CAP_PERM_ACCESS_SYS_REGS        = 24;
-    localparam logic [4:0] CAP_PERM_CINVOKE                = 25;
-    localparam logic [4:0] CAP_PERM_ACCESS_CINVOKE_IDC     = 26;
-    localparam logic [4:0] CAP_PERM_UNSEAL                 = 27;
-    localparam logic [4:0] CAP_PERM_SET_CID                = 28;
+    localparam logic [3:0] CAP_INSTR_FETCH_FAULT         = 0;
+    localparam logic [3:0] CAP_DATA_ACCESS_FAULT         = 1;
+    localparam logic [3:0] CAP_JUMP_BRANCH_FAULT         = 2;
+
+    localparam logic [3:0] CAP_TAG_VIOLATION             = 0;
+    localparam logic [3:0] CAP_SEAL_VIOLATION            = 1;
+    localparam logic [3:0] CAP_PERM_VIOLATION            = 2;
+    localparam logic [3:0] CAP_INVALID_ADDRESS_VIOLATION = 3;
+    localparam logic [3:0] CAP_BOUNDS_VIOLATION          = 4;
 
     /* Capabilities OType Encoding */
 
@@ -143,10 +131,10 @@ package cva6_cheri_pkg;
       * CHERI exception tval layout fields
       */
     typedef struct packed {
-        logic [XLEN-1:11] wpri;
-        logic [10:5]      cap_idx; /* index of the capability that causes the exception */
-        logic [4:0]       cause;   /* CHERI exception code */
-    } cap_tval_t;
+        logic [3:0] fault_type; /* Type of check being performed */
+        logic [11:0] wpri_lo;
+        logic [3:0] fault_cause; /* Reason for failed check */
+    } cap_tval2_t;
 
     /**
       * Capability encoded architectural permission bits

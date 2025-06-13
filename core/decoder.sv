@@ -1767,11 +1767,9 @@ module decoder
   assign instruction_o.valid = instruction_o.ex.valid;
 
   always_comb begin : exception_handling
-    automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
     interrupt_cause = '0;
     instruction_o.ex = ex_i;
     orig_instr_o = '0;
-    cheri_tval = '0;
     // look if we didn't already get an exception in any previous
     // stage - we should not overwrite it as we retain order regarding the exception
     if (~ex_i.valid) begin

@@ -270,6 +270,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] sepc_q, sepc_d;
   logic [CVA6Cfg.XLEN-1:0] scause_q, scause_d;
   logic [CVA6Cfg.XLEN-1:0] stval_q, stval_d;
+  logic [CVA6Cfg.XLEN-1:0] stval2_q, stval2_d;
 
   logic [CVA6Cfg.XLEN-1:0] hedeleg_q, hedeleg_d;
   logic [CVA6Cfg.XLEN-1:0] hideleg_q, hideleg_d;
@@ -614,6 +615,9 @@ end
         riscv::CSR_STVAL:
         if (CVA6Cfg.RVS) csr_rdata = stval_q;
         else read_access_exception = 1'b1;
+        riscv::CSR_STVAL2:
+        if (CVA6Cfg.CheriPresent) csr_rdata = stval2_q;
+        else read_access_exception = 1'b1;
         riscv::CSR_SATP: begin
           if (CVA6Cfg.RVS) begin
             // intercept reads to SATP if in S-Mode and TVM is enabled
@@ -708,7 +712,7 @@ end
         if (CVA6Cfg.RVH) csr_rdata = mtinst_q;
         else read_access_exception = 1'b1;
         riscv::CSR_MTVAL2:
-        if (CVA6Cfg.RVH) csr_rdata = mtval2_q;
+        if (CVA6Cfg.RVH | CVA6Cfg.CheriPresent) csr_rdata = mtval2_q;
         else read_access_exception = 1'b1;
         riscv::CSR_MIP: csr_rdata = mip_q;
         riscv::CSR_MENVCFG: begin
@@ -1121,6 +1125,7 @@ end
     scounteren_d             = scounteren_q;
     sscratch_d               = sscratch_q;
     stval_d                  = stval_q;
+    stval2_d                 = stval2_q;
     satp_d                   = satp_q;
     hedeleg_d                = hedeleg_q;
     hideleg_d                = hideleg_q;
@@ -1468,6 +1473,9 @@ end
         riscv::CSR_STVAL:
         if (CVA6Cfg.RVS && CVA6Cfg.TvalEn) stval_d = csr_wdata;
         else update_access_exception = 1'b1;
+        riscv::CSR_STVAL2:
+        if (CVA6Cfg.CheriPresent) stval2_d = csr_wdata;
+        else update_access_exception = 1'b1;
         // supervisor address translation and protection
         riscv::CSR_SATP: begin
           if (CVA6Cfg.RVS) begin
@@ -1744,7 +1752,7 @@ end
         if (CVA6Cfg.RVH) mtinst_d = {{CVA6Cfg.XLEN - 32{1'b0}}, csr_wdata[31:0]};
         else update_access_exception = 1'b1;
         riscv::CSR_MTVAL2:
-        if (CVA6Cfg.RVH) mtval2_d = csr_wdata;
+        if (CVA6Cfg.RVH | CVA6Cfg.CheriPresent) mtval2_d = csr_wdata;
         else update_access_exception = 1'b1;
         riscv::CSR_MIP: begin
           if (CVA6Cfg.RVH) begin
@@ -1763,7 +1771,7 @@ end
         end
         // MSECCFG is WARL (Write Any Value, Reads Legal Value)
         riscv::CSR_MSECCFG: ;
-        riscv::CSR_MSECCFGH: if(CFA6Cfg.XLEN != 32) update_access_exception = 1'b1;
+        riscv::CSR_MSECCFGH: if(CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
         riscv::CSR_MENVCFG: if (CVA6Cfg.RVU) fiom_d = csr_wdata[0];
         riscv::CSR_MENVCFGH: begin
           if (!CVA6Cfg.RVU || CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
@@ -2113,6 +2121,9 @@ end
             hstatus_d.gva = ex_i.gva;
             hstatus_d.spv = v_q;
           end
+          if (CVA6Cfg.CheriPresent) begin
+            stval2_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN + 2{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:2]};
+          end
         end
         // trap to machine mode
       end else begin
@@ -2158,8 +2169,10 @@ end
                               riscv::INSTR_GUEST_PAGE_FAULT,
                               riscv::VIRTUAL_INSTRUCTION
                             } || ex_i.cause[CVA6Cfg.XLEN-1])) ? '0 : {{CVA6Cfg.XLEN - 32 {1'b0}}, ex_i.tinst};
-          mtval2_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN + 2{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:2]};
           mstatus_d.gva = ex_i.gva;
+        end
+        if (CVA6Cfg.CheriPresent || CVA6Cfg.RVH) begin
+          mtval2_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN + 2{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:2]};
         end
       end
 
@@ -2605,11 +2618,11 @@ end
   // CSR Exception Control
   // ----------------------
   always_comb begin : exception_ctrl
-    automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+    automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
     csr_exception_o = {
       {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.GPLEN{1'b0}}, {32{1'b0}}, 1'b0, 1'b0
     };
-    cheri_tval = '{default: 0};
+    cheri_tval2 = '{default: 0};
     // ----------------------------------
     // Illegal Access (decode exception)
     // ----------------------------------
@@ -2639,10 +2652,11 @@ end
         if (cheri_access_violation) begin
             // Violation of access system registers when accessing SCR sets tval msb bit to 1
             // and encodes the SCR registers on the LSB [4:0]
-            cheri_tval.cap_idx    = {1'b1, csr_addr_i};
-            cheri_tval.cause      = cva6_cheri_pkg::CAP_PERM_ACCESS_SYS_REGS;
+            cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
+            cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
             csr_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-            csr_exception_o.tval  = cheri_tval;
+            csr_exception_o.tval = '0;
+            csr_exception_o.tval2 = {'0, cheri_tval2};
             csr_exception_o.valid = 1'b1;
         end
   end
@@ -2874,12 +2888,15 @@ end
         scounteren_q <= {CVA6Cfg.XLEN{1'b0}};
         sscratch_q   <= {CVA6Cfg.XLEN{1'b0}};
         stval_q      <= {CVA6Cfg.XLEN{1'b0}};
+        stval2_q     <= {CVA6Cfg.XLEN{1'b0}};
         satp_q       <= {CVA6Cfg.XLEN{1'b0}};
       end
 
+      if (CVA6Cfg.RVH | CVA6Cfg.CheriPresent) begin
+        mtval2_q                 <= {CVA6Cfg.XLEN{1'b0}};
+      end
       if (CVA6Cfg.RVH) begin
         v_q                      <= '0;
-        mtval2_q                 <= {CVA6Cfg.XLEN{1'b0}};
         mtinst_q                 <= {CVA6Cfg.XLEN{1'b0}};
         hstatus_q                <= 64'b0;
         hedeleg_q                <= {CVA6Cfg.XLEN{1'b0}};
@@ -2975,11 +2992,14 @@ end
         scounteren_q <= scounteren_d;
         sscratch_q   <= sscratch_d;
         if (CVA6Cfg.TvalEn) stval_q <= stval_d;
+        if (CVA6Cfg.CheriPresent & CVA6Cfg.TvalEn) stval2_q <= stval2_d;
         satp_q <= satp_d;
+      end
+      if (CVA6Cfg.CheriPresent | CVA6Cfg.RVH) begin
+        mtval2_q                 <= mtval2_d;
       end
       if (CVA6Cfg.RVH) begin
         v_q                      <= v_d;
-        mtval2_q                 <= mtval2_d;
         mtinst_q                 <= mtinst_d;
         // hypervisor mode registers
         hstatus_q                <= hstatus_d;

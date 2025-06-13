@@ -226,7 +226,8 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     automatic cva6_cheri_pkg::addrwe_t pcc_top;
     automatic logic [CVA6Cfg.VLEN-1:0] next_pc_off;
     automatic logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
-    automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+    automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
+    cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
     pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_q);
     pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q);
     pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
@@ -239,37 +240,32 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     if (!issue_instr_i.ex.valid) begin
       if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top)) begin
           issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval.cause     = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
-          cheri_tval.cap_idx   = {6'b100000};
-          issue_pcc_ex_o.tval  = cheri_tval;
+          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
+          issue_pcc_ex_o.tval2 = cheri_tval2;
           issue_pcc_ex_o.valid = 1'b1;
       end
       if (issue_instr_i.needs_asr && !pcc.hperms.access_sys_regs) begin
           issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval.cause     = cva6_cheri_pkg::CAP_PERM_ACCESS_SYS_REGS;
-          cheri_tval.cap_idx   = {6'b100000};
-          issue_pcc_ex_o.tval  = cheri_tval;
+          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+          issue_pcc_ex_o.tval2 = cheri_tval2;
           issue_pcc_ex_o.valid = 1'b1;
       end
       if(!pcc.hperms.permit_execute) begin
           issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
-          cheri_tval.cap_idx   = {6'b100000};
-          issue_pcc_ex_o.tval  = cheri_tval;
+          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+          issue_pcc_ex_o.tval2  = cheri_tval2;
           issue_pcc_ex_o.valid     = 1'b1;
       end
       if((pcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc.tag) begin
           issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval.cause   = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
-          cheri_tval.cap_idx   = {6'b100000};
-          issue_pcc_ex_o.tval  = cheri_tval;
-          issue_pcc_ex_o.valid     = 1'b1;
+          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+          issue_pcc_ex_o.tval2 = cheri_tval2;
+          issue_pcc_ex_o.valid = 1'b1;
       end
       if (!pcc.tag) begin
           issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval.cause     = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-          cheri_tval.cap_idx   = {6'b100000};
-          issue_pcc_ex_o.tval  = cheri_tval;
+          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+          issue_pcc_ex_o.tval2 = cheri_tval2;
           issue_pcc_ex_o.valid = 1'b1;
       end
     end
