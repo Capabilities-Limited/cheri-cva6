@@ -35,7 +35,6 @@ module decoder
     // Debug (async) request - SUBSYSTEM
     input logic debug_req_i,
     // PC from fetch stage - FRONTEND
-    // TODO-cheri: make cheri optional
     input logic [CVA6Cfg.VLEN-1:0] pc_i,
     input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Is a compressed instruction - compressed_decoder
@@ -424,7 +423,10 @@ module decoder
             // atomically swaps values in the CSR and integer register
             3'b001: begin  // CSRRW
               imm_select = IIMM;
-              instruction_o.op = ariane_pkg::CSR_WRITE;
+              if (!int_mode_i && (instr.itype.imm inside {riscv::CSR_MTVEC, riscv::CSR_MEPC, riscv::CSR_STVEC, riscv::CSR_SEPC,
+                                                          riscv::CSR_MSCRATCH, riscv::CSR_SSCRATCH, riscv::CSR_DDC}))
+                instruction_o.op = ariane_pkg::CSR_WRITE_CAP;
+              else instruction_o.op = ariane_pkg::CSR_WRITE;
             end
             // atomically set values in the CSR and write back to rd
             3'b010: begin  // CSRRS

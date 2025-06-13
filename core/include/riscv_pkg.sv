@@ -443,6 +443,8 @@ package riscv;
     CSR_VL               = 12'hC20,
     CSR_VTYPE            = 12'hC21,
     CSR_VLENB            = 12'hC22,
+    // CHERI: CSRs
+    CSR_DDC              = 12'h416,
     // Virtual Supervisor Mode CSRs
     CSR_VSSTATUS         = 12'h200,
     CSR_VSIE             = 12'h204,
