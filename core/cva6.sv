@@ -182,6 +182,9 @@ module cva6
       logic [REG_ADDR_SIZE-1:0]         rs1;
       logic                             use_ddc;
       logic                             clr_tag;
+      logic                             clr_elevate;
+      logic                             clr_cap_level;
+      logic                             clr_load_mutable;
     },
 
 

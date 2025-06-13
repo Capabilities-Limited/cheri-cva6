@@ -105,6 +105,9 @@ module load_unit
     logic [CVA6Cfg.CLEN_ALIGN_BYTES-1:0] address_offset;  // least significant bits of the address
     fu_op                                operation;       // type of load
     logic                                clr_tag;
+    logic                                clr_elevate;
+    logic                                clr_cap_level;
+    logic                                clr_load_mutable;
   } ldbuf_t;
 
 
@@ -220,7 +223,7 @@ module load_unit
   assign req_port_o.cbo_op = ariane_pkg::CBO_NONE;
   // compose the load buffer write data, control is handled in the FSM
   assign ldbuf_wdata = {
-    lsu_ctrl_i.trans_id, lsu_ctrl_i.vaddr[CVA6Cfg.CLEN_ALIGN_BYTES-1:0], lsu_ctrl_i.operation, lsu_ctrl_i.clr_tag
+    lsu_ctrl_i.trans_id, lsu_ctrl_i.vaddr[CVA6Cfg.CLEN_ALIGN_BYTES-1:0], lsu_ctrl_i.operation, lsu_ctrl_i.clr_tag, lsu_ctrl_i.clr_elevate, lsu_ctrl_i.clr_cap_level, lsu_ctrl_i.clr_load_mutable
   };
   // output address
   // we can now output the lower 12 bit as the index to the cache
@@ -640,6 +643,20 @@ module load_unit
     endcase
     if(CVA6Cfg.CheriPresent && (req_port_i.data_strip_tag || ldbuf_rdata.clr_tag)) begin
       result_o[CVA6Cfg.REGLEN-1] = 1'b0;
+    end
+    if (result_o[CVA6Cfg.REGLEN-1]) begin
+      automatic cva6_cheri_pkg::cap_reg_t result_cap = result_o;
+      if (ldbuf_rdata.clr_elevate && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
+        result_cap.hperms.permit_elevate_level = 1'b0;
+      end
+      if (ldbuf_rdata.clr_cap_level) begin
+        result_cap.hperms.cap_level = 1'b0;
+      end
+      if (ldbuf_rdata.clr_load_mutable && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
+        result_cap.hperms.permit_load_mutable = 1'b0;
+        result_cap.hperms.permit_store = 1'b0;
+      end
+      result_o = result_cap;
     end
   end
   // end result mux fast
