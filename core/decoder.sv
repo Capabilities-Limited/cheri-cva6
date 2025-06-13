@@ -100,8 +100,6 @@ module decoder
     input logic scbcfe_i,
     // hypervisor-mode clean/flush cache block invalidate enable - CSR_REGFILE
     input logic hcbcfe_i,
-    // CHERI access system registers - ISSUE_STAGE
-    input logic asr_i,
     // CHERI cap decoding mode - ID_STAGE
     input logic int_mode_i,
     // Instruction to be added to scoreboard entry - ISSUE_STAGE
