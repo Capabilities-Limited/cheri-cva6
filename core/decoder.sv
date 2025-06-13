@@ -83,8 +83,6 @@ module decoder
     input logic tsr_i,
     // Hypervisor user mode - CSR_REGFILE
     input logic hu_i,
-    // CHERI access system registers - ISSUE_STAGE
-    input logic asr_i,
     // CHERI cap decoding mode - ID_STAGE
     input logic int_mode_i,
     // Instruction to be added to scoreboard entry - ISSUE_STAGE
