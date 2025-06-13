@@ -296,9 +296,9 @@ module ex_stage
   logic lsu_ready, csr_ready, mult_ready;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] mult_trans_id;
   logic mult_valid;
-  exception_t branch_exception, clu_exception;
+  exception_t branch_exception;
   // Conditioning this on the result of the exception is likely to have timing problems.
-  assign flu_exception_o = (branch_valid_i) ? branch_exception : clu_exception;
+  assign flu_exception_o = branch_exception;
 
   cva6_cheri_pkg::cap_pcc_t pcc;
   assign pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);
@@ -375,8 +375,7 @@ module ex_stage
       .branch_predict_i,
       .resolved_branch_o (resolved_branch),
       .resolve_branch_o,
-      .branch_exception_o(branch_exception),
-      .clu_exception_i(clu_exception)
+      .branch_exception_o(branch_exception)
   );
   assign resolved_branch_o = resolved_branch;
 
@@ -710,8 +709,7 @@ module ex_stage
         .ddc_i            ( ddc_i         ),
         .clu_valid_i      ( clu_valid_i    ),
         .alu_result_i     ( alu_result     ),
-        .clu_result_o     ( clu_result     ),
-        .clu_ex_o         ( clu_exception  )
+        .clu_result_o     ( clu_result     )
     );
   end
 

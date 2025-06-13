@@ -30,8 +30,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     input  cap_reg_t                 ddc_i,          // Current DDC
     input  logic                     clu_valid_i,
     input  addrw_t                   alu_result_i,
-    output cap_reg_t                 clu_result_o,  // Return resulting cap
-    output exception_t               clu_ex_o       // Return Exception
+    output cap_reg_t                 clu_result_o   // Return resulting cap
 );
     // operand a decode fields
     cap_reg_t operand_a;
@@ -74,11 +73,15 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     cap_reg_set_bounds_ret_t res_set_bounds;
     cap_meta_data_t res_set_bounds_meta_data;
 
-    // Exception signals
-    logic [CAP_EXP_NUM-1:0] operand_a_violations;
-    logic [CAP_EXP_NUM-1:0] operand_b_violations;
-    logic [CAP_EXP_NUM-1:0] check_operand_a_violations;
-    logic [CAP_EXP_NUM-1:0] check_operand_b_violations;
+    // Tag-clearing check signals
+    localparam CAP_CHECK_NUM = 3;
+    localparam TAG_CHECK_IDX = 0;
+    localparam SEAL_CHECK_IDX = 1;
+    localparam BOUNDS_CHECK_IDX = 2;
+    logic [CAP_CHECK_NUM-1:0] operand_a_violations;
+    logic [CAP_CHECK_NUM-1:0] operand_b_violations;
+    logic [CAP_CHECK_NUM-1:0] check_operand_a_violations;
+    logic [CAP_CHECK_NUM-1:0] check_operand_b_violations;
     logic en_ex;
 
     // Output signals
@@ -97,9 +100,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         //automatic capw_t cap_mem;
 
         // exceptions signals reset
-        check_operand_a_violations = {CAP_EXP_NUM{1'b0}};
-        check_operand_b_violations = {CAP_EXP_NUM{1'b0}};
-        en_ex                      = 1'b0;
+        check_operand_a_violations = {CAP_CHECK_NUM{1'b0}};
+        check_operand_b_violations = {CAP_CHECK_NUM{1'b0}};
 
         // Set address operation reset signals
         op_set_addr                = operand_a;
@@ -136,7 +138,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CAndPerm
             ariane_pkg::ACPERM: begin
-                check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
+                check_operand_a_violations = (1 << SEAL_CHECK_IDX);
                 tmp_cap = operand_a;
                 tmp_cap.uperms = (tmp_cap.uperms & (operand_b_address[CAP_UPERMS_WIDTH+CAP_UPERMS_SHIFT-1:CAP_UPERMS_SHIFT]));
                 tmp_cap.hperms = cap_hperms_t'(tmp_cap.hperms & operand_b_address[CAP_HPERMS_WIDTH-1:0]);
@@ -204,7 +206,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CIncOffset and CIncOffsetImm
             // TODO-cheri(ninolomata): use ALU to calculate address
             ariane_pkg::CADD,ariane_pkg::CADDI: begin
-                check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
+                check_operand_a_violations = (1 << SEAL_CHECK_IDX);
                 offset = operand_b_address;
                 op_set_offset = operand_a;
                 op_meta_set_offset = op_a_meta_info;
@@ -226,7 +228,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CSetAddr
             ariane_pkg::SCADDR: begin
                 en_ex =  1'b0;
-                check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
+                check_operand_a_violations = (1 << SEAL_CHECK_IDX);
                 op_set_addr  = operand_a;
                 op_meta_set_addr = op_a_meta_info;
                 address      = operand_b.addr;
@@ -238,9 +240,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             ariane_pkg::SCBNDS,
             ariane_pkg::SCBNDSI,
             ariane_pkg::CRAM: begin
-                check_operand_a_violations = (1 << CAP_TAG_VIOLATION)   |
-                                             (1 << CAP_LENGTH_VIOLATION)|
-                                             (1 << CAP_SEAL_VIOLATION);
+                check_operand_a_violations = (1 << TAG_CHECK_IDX)    |
+                                             (1 << BOUNDS_CHECK_IDX) |
+                                             (1 << SEAL_CHECK_IDX);
                 if (fu_data_i.operation == ariane_pkg::CRAM)
                     clu_result = set_cap_reg_addr(REG_NULL_CAP, res_set_bounds.mask);
                 else
@@ -256,7 +258,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CSetFlags
             ariane_pkg::SCMODE: begin
-                check_operand_a_violations = (1 << CAP_SEAL_VIOLATION);
+                check_operand_a_violations = (1 << SEAL_CHECK_IDX);
                 tmp_cap = operand_a;
                 tmp_cap.flags.int_mode = operand_b.addr[0];
                 clu_result = tmp_cap;
@@ -326,31 +328,31 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     // Operands Exception Control Checks
     // ----------------
     always_comb begin
-        operand_a_violations = {CAP_EXP_NUM{1'b0}};
-        operand_b_violations = {CAP_EXP_NUM{1'b0}};
+        operand_a_violations = {CAP_CHECK_NUM{1'b0}};
+        operand_b_violations = {CAP_CHECK_NUM{1'b0}};
         // Operand a capability checks
         if (!is_cap_reg_valid(fu_data_i.operand_a)) begin
-            operand_a_violations[CAP_TAG_VIOLATION] = 1'b1;
-        end
-
-        if (operand_a_is_sealed) begin
-            operand_a_violations[CAP_SEAL_VIOLATION] = 1'b1;
+            operand_a_violations[TAG_CHECK_IDX] = 1'b1;
         end
 
         if (!is_cap_reg_valid(fu_data_i.operand_b)) begin
-            operand_b_violations[CAP_TAG_VIOLATION] = 1'b1;
+            operand_b_violations[TAG_CHECK_IDX] = 1'b1;
+        end
+
+        if (operand_a_is_sealed) begin
+            operand_a_violations[SEAL_CHECK_IDX] = 1'b1;
         end
 
         if (operand_b_is_sealed) begin
-            operand_b_violations[CAP_SEAL_VIOLATION] = 1'b1;
+            operand_b_violations[SEAL_CHECK_IDX] = 1'b1;
         end
 
         if (operand_a_address < operand_a_base) begin
-            operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
+            operand_a_violations[BOUNDS_CHECK_IDX] = 1'b1;
         end
 
         if ((operand_b_base + set_bounds_len) > operand_a_top) begin
-            operand_a_violations[CAP_LENGTH_VIOLATION] = 1'b1;
+            operand_a_violations[BOUNDS_CHECK_IDX] = 1'b1;
         end
     end
 
@@ -360,168 +362,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     always_comb begin: cheri_output_logic
         clu_result_o = clu_result;
         // Clear result capability tag if there was any violations
-        if ((operand_a_violations & check_operand_a_violations)  > 0 ||
-            (operand_b_violations & check_operand_b_violations) > 0) begin
+        if ((operand_a_violations & check_operand_a_violations) != 0 ||
+            (operand_b_violations & check_operand_b_violations) != 0) begin
             clu_result_o.tag = 1'b0;
         end
-    end
-
-    // ------------------------
-    // CHERI Exception Control
-    // ------------------------
-    always_comb begin: cheri_exception_control
-        automatic cap_tval_t cheri_tval;
-        cheri_tval     = {CVA6Cfg.XLEN{1'b0}};
-        clu_ex_o.cause = CAP_EXCEPTION;
-        clu_ex_o.valid = 1'b0;
-        clu_ex_o.tval  = {CVA6Cfg.XLEN{1'b0}};
-        clu_ex_o.tval2 = {CVA6Cfg.XLEN{1'b0}};
-        clu_ex_o.tinst = {CVA6Cfg.XLEN{1'b0}};
-        clu_ex_o.gva   = v_i;
-
-            if(operand_a_violations[CAP_REPRE_VIOLATION] & check_operand_a_violations[CAP_REPRE_VIOLATION]) begin
-                cheri_tval.cause   = CAP_REPRE_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_UNLIGNED_BASE] & check_operand_a_violations[CAP_UNLIGNED_BASE]) begin
-                cheri_tval.cause   = CAP_UNLIGNED_BASE;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_USER_DEF_PERM_VIOLATION] & check_operand_a_violations[CAP_USER_DEF_PERM_VIOLATION]) begin
-                cheri_tval.cause   = CAP_USER_DEF_PERM_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_b_violations[CAP_LENGTH_VIOLATION] & check_operand_b_violations[CAP_LENGTH_VIOLATION]) begin
-                cheri_tval.cause   = CAP_LENGTH_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs2};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_LENGTH_VIOLATION] & check_operand_a_violations[CAP_LENGTH_VIOLATION]) begin
-                cheri_tval.cause   = CAP_LENGTH_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_REPRE_VIOLATION] & check_operand_a_violations[CAP_REPRE_VIOLATION]) begin
-                cheri_tval.cause   = CAP_REPRE_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_GLOBAL_VIOLATION] & check_operand_a_violations[CAP_GLOBAL_VIOLATION]) begin
-                cheri_tval.cause   = CAP_LENGTH_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_GLOBAL_VIOLATION] & check_operand_a_violations[CAP_GLOBAL_VIOLATION]) begin
-                cheri_tval.cause   = CAP_GLOBAL_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_ST_CAP_LOCAL_VIOLATION] & check_operand_a_violations[CAP_PERM_ST_CAP_LOCAL_VIOLATION]) begin
-                cheri_tval.cause   = CAP_PERM_ST_CAP_LOCAL_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_ST_CAP_VIOLATION] & check_operand_a_violations[CAP_PERM_ST_CAP_VIOLATION]) begin
-                cheri_tval.cause   = CAP_PERM_ST_CAP_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_LD_CAP_VIOLATION] & check_operand_a_violations[CAP_PERM_LD_CAP_VIOLATION]) begin
-                cheri_tval.cause   = CAP_PERM_LD_CAP_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_ST_VIOLATION] & check_operand_a_violations[CAP_PERM_ST_VIOLATION]) begin
-                cheri_tval.cause   = CAP_PERM_ST_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_LD_VIOLATION] & check_operand_a_violations[CAP_PERM_LD_VIOLATION]) begin
-                cheri_tval.cause   = CAP_PERM_LD_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_b_violations[CAP_PERM_EXEC_VIOLATION] & check_operand_b_violations[CAP_PERM_EXEC_VIOLATION]) begin
-                cheri_tval.cause   = CAP_PERM_EXEC_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs2};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_EXEC_VIOLATION] & check_operand_a_violations[CAP_PERM_EXEC_VIOLATION]) begin
-                cheri_tval.cause   = CAP_PERM_EXEC_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_b_violations[CAP_PERM_UNSEAL] & check_operand_b_violations[CAP_PERM_UNSEAL]) begin
-                cheri_tval.cause   = CAP_PERM_UNSEAL;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs2};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_UNSEAL] & check_operand_a_violations[CAP_PERM_UNSEAL]) begin
-                cheri_tval.cause   = CAP_PERM_UNSEAL;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_ACCESS_CINVOKE_IDC] & check_operand_a_violations[CAP_PERM_ACCESS_CINVOKE_IDC]) begin
-                cheri_tval.cause   = CAP_PERM_ACCESS_CINVOKE_IDC;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_b_violations[CAP_PERM_CINVOKE] & check_operand_b_violations[CAP_PERM_CINVOKE]) begin
-                cheri_tval.cause   = CAP_PERM_CINVOKE;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs2};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_CINVOKE] & check_operand_a_violations[CAP_PERM_CINVOKE]) begin
-                cheri_tval.cause   = CAP_PERM_CINVOKE;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_b_violations[CAP_PERM_SEAL] & check_operand_b_violations[CAP_PERM_SEAL]) begin
-                cheri_tval.cause   = CAP_PERM_SEAL;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs2};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_PERM_SEAL] & check_operand_a_violations[CAP_PERM_SEAL]) begin
-                cheri_tval.cause   = CAP_PERM_SEAL;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_b_violations[CAP_TYPE_VIOLATION] & check_operand_b_violations[CAP_TYPE_VIOLATION]) begin
-                cheri_tval.cause   = CAP_TYPE_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs2};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_TYPE_VIOLATION] & check_operand_a_violations[CAP_TYPE_VIOLATION]) begin
-                cheri_tval.cause   = CAP_TYPE_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_b_violations[CAP_SEAL_VIOLATION] & check_operand_b_violations[CAP_SEAL_VIOLATION]) begin
-                cheri_tval.cause   = CAP_SEAL_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs2};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_SEAL_VIOLATION] & check_operand_a_violations[CAP_SEAL_VIOLATION]) begin
-                cheri_tval.cause   = CAP_SEAL_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_b_violations[CAP_TAG_VIOLATION] & check_operand_b_violations[CAP_TAG_VIOLATION]) begin
-                cheri_tval.cause   = CAP_TAG_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs2};
-                clu_ex_o.valid     = 1'b1;
-            end
-            if(operand_a_violations[CAP_TAG_VIOLATION] & check_operand_a_violations[CAP_TAG_VIOLATION]) begin
-                cheri_tval.cause   = CAP_TAG_VIOLATION;
-                cheri_tval.cap_idx = {1'b0,fu_data_i.rs1};
-                clu_ex_o.valid     = 1'b1;
-            end
-
-            // Update tval
-            clu_ex_o.valid &= en_ex;
-            clu_ex_o.tval = $unsigned(cheri_tval.cause);
     end
 endmodule

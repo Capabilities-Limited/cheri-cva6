@@ -376,8 +376,6 @@ module cva6_mmu
 
   // The instruction interface is a simple request response interface
   always_comb begin : instr_interface
-    automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
-    cheri_tval = {CVA6Cfg.XLEN{1'b0}};
     // MMU disabled: just pass through
     icache_areq_o.fetch_valid = icache_areq_i.fetch_req;
     icache_areq_o.fetch_paddr  = CVA6Cfg.PLEN'(icache_areq_i.fetch_vaddr[((CVA6Cfg.PLEN > CVA6Cfg.VLEN) ? CVA6Cfg.VLEN -1: CVA6Cfg.PLEN -1 ):0]);
