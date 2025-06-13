@@ -39,46 +39,6 @@ package cva6_cheri_pkg;
     localparam CAP_MAX_EXP          = 52;
     localparam CAP_RESET_TOP        = {2'b01,{CAP_M_WIDTH-2{1'b0}}};
 
-    // -----
-    // CSRs
-    // -----
-    typedef enum logic [4:0] {
-        SCR_PCC         = 0,
-        SCR_DDC         = 1,
-        SCR_UTCC        = 4,
-        SCR_UTDC        = 5,
-        SCR_USCRATCHC   = 6,
-        SCR_UEPCC       = 7,
-        SCR_STCC        = 12,
-        SCR_STDC        = 13,
-        SCR_SSCRATCHC   = 14,
-        SCR_SEPCC       = 15,
-        SCR_VSTCC       = 20,
-        SCR_VSTDC       = 21,
-        SCR_VSSCRATCHC  = 22,
-        SCR_VSEPCC      = 23,
-        SCR_MTCC        = 28,
-        SCR_MTDC        = 29,
-        SCR_MSCRATCHC   = 30,
-        SCR_MEPCC       = 31
-    } scr_reg_t /*verilator public*/;
-
-    // This functions converts S-mode SCR addresses into VS-mode SCR addresses
-    // when V=1 (i.e., running in VS-mode).
-    function automatic scr_reg_t convert_vs_access_scr(scr_reg_t scr_addr, logic v);
-        scr_reg_t ret;
-        ret = scr_addr;
-        unique case (scr_addr) inside
-        [SCR_STCC : SCR_SEPCC]: begin
-          if (v) begin
-            ret[4:3] = 2'b10;
-          end
-          return ret;
-        end
-        default: return ret;
-        endcase
-    endfunction
-
     /* Capabilities RISC-V Exception Trap Encoding Extension */
 
     localparam logic [XLEN-1:0] CAP_LOAD_PAGE_FAULT             = 26;
