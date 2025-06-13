@@ -26,7 +26,7 @@ package cva6_cheri_pkg;
     localparam CTLEN                = 2*XLEN + 1;                // Capability + Tag bit
     localparam CAP_ADDR_WIDTH       = XLEN;                      // Capability address width
     localparam CAP_UPERMS_WIDTH     = 4;
-    localparam CAP_UPERMS_SHIFT     = 5;
+    localparam CAP_UPERMS_SHIFT     = 6;
     localparam CAP_FLAGS_WIDTH      = 1;
     localparam CAP_RSERV_HI_WIDTH   = 7;
     localparam CAP_RSERV_LO_WIDTH   = 15;
