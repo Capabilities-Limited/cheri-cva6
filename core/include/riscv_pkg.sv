@@ -464,6 +464,7 @@ package riscv;
     CSR_SEPC             = 12'h141,
     CSR_SCAUSE           = 12'h142,
     CSR_STVAL            = 12'h143,
+    CSR_STVAL2           = 12'h14B,
     CSR_SIP              = 12'h144,
     CSR_SATP             = 12'h180,
     // Hypervisor-extended Supervisor Mode CSRs

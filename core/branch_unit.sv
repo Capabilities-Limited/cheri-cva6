@@ -52,9 +52,7 @@ module branch_unit #(
     // Branch is resolved, new entries can be accepted by scoreboard - ID_STAGE
     output logic resolve_branch_o,
     // Branch exception out - TO_BE_COMPLETED
-    output exception_t branch_exception_o,
-    // Branch exception in - CLU Unit
-    input exception_t clu_exception_i
+    output exception_t branch_exception_o
 );
   logic [CVA6Cfg.VLEN-1:0] next_pc_off;
   logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
@@ -180,8 +178,9 @@ module branch_unit #(
   //
   logic jump_taken;
   always_comb begin : exception_handling
-    automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+    automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
     automatic cva6_cheri_pkg::addrw_t min_instr_off;
+    cheri_tval2.fault_type = cva6_cheri_pkg::CAP_JUMP_BRANCH_FAULT;
     // Do a jump if it is either unconditional jump (JAL | JALR) or `taken` conditional jump
     branch_exception_o.cause = riscv::INSTR_ADDR_MISALIGNED;
     branch_exception_o.valid = 1'b0;
@@ -204,47 +203,35 @@ module branch_unit #(
       end
     end
     if (CVA6Cfg.CheriPresent && branch_valid_i && jump_taken) begin
-            if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
-                if (target_pcc_base[0] != 1'b0) begin
-                    branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-                    cheri_tval.cause         = cva6_cheri_pkg::CAP_UNLIGNED_BASE;
-                    cheri_tval.cap_idx       = {6'b100000};
-                    branch_exception_o.valid = 1'b1;
-                end
-            end
             // Check if target address is in bounds (or has become unrepresentable)
             if (target_pcc_address < target_pcc_base || target_pcc_address_end > target_pcc_top || !target_pcc.tag) begin
                branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-               cheri_tval.cause         = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
-               cheri_tval.cap_idx       = {6'b100000};
+               cheri_tval2.fault_cause  = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
                branch_exception_o.valid = 1'b1;
             end
             if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
                 if (!operand_a.hperms.permit_execute) begin
                     branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-                    cheri_tval.cause         = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
-                    cheri_tval.cap_idx       = fu_data_i.rs1;
+                    cheri_tval2.fault_cause  = cva6_cheri_pkg::CAP_PERM_VIOLATION;
                     branch_exception_o.valid = 1'b1;
                 end
 
                 if ((operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP) && (($signed(operand_a.otype) != cva6_cheri_pkg::SENTRY_CAP) || (|fu_data_i.imm[CVA6Cfg.VLEN-1:0]))) begin
                     branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-                    cheri_tval.cause         = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
-                    cheri_tval.cap_idx       = fu_data_i.rs1;
+                    cheri_tval2.fault_cause  = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
                     branch_exception_o.valid = 1'b1;
                 end
 
                 if (!operand_a.tag) begin
                     branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-                    cheri_tval.cause         = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-                    cheri_tval.cap_idx       = fu_data_i.rs1;
+                    cheri_tval2.fault_cause  = cva6_cheri_pkg::CAP_TAG_VIOLATION;
                     branch_exception_o.valid = 1'b1;
                 end
             end
         end
         if (CVA6Cfg.CheriPresent && branch_valid_i) begin
           // Update tval
-          branch_exception_o.tval = cheri_tval;
+          branch_exception_o.tval2 = {'0, cheri_tval2};
         end
   end
 endmodule

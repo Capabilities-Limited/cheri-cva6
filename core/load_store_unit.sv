@@ -900,14 +900,15 @@ module load_store_unit
     // CHERI Exception
     // ------------------------
     always_comb begin : data_cheri_exception
-        automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+        automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
         automatic cva6_cheri_pkg::cap_reg_t operand_b;
         logic [CVA6Cfg.XLEN-1:0] size;
 
-        cheri_tval     = {CVA6Cfg.XLEN{1'b0}};
+        cheri_tval2 = '0;
+        cheri_tval2.fault_type = cva6_cheri_pkg::CAP_DATA_ACCESS_FAULT;
         cheri_exception.cause = cva6_cheri_pkg::CAP_EXCEPTION;
         cheri_exception.valid = 1'b0;
-        cheri_exception.tval  = {CVA6Cfg.XLEN{1'b0}};
+        cheri_exception.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, lsu_ctrl.vaddr};
         cheri_exception.tval2 = {CVA6Cfg.GPLEN{1'b0}};
         cheri_exception.tinst = {32{1'b0}};
         cheri_exception.gva   =  v_i;
@@ -939,45 +940,44 @@ module load_store_unit
         endcase
 
         if (lsu_ctrl.valid) begin
-            cheri_tval.cap_idx = fault_cap_idx;
             if((check_cap_address < check_cap_base) || ((lsu_ctrl.vaddr +  size) > check_cap_top)) begin
-                cheri_tval.cause   = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
-                cheri_exception.valid     = 1'b1;
+                cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
+                cheri_exception.valid = 1'b1;
             end
 
             if (!check_cap.hperms.permit_load && (lsu_ctrl.fu == LOAD)) begin
-                cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_LD_VIOLATION;
-                cheri_exception.valid     = 1'b1;
+                cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+                cheri_exception.valid = 1'b1;
             end
 
             // XXX TODO(pdr32) Removed while levels are not supported. Add back in for newer version of zcheri spec
             /*
             if (!check_cap.hperms.permit_store_local_cap && !operand_b.hperms.gbl && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
-                cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_ST_CAP_LOCAL_VIOLATION;
+                cheri_tval2.fault_cause   = cva6_cheri_pkg::CAP_PERM_VIOLATION;
                 cheri_exception.valid     = 1'b1;
             end
             */
 
             if (!(check_cap.hperms.permit_store && check_cap.hperms.permit_cap) && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
-                cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_ST_CAP_VIOLATION;
-                cheri_exception.valid     = 1'b1;
+                cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+                cheri_exception.valid = 1'b1;
             end
 
             if (!check_cap.hperms.permit_store && (lsu_ctrl.fu == STORE)) begin
-                cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_ST_VIOLATION;
-                cheri_exception.valid     = 1'b1;
+                cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+                cheri_exception.valid = 1'b1;
             end
 
             if (cva6_cheri_pkg::is_cap_reg_valid(check_cap) & check_cap_is_sealed) begin
-                cheri_tval.cause   = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
-                cheri_exception.valid     = 1'b1;
+                cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+                cheri_exception.valid = 1'b1;
             end
 
             if(!cva6_cheri_pkg::is_cap_reg_valid(check_cap)) begin
-                cheri_tval.cause   = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-                cheri_exception.valid     = 1'b1;
+                cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+                cheri_exception.valid = 1'b1;
             end
-            cheri_exception.tval = cheri_tval;
+            cheri_exception.tval2 = cheri_tval2;
         end
     end
   end
