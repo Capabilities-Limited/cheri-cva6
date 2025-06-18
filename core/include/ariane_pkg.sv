@@ -320,20 +320,20 @@ package ariane_pkg;
     CSR_CLEAR,
     // CLU functions
     //Special Capabilty Register Access Instructions
-    CSR_WRITE_CAP, CSR_READ_CAP,
-    // 41 Capability-Inspection Instructions
+    CSR_WRITE_CAP,
+    // 40 Capability-Inspection Instructions
     GCPERM, GCTYPE, GCBASE, GCLEN, GCTAG, GCMODE, GCHI,
-    // 48 Capability-Modification Instructions
+    // 47 Capability-Modification Instructions
     ACPERM, SCMODE, SCHI, SCADDR, CADD, CADDI, SCBNDSR,
-    // 55
+    // 54
     SCBNDS, SCBNDSI, CBLD, SENTRY,
-    // 59 Pointer-Arithmetic Instructions
+    // 58 Pointer-Arithmetic Instructions
     CMV,
-    // 60 Pointer-Comparison Instructions
+    // 59 Pointer-Comparison Instructions
     SCSS, SCEQ,
-    // 62 Control-Flow Instructions
+    // 61 Control-Flow Instructions
     MODESW_CAP, MODESW_INT, CJAL, CJALR,
-    // 66 Adjusting to Compressed Capability Precision Instructions
+    // 65 Adjusting to Compressed Capability Precision Instructions
     CRAM,
     // LSU functions
     LC,
