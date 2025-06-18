@@ -298,11 +298,11 @@ module cva6_rvfi
       )) ? commit_instr_result[i] : wdata[i];
       rvfi_instr_o[i].pc_rdata <= commit_instr_pc[i];
       if (instr == 32'h30200073 && !exception) begin
-        rvfi_instr_o[i].pc_wdata <= csr.mepcc_q[63:0];
+        rvfi_instr_o[i].pc_wdata <= csr.mepc_q[63:0];
       end else if (instr == 32'h10200073 && !exception) begin
-        rvfi_instr_o[i].pc_wdata <= csr.sepcc_q[63:0];
+        rvfi_instr_o[i].pc_wdata <= csr.sepc_q[63:0];
       end else begin
-        rvfi_instr_o[i].pc_wdata <= (exception) ? {csr.mtcc_q[63:2], 2'b00} : (commit_instr_fu[i] == CTRL_FLOW) ? commit_instr_next_pc[i] : commit_instr_pc[i] + (instr[1:0] == 2'b11 ? 4 : 2);
+        rvfi_instr_o[i].pc_wdata <= (exception) ? {csr.mtvec_q[63:2], 2'b00} : (commit_instr_fu[i] == CTRL_FLOW) ? commit_instr_next_pc[i] : commit_instr_pc[i] + (instr[1:0] == 2'b11 ? 4 : 2);
       end
       rvfi_instr_o[i].mem_addr <= mem_q[commit_pointer[i]].lsu_addr;
       // So far, only write paddr is reported. TODO: read paddr
