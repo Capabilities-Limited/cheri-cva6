@@ -22,7 +22,7 @@ package cva6_config_pkg;
   localparam CVA6ConfigZcbExtEn = 0;
   localparam CVA6ConfigZcmpExtEn = 0;
   localparam CVA6ConfigAExtEn = 1;
-  localparam CVA6ConfigHExtEn = 1;
+  localparam CVA6ConfigHExtEn = 0;
   localparam CVA6ConfigBExtEn = 1;
   localparam CVA6ConfigVExtEn = 0;
   localparam CVA6ConfigRVZiCond = 1;
