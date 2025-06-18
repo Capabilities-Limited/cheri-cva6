@@ -209,7 +209,7 @@ module csr_regfile
   logic [CVA6Cfg.REGLEN-1:0] csr_wdata, csr_rdata;
   logic        csr_we_cap;
   logic        csr_read_cap;
-  cva6_cheri_pkg::cap_reg_t scr_wdata, scr_rdata;
+  cva6_cheri_pkg::cap_reg_t scr_wdata, csr_rdata_cap;
   logic [CVA6Cfg.REGLEN-1:0] dbg_wdata, dbg_rdata;
   cva6_cheri_pkg::addrw_t cap_offset;
   cva6_cheri_pkg::cap_pcc_t pcc;
@@ -959,38 +959,38 @@ end
   always_comb begin : csr_read_cap_process
         // a read access exception can only occur if we attempt to read a CSR which does not exist
         cheri_read_access_exception = 1'b0;
-        scr_rdata                   = REG_NULL_CAP;
+        csr_rdata_cap = REG_NULL_CAP;
         if (csr_read_cap) begin
             unique case (csr_addr)
                     riscv::CSR_DDC: begin
-                      scr_rdata = ddc_q;
+                      csr_rdata_cap = ddc_q;
                     end
                     riscv::CSR_VSTVEC: begin
-                      scr_rdata = vstcc_q;
+                      csr_rdata_cap = vstcc_q;
                     end
                     riscv::CSR_VSSCRATCH: begin
-                      scr_rdata = vsscratchc_q;
+                      csr_rdata_cap = vsscratchc_q;
                     end
                     riscv::CSR_VSEPC: begin
-                      scr_rdata = vsepcc_q;
+                      csr_rdata_cap = vsepcc_q;
                     end
                     riscv::CSR_STVEC: begin
-                      scr_rdata = stcc_q;
+                      csr_rdata_cap = stcc_q;
                     end
                     riscv::CSR_SSCRATCH: begin
-                      scr_rdata = sscratchc_q;
+                      csr_rdata_cap = sscratchc_q;
                     end
                     riscv::CSR_SEPC: begin
-                      scr_rdata = sepcc_q;
+                      csr_rdata_cap = sepcc_q;
                     end
                     riscv::CSR_MTVEC: begin
-                      scr_rdata = mtcc_q;
+                      csr_rdata_cap = mtcc_q;
                     end
                     riscv::CSR_MSCRATCH: begin
-                      scr_rdata = mscratchc_q;
+                      csr_rdata_cap = mscratchc_q;
                     end
                     riscv::CSR_MEPC: begin
-                      scr_rdata = mepcc_q;
+                      csr_rdata_cap = mepcc_q;
                     end
                     default: begin
                         cheri_read_access_exception = 1'b1;
@@ -2396,14 +2396,12 @@ end
         csr_wdata = csr_wdata_i[CVA6Cfg.REGLEN-1:0];
         csr_we_cap = 1'b1;
         csr_we = 1'b0;
+        csr_read_cap = 1'b1;
+        csr_read  = 1'b0;
       end
       CSR_SET:   csr_wdata = csr_wdata_i[CVA6Cfg.XLEN-1:0] | csr_rdata;
       CSR_CLEAR: csr_wdata = (~csr_wdata_i[CVA6Cfg.XLEN-1:0]) & csr_rdata;
       CSR_READ:  csr_we = 1'b0;
-      CSR_READ_CAP: begin
-        csr_we = 1'b0;
-        csr_read_cap = 1'b1;
-      end
       MRET: begin
         // the return should not have any write or read side-effects
         csr_we   = 1'b0;
@@ -2484,7 +2482,7 @@ end
       virtual_privilege_violation = 1'b0;
       // if we are reading or writing, check for the correct privilege level this has
       // precedence over interrupts
-      if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ, CSR_WRITE_CAP, CSR_READ_CAP}) begin
+      if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ, CSR_WRITE_CAP}) begin
         if (access_priv < csr_addr.csr_decode.priv_lvl) begin
           if (v_q && csr_addr.csr_decode.priv_lvl == riscv::PRIV_LVL_HS)
             virtual_privilege_violation = 1'b1;
@@ -2519,7 +2517,7 @@ end
       privilege_violation = 1'b0;
       // if we are reading or writing, check for the correct privilege level this has
       // precedence over interrupts
-      if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ, CSR_WRITE_CAP, CSR_READ_CAP}) begin
+      if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ, CSR_WRITE_CAP}) begin
         if ((riscv::priv_lvl_t'(priv_lvl_o & csr_addr.csr_decode.priv_lvl) != csr_addr.csr_decode.priv_lvl)) begin
           privilege_violation = 1'b1;
         end
@@ -2547,7 +2545,7 @@ end
 
         cheri_access_violation = 1'b0;
 
-        if (csr_op_i inside {CSR_WRITE, CSR_WRITE_CAP, CSR_SET, CSR_CLEAR, CSR_READ, CSR_READ_CAP}) begin
+        if (csr_op_i inside {CSR_WRITE, CSR_WRITE_CAP, CSR_SET, CSR_CLEAR, CSR_READ}) begin
             if(!pcc.hperms.access_sys_regs) begin
                 cheri_access_violation = 1'b1;
             end
@@ -2720,8 +2718,8 @@ end
     csr_rdata_o = (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : '0;
     if (CVA6Cfg.CheriPresent && csr_addr inside {riscv::CSR_DSCRATCH0,riscv::CSR_DSCRATCH1,riscv::CSR_DSCRATCH2}) begin
         csr_rdata_o = dbg_rdata;
-    end else if (CVA6Cfg.CheriPresent && csr_op_i inside {CSR_READ_CAP, CSR_WRITE_CAP}) begin
-        csr_rdata_o = scr_rdata;
+    end else if (CVA6Cfg.CheriPresent && csr_op_i == CSR_WRITE_CAP) begin
+        csr_rdata_o = csr_rdata_cap;
     end else begin
         csr_rdata_o[CVA6Cfg.XLEN-1:0] = csr_rdata;
     end
