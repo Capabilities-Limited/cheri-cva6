@@ -1714,7 +1714,7 @@ end
         if (CVA6Cfg.RVS && CVA6Cfg.TvalEn) stval_d = csr_wdata;
         else update_access_exception = 1'b1;
         riscv::CSR_STVAL2:
-        if (CVA6Cfg.CheriPresent) stval2_d = csr_wdata;
+        if (CVA6Cfg.CheriPresent) stval2_d = {csr_wdata[19:16],12'b0,csr_wdata[3:0]};
         else update_access_exception = 1'b1;
         // supervisor address translation and protection
         riscv::CSR_SATP: begin
@@ -2036,7 +2036,8 @@ end
         if (CVA6Cfg.RVH) mtinst_d = {{CVA6Cfg.XLEN - 32{1'b0}}, csr_wdata[31:0]};
         else update_access_exception = 1'b1;
         riscv::CSR_MTVAL2:
-        if (CVA6Cfg.RVH | CVA6Cfg.CheriPresent) mtval2_d = csr_wdata;
+        if (CVA6Cfg.RVH) mtval2_d = csr_wdata;
+        else if (CVA6Cfg.CheriPresent) mtval2_d = {csr_wdata[19:16],12'b0,csr_wdata[3:0]};
         else update_access_exception = 1'b1;
         riscv::CSR_MIP: begin
           if (CVA6Cfg.RVH) begin
