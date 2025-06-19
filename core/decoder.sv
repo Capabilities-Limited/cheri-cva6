@@ -2058,6 +2058,7 @@ module decoder
         // set gva bit
         if (CVA6Cfg.RVH) instruction_o.ex.gva = v_i;
         else instruction_o.ex.gva = 1'b0;
+        if (CVA6Cfg.TvalEn) instruction_o.ex.tval = pc_i;
       end
       // -----------------
       // Interrupt Control
