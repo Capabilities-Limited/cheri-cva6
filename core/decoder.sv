@@ -2001,7 +2001,6 @@ module decoder
   // Exception handling
   // ---------------------
   logic [CVA6Cfg.XLEN-1:0] interrupt_cause;
-  logic [CVA6Cfg.XLEN-1:0] tval;
 
   // this instruction has already executed if the exception is valid
   assign instruction_o.valid = instruction_o.ex.valid;
@@ -2018,10 +2017,7 @@ module decoder
       if (CVA6Cfg.CvxifEn || CVA6Cfg.RVF)
         orig_instr_o = (is_compressed_i) ? {{CVA6Cfg.XLEN-16{1'b0}}, compressed_instr_i} : {{CVA6Cfg.XLEN-32{1'b0}}, instruction_i};
       if (CVA6Cfg.TvalEn) begin
-        tval  = (is_compressed_i) ? {{CVA6Cfg.XLEN-16{1'b0}}, compressed_instr_i} : {{CVA6Cfg.XLEN-32{1'b0}}, instruction_i};
-        // If Cheri enable store the operand idx
-        if (CVA6Cfg.CheriPresent) tval  = tval | (instruction_o.rs1 << 32) | (instruction_o.rs2 << 36);
-        instruction_o.ex.tval = tval;
+        instruction_o.ex.tval = (is_compressed_i) ? {{CVA6Cfg.XLEN-16{1'b0}}, compressed_instr_i} : {{CVA6Cfg.XLEN-32{1'b0}}, instruction_i};
       end else instruction_o.ex.tval = '0;
       if (CVA6Cfg.RVH) instruction_o.ex.tinst = tinst;
       else instruction_o.ex.tinst = '0;
