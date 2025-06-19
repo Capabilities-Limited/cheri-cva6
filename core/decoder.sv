@@ -348,6 +348,7 @@ module decoder
                       illegal_instr = 1'b1;
                     end
                   end else begin
+                    instruction_o.op = ariane_pkg::ADD;
                     illegal_instr = 1'b1;
                   end
                 end
