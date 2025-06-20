@@ -79,16 +79,6 @@ ariane_pkg := \
               corev_apu/tb/ariane_axi_soc_pkg.sv
 ariane_pkg := $(addprefix $(root-dir), $(ariane_pkg))
 
-# utility modules
-util := core/include/instr_tracer_pkg.sv                              \
-        common/local/util/instr_tracer_if.sv                          \
-        common/local/util/instr_tracer.sv                             \
-        corev_apu/src/tech_cells_generic/src/cluster_clock_gating.sv  \
-        corev_apu/tb/common/mock_uart.sv                              \
-        common/local/util/sram.sv
-
-util := $(addprefix $(root-dir), $(util))
-
 # Test packages
 test_pkg := $(wildcard tb/test/*/*sequence_pkg.sv*) \
 			$(wildcard tb/test/*/*_pkg.sv*)
@@ -223,7 +213,6 @@ verilate_command := $(verilator) --no-timing $(root-dir)/verilator_config.vlt   
                     $(filter-out %.vhd, $(ariane_pkg))                                                           \
 					$(filter-out core/fpu_wrap.sv, $(filter-out %.vhd, $(filter-out %_config_pkg.sv, $(src))))   \
                     +define+RVFI_TRACE=1+DII=1+VM_TRACE=$(DEBUG)                                                 \
-                    $(root-dir)/common/local/util/sram.sv                                                        \
                     $(root-dir)/corev_apu/tb/common/mock_uart.sv                                                 \
                     +incdir+$(root-dir)/corev_apu/axi_node                                                       \
                     $(if $(verilator_threads), --threads $(verilator_threads))                                   \
