@@ -71,7 +71,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     addrw_t set_bounds_len;
     cap_reg_t op_set_bounds;
     cap_reg_set_bounds_ret_t res_set_bounds;
-    cap_meta_data_t res_set_bounds_meta_data;
 
     // Tag-clearing check signals
     localparam CAP_CHECK_NUM = 3;
@@ -148,8 +147,14 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             ariane_pkg::CBLD,ariane_pkg::SCSS: begin
                 tmp_cap = operand_b;
                 tmp_cap.tag = 1'b1;
-                if(operand_a.tag != operand_b.tag && fu_data_i.operation == ariane_pkg::SCSS) begin
-                    tmp_cap.tag = 1'b0;
+                if (fu_data_i.operation == ariane_pkg::SCSS) begin
+                    if(operand_a.tag != operand_b.tag) begin
+                        tmp_cap.tag = 1'b0;
+                    end
+                end else begin // CBLD
+                    if(!operand_a.tag) begin
+                        tmp_cap.tag = 1'b0;
+                    end
                 end
                 if(operand_b_base < operand_a_base) begin
                     tmp_cap.tag = 1'b0;
@@ -300,8 +305,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         operand_b_is_sealed = (operand_b.otype != UNSEALED_CAP);
         // Decode pc metadata fields
         op_pc_meta_info = get_cap_reg_meta_data(pcc);
-        // Decode bounds from set cap reg bounds, needed for the CBUILDCAP instruction
-        res_set_bounds_meta_data = get_cap_reg_meta_data(res_set_bounds.cap);
     end
 
     // ----------------
