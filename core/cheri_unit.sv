@@ -208,6 +208,10 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             ariane_pkg::GCTAG: begin
                 clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a.tag});
             end
+            // CGetType
+            ariane_pkg::GCTYPE: begin
+                clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a.otype});
+            end
             // CIncOffset and CIncOffsetImm
             // TODO-cheri(ninolomata): use ALU to calculate address
             ariane_pkg::CADD,ariane_pkg::CADDI: begin
