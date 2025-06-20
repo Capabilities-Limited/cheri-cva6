@@ -354,7 +354,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             operand_a_violations[BOUNDS_CHECK_IDX] = 1'b1;
         end
 
-        if ((operand_b_base + set_bounds_len) > operand_a_top) begin
+        if ((operand_a_address + set_bounds_len) > operand_a_top) begin
             operand_a_violations[BOUNDS_CHECK_IDX] = 1'b1;
         end
     end
