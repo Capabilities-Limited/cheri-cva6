@@ -84,23 +84,18 @@ module branch_unit #(
 
   // calculate next PC, depending on whether the instruction is compressed or not this may be different
   // TODO(zarubaf): We already calculate this a couple of times, maybe re-use?
-  assign next_pc_off                      = ((is_compressed_instr_i) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
-  assign next_pc_addr                     = pc_i[CVA6Cfg.VLEN-1:0] + next_pc_off;
+  assign next_pc_off = ((is_compressed_instr_i) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
+  assign next_pc     = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_addr(pc_i, pc_i[CVA6Cfg.VLEN-1:0] + next_pc_off) : pc_i + next_pc_off;
 
   // here we handle the various possibilities of mis-predicts
   always_comb begin : mispredict_handler
     // set the jump base, for JALR we need to look at the register, for all other control flow instructions we can take the current PC
     automatic logic [CVA6Cfg.VLEN-1:0] jump_base;
-    automatic logic [CVA6Cfg.VLEN-1:0] jump_base_addr;
     automatic cva6_cheri_pkg::cap_pcc_t jump_base_cap;
-    automatic cva6_cheri_pkg::cap_pcc_t next_pc_tmp, target_address_tmp;
     // TODO(zarubaf): The ALU can be used to calculate the branch target
     jump_base = (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) ? fu_data_i.operand_a[CVA6Cfg.VLEN-1:0] : pc_i[CVA6Cfg.VLEN-1:0];
     jump_base_cap = CVA6Cfg.CheriPresent ? ((fu_data_i.operation inside {ariane_pkg::CJALR}) ? operand_a : pc_i) : '0;
-    jump_base_addr = CVA6Cfg.CheriPresent ? ($unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]))) : '0;
 
-    next_pc_tmp = '0;
-    target_address_tmp = '0;
     branch_result_o = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::REG_NULL_CAP : '0;
     resolve_branch_o = 1'b0;
     resolved_branch_o.target_address = '0;
@@ -108,27 +103,21 @@ module branch_unit #(
     resolved_branch_o.valid = branch_valid_i;
     resolved_branch_o.is_mispredict = 1'b0;
     resolved_branch_o.cf_type = branch_predict_i.cf;
-    next_pc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_addr(pcc, next_pc_addr) : next_pc_addr;
     // calculate target address simple 64 bit addition
+    target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
     if (CVA6Cfg.CheriPresent) begin
-      target_address = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_address(jump_base_cap, jump_base_addr, cva6_cheri_pkg::get_cap_reg_meta_data(jump_base_cap)) : '0;
-    end else begin
-      // calculate target address simple 64 bit addition
-      target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
+      target_address = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_address(jump_base_cap,
+                                              target_address[CVA6Cfg.VLEN-1:0],
+                                              cva6_cheri_pkg::get_cap_reg_meta_data(jump_base_cap)) : '0;
     end
     // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
     if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
     if (CVA6Cfg.CheriPresent) begin
       if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
-        next_pc_tmp = next_pc;
-        next_pc_tmp.otype = cva6_cheri_pkg::SENTRY_CAP;
-        next_pc = next_pc_tmp;
+        branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc), cva6_cheri_pkg::SENTRY_CAP);
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
-          target_address_tmp = target_address;
-          target_address_tmp.otype = cva6_cheri_pkg::UNSEALED_CAP;
-          target_address =  target_address_tmp;
+          target_address = cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
         end
-        branch_result_o = cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc_tmp);
       end else begin
         branch_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, next_pc[CVA6Cfg.VLEN-1:0]);
       end
