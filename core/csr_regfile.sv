@@ -484,7 +484,7 @@ end
     // a read access exception can only occur if we attempt to read a CSR which does not exist
     read_access_exception = 1'b0;
     virtual_read_access_exception = 1'b0;
-    csr_rdata = '0;
+    csr_rdata = (CVA6Cfg.CheriPresent) ? REG_NULL_CAP : '0;
     dbg_rdata = '0;
     perf_addr_o = csr_addr.address[11:0];
 
