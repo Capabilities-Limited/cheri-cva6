@@ -208,7 +208,7 @@ incdir := $(root-dir)/vendor/pulp-platform/common_cells/include/ $(CVA6_REPO_DIR
 list_incdir := $(foreach dir, ${incdir}, +incdir+$(dir))
 
 # verilator-specific
-verilate_command := $(verilator) --no-timing $(root-dir)/verilator_config.vlt                                    \
+verilate_command := $(verilator) --autoflush --no-timing $(root-dir)/verilator_config.vlt                        \
                     -f $(root-dir)/core/Flist.cva6                                                               \
                     $(root-dir)/core/cva6_rvfi.sv                                                                \
                     $(filter-out %.vhd, $(ariane_pkg))                                                           \
