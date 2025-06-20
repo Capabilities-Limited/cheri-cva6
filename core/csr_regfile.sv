@@ -226,7 +226,6 @@ module csr_regfile
   logic csr_we, csr_read;
   logic [CVA6Cfg.REGLEN-1:0] csr_wdata, csr_rdata;
   logic csr_we_cap, csr_read_cap;
-  cva6_cheri_pkg::cap_reg_t csr_rdata_cap;
   logic [CVA6Cfg.REGLEN-1:0] dbg_wdata, dbg_rdata;
   cva6_cheri_pkg::addrw_t cap_offset;
   cva6_cheri_pkg::cap_pcc_t pcc;
@@ -579,15 +578,15 @@ end
         else read_access_exception = 1'b1;
         riscv::CSR_VSTVEC:
         if (CVA6Cfg.RVH) begin
-          csr_rdata = {{CVA6Cfg.REGLEN-CVA6Cfg.XLEN{1'b0}},vstvec_q};
+          csr_rdata = vstvec_q;
         end else read_access_exception = 1'b1;
         riscv::CSR_VSSCRATCH:
         if (CVA6Cfg.RVH) begin
-          csr_rdata = vsscratch_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = vsscratch_q;
         end else read_access_exception = 1'b1;
         riscv::CSR_VSEPC:
         if (CVA6Cfg.RVH) begin
-          csr_rdata = {{CVA6Cfg.REGLEN-CVA6Cfg.XLEN{1'b0}},vsepc_q};
+          csr_rdata = vsepc_q;
         end
         else read_access_exception = 1'b1;
         riscv::CSR_VSCAUSE:
@@ -620,19 +619,18 @@ end
         else read_access_exception = 1'b1;
         riscv::CSR_STVEC:
         if (CVA6Cfg.RVS) begin
-          csr_rdata = {{CVA6Cfg.REGLEN-CVA6Cfg.XLEN{1'b0}},stvec_q};
+          csr_rdata = stvec_q;
         end else read_access_exception = 1'b1;
         riscv::CSR_SCOUNTEREN:
         if (CVA6Cfg.RVS) csr_rdata = scounteren_q;
         else read_access_exception = 1'b1;
         riscv::CSR_SSCRATCH:
         if (CVA6Cfg.RVS) begin
-          if (CVA6Cfg.CheriPresent) csr_rdata = sscratch_q[CVA6Cfg.XLEN-1:0];
-          else csr_rdata = sscratch_q;
+          csr_rdata = sscratch_q;
         end else read_access_exception = 1'b1;
         riscv::CSR_SEPC:
         if (CVA6Cfg.RVS) begin
-          csr_rdata = {{CVA6Cfg.REGLEN-CVA6Cfg.XLEN{1'b0}},sepc_q};
+          csr_rdata = sepc_q;
         end else read_access_exception = 1'b1;
         riscv::CSR_SCAUSE:
         if (CVA6Cfg.RVS) csr_rdata = scause_q;
@@ -741,14 +739,14 @@ end
         else read_access_exception = 1'b1;
         riscv::CSR_MIE: csr_rdata = mie_q;
         riscv::CSR_MTVEC:
-        csr_rdata = mtvec_q[CVA6Cfg.XLEN-1:0];
+        csr_rdata = mtvec_q;
         riscv::CSR_MCOUNTEREN:
         if (CVA6Cfg.RVU) csr_rdata = mcounteren_q;
         else read_access_exception = 1'b1;
         riscv::CSR_MSCRATCH:
-        csr_rdata = mscratch_q[CVA6Cfg.XLEN-1:0];
+        csr_rdata = mscratch_q;
         riscv::CSR_MEPC:
-        csr_rdata = mepc_q[CVA6Cfg.XLEN-1:0];
+        csr_rdata = mepc_q;
         riscv::CSR_MCAUSE: csr_rdata = mcause_q;
         riscv::CSR_MTVAL:
         if (CVA6Cfg.TvalEn) csr_rdata = mtval_q;
@@ -1095,60 +1093,14 @@ end
             csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b1};
           else csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b0};
         end
+        riscv::CSR_DDC:
+        if (CVA6Cfg.CheriPresent) csr_rdata = ddc_q;
+        else read_access_exception = 1'b1;
         default: read_access_exception = 1'b1;
       endcase
     end
   end
 
-  if ((CVA6Cfg.CheriPresent)) begin
-  always_comb begin : csr_read_cap_process
-        // a read access exception can only occur if we attempt to read a CSR which does not exist
-        cheri_read_access_exception = 1'b0;
-        csr_rdata_cap = REG_NULL_CAP;
-        if (csr_read_cap) begin
-            unique case (csr_addr)
-                    riscv::CSR_DDC: begin
-                      csr_rdata_cap = ddc_q;
-                    end
-                    riscv::CSR_VSTVEC: begin
-                      csr_rdata_cap = vstvec_q;
-                    end
-                    riscv::CSR_VSSCRATCH: begin
-                      csr_rdata_cap = vsscratch_q;
-                    end
-                    riscv::CSR_VSEPC: begin
-                      csr_rdata_cap = vsepc_q;
-                    end
-                    riscv::CSR_STVEC: begin
-                      csr_rdata_cap = stvec_q;
-                    end
-                    riscv::CSR_SSCRATCH: begin
-                      csr_rdata_cap = sscratch_q;
-                    end
-                    riscv::CSR_SEPC: begin
-                      csr_rdata_cap = sepc_q;
-                    end
-                    riscv::CSR_MTVEC: begin
-                      csr_rdata_cap = mtvec_q;
-                    end
-                    riscv::CSR_MSCRATCH: begin
-                      csr_rdata_cap = mscratch_q;
-                    end
-                    riscv::CSR_MEPC: begin
-                      csr_rdata_cap = mepc_q;
-                    end
-                    default: begin
-                        cheri_read_access_exception = 1'b1;
-                    end
-            endcase
-        end
-    end
-  end
-
-    // ------------------------------------------
-    // CHERI CSRs as SRCs
-    // ------------------------------------------
-    //assign cap_set_offset = cap_inc_offset(cap_sel, cap_offset, 1'b0);
   // ---------------------------
   // CSR Write and update logic
   // ---------------------------
@@ -2722,7 +2674,7 @@ end
     csr_we    = 1'b1;
     csr_we_cap = 1'b0;
     csr_read  = 1'b1;
-    csr_read_cap = 1'b0;
+    csr_read_cap = (CVA6Cfg.CheriPresent && !commit_instr_i.int_mode) ? 1'b1 : 1'b0;
     mret      = 1'b0;
     sret      = 1'b0;
     dret      = 1'b0;
@@ -2733,8 +2685,6 @@ end
         csr_wdata = csr_wdata_i;
         csr_we_cap = 1'b1;
         csr_we = 1'b0;
-        csr_read_cap = 1'b1;
-        csr_read  = 1'b0;
       end
       CSR_SET:   csr_wdata = csr_wdata_i[CVA6Cfg.XLEN-1:0] | csr_rdata;
       CSR_CLEAR: csr_wdata = (~csr_wdata_i[CVA6Cfg.XLEN-1:0]) & csr_rdata;
@@ -3100,10 +3050,10 @@ end
     csr_rdata_o = (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : '0;
     if (CVA6Cfg.CheriPresent && csr_addr inside {riscv::CSR_DSCRATCH0,riscv::CSR_DSCRATCH1,riscv::CSR_DSCRATCH2}) begin
         csr_rdata_o = dbg_rdata;
-    end else if (CVA6Cfg.CheriPresent && csr_op_i == CSR_WRITE_CAP) begin
-        csr_rdata_o = csr_rdata_cap;
+    end else if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+        csr_rdata_o = csr_rdata;
     end else begin
-        csr_rdata_o[CVA6Cfg.XLEN-1:0] = csr_rdata;
+        csr_rdata_o[CVA6Cfg.XLEN-1:0] = csr_rdata[CVA6Cfg.XLEN-1:0];
     end
 
     unique case (conv_csr_addr.address)
