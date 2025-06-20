@@ -2813,19 +2813,11 @@ end
       trap_vector_base_o[7:2] = {ex_i.cause[5:2], 2'b01};
     end
 
-    if (CVA6Cfg.CheriPresent) begin
-      epc = mepc_q;
-    end else begin
-      epc_o[CVA6Cfg.VLEN-1:0] = mepc_q[CVA6Cfg.VLEN-1:0];
-    end
+    epc_o = mepc_q;
     // we are returning from supervisor or virtual supervisor mode, so take the sepc register
     if (CVA6Cfg.RVS) begin
       if (sret) begin
-        if (CVA6Cfg.CheriPresent) begin
-          epc = (CVA6Cfg.RVH && v_q) ? vsepc_q : sepc_q;
-        end else begin
-          epc_o[CVA6Cfg.VLEN-1:0] = (CVA6Cfg.RVH && v_q) ? vsepc_q[CVA6Cfg.VLEN-1:0] : sepc_q[CVA6Cfg.VLEN-1:0];
-        end
+        epc_o = (CVA6Cfg.RVH && v_q) ? vsepc_q : sepc_q;
       end
     end
     // we are returning from debug mode, to take the dpc register
@@ -2839,11 +2831,8 @@ end
       end
     end
     if (CVA6Cfg.CheriPresent) begin
-      epc_o = epc;
-      // Unseal cap if it is a SEAL ENTRY object type
-      if (epc.otype == cva6_cheri_pkg::SENTRY_CAP) begin
-        epc_o[116:99] = cva6_cheri_pkg::UNSEALED_CAP;
-      end
+      // Unseal epc_o in case it is sealed
+      epc_o = set_cap_reg_otype(epc_o, cva6_cheri_pkg::UNSEALED_CAP);
     end
   end
 
