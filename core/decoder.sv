@@ -486,7 +486,7 @@ module decoder
 
             default: begin
               if (CVA6Cfg.CheriPresent) begin
-                if (instr.itype.rs1 != 0) begin
+                //if (instr.itype.rs1 != 0) begin
                   case (instr.stype.funct3)
                     3'b100: begin
                       instruction_o.fu  = LOAD;
@@ -500,7 +500,7 @@ module decoder
                     end
                     default: illegal_instr = 1'b1;
                   endcase
-                end else illegal_instr = 1'b1;
+                //end else illegal_instr = 1'b1;
               end else begin
                 illegal_instr = 1'b1;
               end
