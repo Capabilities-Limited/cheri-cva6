@@ -235,11 +235,30 @@ module load_unit
   // strip tag request
   assign req_port_o.strip_tag = CVA6Cfg.CheriPresent ? strip_tag_i : 1'b0;
   // directly forward exception fields (valid bit is set below)
-  assign ex_o.cause = (ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].cause : ex_i.cause;
-  assign ex_o.tval = (ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].tval : ex_i.tval;
-  assign ex_o.tval2 = CVA6Cfg.RVH ? ((ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].tval2 : ex_i.tval2) : '0;
-  assign ex_o.tinst = CVA6Cfg.RVH ? ((ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].tinst : ex_i.tinst) : '0;
-  assign ex_o.gva = CVA6Cfg.RVH ? ((ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent) ? cheri_ex_q[ldbuf_rindex].gva : ex_i.gva) : 1'b0;
+  always_comb begin : ex_o_select
+    ex_o.cause = ex_i.cause;
+    ex_o.tval = ex_i.tval;
+    ex_o.tval2 = '0;
+    ex_o.tinst = '0;
+    ex_o.gva = 1'b0;
+    if (CVA6Cfg.RVH) begin
+      ex_o.tval2 = ex_i.tval2;
+      ex_o.tinst = ex_i.tinst;
+      ex_o.gva =   ex_i.gva;
+    end
+    if (CVA6Cfg.CheriPresent) begin
+      ex_o.tval2 = ex_i.tval2;
+      if (ldbuf_rdata.operation == ariane_pkg::LC && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid) begin
+        ex_o.cause = cheri_ex_q[ldbuf_rindex].cause;
+        ex_o.tval =  cheri_ex_q[ldbuf_rindex].tval;
+        ex_o.tval2 = cheri_ex_q[ldbuf_rindex].tval2;
+        if (CVA6Cfg.RVH) begin
+          ex_o.tinst = cheri_ex_q[ldbuf_rindex].tinst;
+          ex_o.gva =   cheri_ex_q[ldbuf_rindex].gva;
+        end
+      end
+    end
+  end
 
   // Check that NI operations follow the necessary conditions
   logic paddr_ni;
