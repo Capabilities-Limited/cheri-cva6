@@ -258,7 +258,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] mtval_q, mtval_d;
   logic [CVA6Cfg.XLEN-1:0] mtinst_q, mtinst_d;
   logic [CVA6Cfg.XLEN-1:0] mtval2_q, mtval2_d;
-  logic fiom_d, fiom_q;
+  logic mfiom_d, mfiom_q;
 
   logic [CVA6Cfg.REGLEN-1:0] stvec_q, stvec_d;
   logic [CVA6Cfg.XLEN-1:0] scounteren_q, scounteren_d;
@@ -267,6 +267,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] scause_q, scause_d;
   logic [CVA6Cfg.XLEN-1:0] stval_q, stval_d;
   logic [CVA6Cfg.XLEN-1:0] stval2_q, stval2_d;
+  logic sfiom_d, sfiom_q;
 
   logic [CVA6Cfg.XLEN-1:0] hedeleg_q, hedeleg_d;
   logic [CVA6Cfg.XLEN-1:0] hideleg_q, hideleg_d;
@@ -274,6 +275,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] hgeie_q, hgeie_d;
   logic [CVA6Cfg.XLEN-1:0] htinst_q, htinst_d;
   logic [CVA6Cfg.XLEN-1:0] htval_q, htval_d;
+  logic hfiom_d, hfiom_q;
 
   logic [CVA6Cfg.REGLEN-1:0] vstvec_q, vstvec_d;
   logic [CVA6Cfg.REGLEN-1:0] vsscratch_q, vsscratch_d;
@@ -595,7 +597,7 @@ end
           end
         end
         riscv::CSR_SENVCFG:
-        if (CVA6Cfg.RVS) csr_rdata = {{CVA6Cfg.XLEN - 29{1'b0}}, senvcre, 27'b0, fiom_q};
+        if (CVA6Cfg.RVS) csr_rdata = {{CVA6Cfg.XLEN - 29{1'b0}}, senvcre, 27'b0, sfiom_q};
         else read_access_exception = 1'b1;
         // hypervisor mode registers
         riscv::CSR_HSTATUS:
@@ -632,7 +634,7 @@ end
         if (CVA6Cfg.RVH) csr_rdata = '0;
         else read_access_exception = 1'b1;
         riscv::CSR_HENVCFG:
-        if (CVA6Cfg.RVH) csr_rdata = '0 | {{CVA6Cfg.XLEN - 1{1'b0}}, fiom_q};
+        if (CVA6Cfg.RVH) csr_rdata = '0 | {{CVA6Cfg.XLEN - 1{1'b0}}, hfiom_q};
         else read_access_exception = 1'b1;
         riscv::CSR_HGATP: begin
           if (CVA6Cfg.RVH) begin
@@ -681,7 +683,7 @@ end
         else read_access_exception = 1'b1;
         riscv::CSR_MIP: csr_rdata = mip_q;
         riscv::CSR_MENVCFG: begin
-          if (CVA6Cfg.RVU) csr_rdata = {{CVA6Cfg.XLEN - 29{1'b0}}, menvcre, 27'b0, fiom_q};
+          if (CVA6Cfg.RVU) csr_rdata = {{CVA6Cfg.XLEN - 29{1'b0}}, menvcre, 27'b0, mfiom_q};
           else read_access_exception = 1'b1;
         end
         riscv::CSR_MENVCFGH: begin
@@ -1109,7 +1111,7 @@ end
       mtinst_d = mtinst_q;
       mtval2_d = mtval2_q;
     end
-    fiom_d     = fiom_q;
+    mfiom_d    = mfiom_q;
     dcache_d   = dcache_q;
     icache_d   = icache_q;
     acc_cons_d = acc_cons_q;
@@ -1128,6 +1130,7 @@ end
       hcounteren_d             = hcounteren_q;
       htinst_d                 = htinst_q;
       htval_d                  = htval_q;
+      hfiom_d                  = hfiom_q;
       en_ld_st_g_translation_d = en_ld_st_g_translation_q;
     end
 
@@ -1140,6 +1143,7 @@ end
       stval_d      = stval_q;
       stval2_d     = stval2_q;
       satp_d       = satp_q;
+      sfiom_d      = sfiom_q;
     end
 
     en_ld_st_translation_d = en_ld_st_translation_q;
@@ -1492,7 +1496,7 @@ end
           end
         end
         riscv::CSR_SENVCFG:
-        if (CVA6Cfg.RVU) fiom_d = csr_wdata[0];
+        if (CVA6Cfg.RVU) sfiom_d = csr_wdata[0];
         else update_access_exception = 1'b1;
         //hypervisor mode registers
         riscv::CSR_HSTATUS: begin
@@ -1609,7 +1613,7 @@ end
           end
         end
         riscv::CSR_HENVCFG:
-        if (CVA6Cfg.RVH) fiom_d = csr_wdata[0];
+        if (CVA6Cfg.RVH) hfiom_d = csr_wdata[0];
         else update_access_exception = 1'b1;
         riscv::CSR_MSTATUS: begin
           mstatus_d    = {{64 - CVA6Cfg.XLEN{1'b0}}, csr_wdata};
@@ -1785,7 +1789,7 @@ end
         // MSECCFG is WARL (Write Any Value, Reads Legal Value)
         riscv::CSR_MSECCFG: ;
         riscv::CSR_MSECCFGH: if(CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
-        riscv::CSR_MENVCFG: if (CVA6Cfg.RVU) fiom_d = csr_wdata[0];
+        riscv::CSR_MENVCFG: if (CVA6Cfg.RVU) mfiom_d = csr_wdata[0];
         riscv::CSR_MENVCFGH: begin
           if (!CVA6Cfg.RVU || CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
         end
@@ -2973,7 +2977,7 @@ end
       mcounteren_q     <= {CVA6Cfg.XLEN{1'b0}};
       mscratch_q      <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : {CVA6Cfg.XLEN{1'b0}};
       if (CVA6Cfg.TvalEn) mtval_q <= {CVA6Cfg.XLEN{1'b0}};
-      fiom_q          <= '0;
+      mfiom_q         <= '0;
       dcache_q        <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
       icache_q        <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
       mcountinhibit_q <= '0;
@@ -2989,6 +2993,7 @@ end
         sscratch_q   <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : {CVA6Cfg.XLEN{1'b0}};
         stval_q      <= {CVA6Cfg.XLEN{1'b0}};
         stval2_q     <= {CVA6Cfg.XLEN{1'b0}};
+        sfiom_q      <= '0;
         satp_q       <= {CVA6Cfg.XLEN{1'b0}};
       end
 
@@ -3005,6 +3010,7 @@ end
         hgatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
         hcounteren_q             <= {CVA6Cfg.XLEN{1'b0}};
         htval_q                  <= {CVA6Cfg.XLEN{1'b0}};
+        hfiom_q                  <= '0;
         htinst_q                 <= {CVA6Cfg.XLEN{1'b0}};
         // virtual supervisor mode registers
         vsstatus_q               <= 64'b0;
@@ -3064,7 +3070,7 @@ end
       mcounteren_q     <= mcounteren_d;
       mscratch_q       <= mscratch_d;
       if (CVA6Cfg.TvalEn) mtval_q <= mtval_d;
-      fiom_q          <= fiom_d;
+      mfiom_q         <= mfiom_d;
       dcache_q        <= dcache_d;
       icache_q        <= icache_d;
       mcountinhibit_q <= mcountinhibit_d;
@@ -3076,6 +3082,7 @@ end
         sepc_q       <= sepc_d;
         scause_q     <= scause_d;
         stvec_q      <= stvec_d;
+        sfiom_q      <= sfiom_d;
         scounteren_q <= scounteren_d;
         sscratch_q   <= sscratch_d;
         if (CVA6Cfg.TvalEn) stval_q <= stval_d;
@@ -3096,6 +3103,7 @@ end
         hgatp_q                  <= hgatp_d;
         hcounteren_q             <= hcounteren_d;
         htval_q                  <= htval_d;
+        hfiom_q                  <= hfiom_d;
         htinst_q                 <= htinst_d;
         // virtual supervisor mode registers
         vsstatus_q               <= vsstatus_d;
@@ -3195,7 +3203,7 @@ end
   assign rvfi_csr_o.mepc_q = mepc_q;
   assign rvfi_csr_o.mcause_q = mcause_q;
   assign rvfi_csr_o.mtval_q = CVA6Cfg.TvalEn ? mtval_q : '0;
-  assign rvfi_csr_o.fiom_q = fiom_q;
+  assign rvfi_csr_o.fiom_q = mfiom_q;
   assign rvfi_csr_o.mcountinhibit_q = mcountinhibit_q;
   assign rvfi_csr_o.cycle_q = cycle_q;
   assign rvfi_csr_o.instret_q = instret_q;
