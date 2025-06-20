@@ -2378,8 +2378,9 @@ end
     endcase
     // if we are violating our privilges do not update the architectural state
     if (privilege_violation) begin
-      csr_we   = 1'b0;
-      csr_read = 1'b0;
+      csr_we     = 1'b0;
+      csr_we_cap = 1'b0;
+      csr_read   = 1'b0;
     end
   end
 
