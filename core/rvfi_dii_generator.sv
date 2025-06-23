@@ -38,9 +38,8 @@ module rvfi_dii_generator
     input  icache_dreq_t dreq_i,
     output icache_drsp_t dreq_o
 );
-    // CVA6 can end up fetching past the end of the test if the frontend backs up.
-    // This parameter sets the maximum amount that can be tolerated.
-    localparam fetch_off_end = 10;
+    // Instruction to inject once the test is done to keep the pipeline flowing
+    localparam [31:0] end_of_test_instr = 32'h13;
     logic [CVA6Cfg.FETCH_ALIGN_BITS:0] fetch_offset_q, fetch_offset_d;
     logic [CVA6Cfg.FETCH_WIDTH*2-1:0] fetch_buff_q, fetch_buff_d;
     logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_q, dii_id_d;
@@ -52,15 +51,13 @@ module rvfi_dii_generator
     logic found_last_id_q, found_last_id_d;
     logic [CVA6Cfg.DIIIDLEN-1:0] test_last_id_q;
 
-    logic [CVA6Cfg.FETCH_WIDTH*2-1:0] instr; // Wider than needed to be shifted in
-    logic [2:0] instr_bytes;
     always_comb begin
+        automatic logic [CVA6Cfg.FETCH_WIDTH*2-1:0] instr = '0; // Wider than needed to be shifted in
+        automatic logic [2:0] instr_bytes = '0;
         automatic logic [CVA6Cfg.DIIIDLEN-1:0] last_id_offset = '0;
         dii_id_d = dii_id_q;
         fetch_offset_d = fetch_offset_q;
         fetch_buff_d = fetch_buff_q;
-        instr = '0;
-        instr_bytes = '0;
         found_last_id_d = 1'b0;
         if (busy && !dreq_i.kill_s2) begin
             // Assume the pipeline consumed the full buffer
@@ -72,7 +69,7 @@ module rvfi_dii_generator
             while (~fetch_offset_d[CVA6Cfg.FETCH_ALIGN_BITS] & (~fetch_offset_d[CVA6Cfg.FETCH_ALIGN_BITS-1:0] != 0)) begin
                 last_id_offset = dii_id_d - test_last_id_q;
                 found_last_id_d = (found_last_id_q && ~last_id_offset[CVA6Cfg.DIIIDLEN-1]) || get_dii_cmd(dii_id_d) == 0;
-                instr = found_last_id_d ? 32'h13 : get_dii_insn(dii_id_d);
+                instr = found_last_id_d ? end_of_test_instr : get_dii_insn(dii_id_d);
                 instr_bytes = instr[1:0] == 2'b11 ? 3'd4 : 3'd2;
                 fetch_buff_d = fetch_buff_d | (instr << ({fetch_offset_d, 3'b0}));
                 fetch_offset_d = fetch_offset_d + instr_bytes;
