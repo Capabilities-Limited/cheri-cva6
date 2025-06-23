@@ -74,6 +74,7 @@ module instr_realign
       unaligned_d = unaligned_q;
       unaligned_address_d = {address_i[CVA6Cfg.VLEN-1:2], 2'b10};
       unaligned_instr_d = data_i[31:16];
+      if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = unaligned_dii_id_q;
 
       valid_o[0] = valid_i;
       instr_o[0] = unaligned_q ? {data_i[15:0], unaligned_instr_q} : data_i[31:0];
@@ -84,11 +85,9 @@ module instr_realign
         valid_o[CVA6Cfg.INSTR_PER_FETCH-1] = 1'b0;
         instr_o[CVA6Cfg.INSTR_PER_FETCH-1] = '0;
         addr_o[CVA6Cfg.INSTR_PER_FETCH-1]  = {address_i[CVA6Cfg.VLEN-1:2], 2'b10};
-        if (CVA6Cfg.RVFI_DII) begin
-          dii_id_o[CVA6Cfg.INSTR_PER_FETCH-1] = dii_id_o[0] + 1;
-          unaligned_dii_id_d = dii_id_o[CVA6Cfg.INSTR_PER_FETCH-1];
-        end
+        if (CVA6Cfg.RVFI_DII) dii_id_o[CVA6Cfg.INSTR_PER_FETCH-1] = dii_id_o[0] + 1;
       end
+
       // this instruction is compressed or the last instruction was unaligned
       if (instr_is_compressed[0] || unaligned_q) begin
         // check if this is instruction is still unaligned e.g.: it is not compressed
@@ -106,6 +105,7 @@ module instr_realign
           unaligned_d = 1'b1;
           unaligned_instr_d = data_i[31:16];
           unaligned_address_d = {address_i[CVA6Cfg.VLEN-1:2], 2'b10};
+          if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[1];
         end
       end  // else -> normal fetch
 
@@ -118,10 +118,11 @@ module instr_realign
           unaligned_d = 1'b1;
           unaligned_address_d = {address_i[CVA6Cfg.VLEN-1:2], 2'b10};
           unaligned_instr_d = data_i[15:0];
-          if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_o[0];
+          if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_i;
           // the instruction isn't compressed but only the lower is ready
         end else begin
           valid_o = {{CVA6Cfg.INSTR_PER_FETCH - 1{1'b0}}, 1'b1};
+          if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = dii_id_i + 1;
         end
       end
     end
@@ -130,6 +131,7 @@ module instr_realign
       unaligned_d         = 1'b0;
       unaligned_address_d = unaligned_address_q;
       unaligned_instr_d   = unaligned_instr_q;
+      if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = unaligned_dii_id_q;
 
       valid_o             = '0;
       instr_o[0]          = '0;
