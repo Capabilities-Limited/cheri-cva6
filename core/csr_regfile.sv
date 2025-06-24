@@ -202,13 +202,13 @@ module csr_regfile
   // internal signal to keep track of access exceptions
   logic read_access_exception, update_access_exception, privilege_violation;
   logic virtual_read_access_exception, virtual_update_access_exception, virtual_privilege_violation;
-  logic cheri_read_access_exception, cheri_update_access_exception, cheri_access_violation;
+  logic cheri_access_violation;
   logic csr_we, csr_read;
-  logic [CVA6Cfg.REGLEN-1:0] csr_wdata, csr_rdata;
-  logic        csr_we_cap;
-  logic        csr_read_cap;
-  logic [CVA6Cfg.REGLEN-1:0] dbg_wdata, dbg_rdata;
-  cva6_cheri_pkg::addrw_t cap_offset;
+  logic [CVA6Cfg.XLEN-1:0] csr_wdata, csr_rdata;
+  logic [CVA6Cfg.REGLEN-1:0] csr_rcap;
+  logic csr_write_cap;
+  logic csr_read_cap;
+  logic csr_rcap_null;
   cva6_cheri_pkg::cap_pcc_t pcc;
   riscv::priv_lvl_t trap_to_priv_lvl;
   logic             trap_to_v;
@@ -355,98 +355,13 @@ module csr_regfile
     assign vsstatus_extended = '0;
   end
 
-  // ----------------
-    // SCRs
-    // ----------------
-
-    // Logic to read and write to cap CSRs:
-    // 1) operation write must set the capability address;
-
-    cva6_cheri_pkg::cap_reg_t wr_cap_csr_result;
-
-if (CVA6Cfg.CheriPresent) begin
-    always_comb begin : csr_write_cap_offset
-        automatic cva6_cheri_pkg::cap_reg_t wr_cap;
-        automatic cva6_cheri_pkg::cap_meta_data_t wr_cap_meta_data;
-        automatic cva6_cheri_pkg::addrw_t wr_cap_addr;
-
-        wr_cap_addr = '0;
-        wr_cap_meta_data = '0;
-        wr_cap = mepc_q;
-        if (csr_we && pcc.hperms.access_sys_regs) begin
-            unique case (conv_csr_addr.address)
-                riscv::CSR_MEPC: begin
-                  wr_cap = mepc_q;
-                  wr_cap_addr  = {csr_wdata[riscv::XLEN-1:1], 1'b0};
-                end
-                riscv::CSR_MTVEC: begin
-                  wr_cap = mtvec_q;
-                  // we are in vector mode, this implementation requires the additional
-                  // alignment constraint of 64 * 4 bytes
-                  if (csr_wdata[0])
-                    wr_cap_addr = {csr_wdata[riscv::XLEN-1:8], 7'b0, csr_wdata[0]};
-                  else
-                    wr_cap_addr = {csr_wdata[riscv::XLEN-1:2], 1'b0, csr_wdata[0]};
-                end
-                riscv::CSR_MSCRATCH: begin
-                  wr_cap = mscratch_q;
-                  wr_cap_addr = csr_wdata;
-                end
-                riscv::CSR_SEPC: begin
-                  wr_cap = sepc_q;
-                  wr_cap_addr  = {csr_wdata[riscv::XLEN-1:1], 1'b0};
-                end
-                riscv::CSR_STVEC: begin
-                  wr_cap = stvec_q;
-                  wr_cap_addr  = {csr_wdata[riscv::XLEN-1:2], 1'b0, csr_wdata[0]};
-                  // we are in vector mode, this implementation requires the additional
-                  // alignment constraint of 64 * 4 bytes
-                  if (csr_wdata[0]) begin
-                    wr_cap_addr = {csr_wdata[riscv::XLEN-1:8], 7'b0, csr_wdata[0]};
-                  end
-                end
-                riscv::CSR_SSCRATCH: begin
-                  wr_cap = sscratch_q;
-                  wr_cap_addr = csr_wdata;
-                end
-                riscv::CSR_VSEPC: begin
-                  wr_cap = vsepc_q;
-                  wr_cap_addr  = {csr_wdata[riscv::XLEN-1:1], 1'b0};
-                end
-                riscv::CSR_VSTVEC: begin
-                  wr_cap = vstvec_q;
-                  wr_cap_addr  = {csr_wdata[riscv::XLEN-1:2], 1'b0, csr_wdata[0]};
-                  // we are in vector mode, this implementation requires the additional
-                  // alignment constraint of 64 * 4 bytes
-                  if (csr_wdata[0]) begin
-                      wr_cap_addr = {csr_wdata[riscv::XLEN-1:8], 7'b0, csr_wdata[0]};
-                  end
-                end
-                riscv::CSR_VSSCRATCH: begin
-                  wr_cap = vsscratch_q;
-                  wr_cap_addr = csr_wdata;
-                end
-            endcase
-        end
-        wr_cap_meta_data = get_cap_reg_meta_data(wr_cap);
-        wr_cap_csr_result = set_cap_reg_address(wr_cap, wr_cap_addr, wr_cap_meta_data);
-        // if not representable set capability to NULL
-        if (!wr_cap_csr_result.tag) begin
-            wr_cap_csr_result = REG_NULL_CAP;
-            wr_cap_csr_result.addr = wr_cap_addr;
-        end
-
-        // if capibility is sealed, clear the tag bit
-        if(wr_cap.otype != UNSEALED_CAP )
-            wr_cap_csr_result.tag = 1'b0;
-    end
-end
   always_comb begin : csr_read_process
     // a read access exception can only occur if we attempt to read a CSR which does not exist
     read_access_exception = 1'b0;
     virtual_read_access_exception = 1'b0;
-    csr_rdata = (CVA6Cfg.CheriPresent) ? REG_NULL_CAP : '0;
-    dbg_rdata = '0;
+    csr_rdata = '0;
+    csr_rcap = '0;
+    csr_rcap_null = 1'b1;
     perf_addr_o = csr_addr.address[11:0];
     index = '0;
 
@@ -489,13 +404,28 @@ end
         if (CVA6Cfg.DebugEn) csr_rdata = dpc_q;
         else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
-        if (CVA6Cfg.DebugEn) dbg_rdata = dscratch0_q;
+        if (CVA6Cfg.DebugEn) begin
+          if (CVA6Cfg.CheriPresent & csr_read_cap) begin
+             csr_rcap = dscratch0_q;
+             csr_rcap_null = 1'b0;
+          end else csr_rdata = dscratch0_q[CVA6Cfg.XLEN-1:0];
+        end
         else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH1:
-        if (CVA6Cfg.DebugEn) dbg_rdata = dscratch1_q;
+        if (CVA6Cfg.DebugEn) begin
+          if (CVA6Cfg.CheriPresent & csr_read_cap) begin
+            csr_rcap = dscratch1_q;
+            csr_rcap_null = 1'b0;
+          end else csr_rdata = dscratch1_q[CVA6Cfg.XLEN-1:0];
+        end
         else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH2:
-        if (CVA6Cfg.DebugEn) dbg_rdata = dscratch2_q;
+        if (CVA6Cfg.DebugEn & CVA6Cfg.CheriPresent) begin
+          if (csr_read_cap) begin
+            csr_rcap = dscratch2_q;
+            csr_rcap_null = 1'b0;
+          end else csr_rdata = dscratch2_q[CVA6Cfg.XLEN-1:0];
+        end
         else read_access_exception = 1'b1;
         // trigger module registers
         riscv::CSR_TSELECT: read_access_exception = 1'b1;  // not implemented
@@ -515,15 +445,24 @@ end
         else read_access_exception = 1'b1;
         riscv::CSR_VSTVEC:
         if (CVA6Cfg.RVH) begin
-          csr_rdata = vstvec_q;
+          if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+            csr_rcap = vstvec_q;
+            csr_rcap_null = 1'b0;
+          end else csr_rdata = vstvec_q[CVA6Cfg.XLEN-1:0];
         end else read_access_exception = 1'b1;
         riscv::CSR_VSSCRATCH:
         if (CVA6Cfg.RVH) begin
-          csr_rdata = vsscratch_q;
+          if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+            csr_rcap = vsscratch_q;
+            csr_rcap_null = 1'b0;
+          end else csr_rdata = vsscratch_q[CVA6Cfg.XLEN-1:0];
         end else read_access_exception = 1'b1;
         riscv::CSR_VSEPC:
         if (CVA6Cfg.RVH) begin
-          csr_rdata = vsepc_q;
+          if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+            csr_rcap = vsepc_q;
+            csr_rcap_null = 1'b0;
+          end else csr_rdata = vsepc_q[CVA6Cfg.XLEN-1:0];
         end
         else read_access_exception = 1'b1;
         riscv::CSR_VSCAUSE:
@@ -556,18 +495,27 @@ end
         else read_access_exception = 1'b1;
         riscv::CSR_STVEC:
         if (CVA6Cfg.RVS) begin
-          csr_rdata = stvec_q;
+          if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+            csr_rcap = stvec_q;
+            csr_rcap_null = 1'b0;
+          end else csr_rdata = stvec_q[CVA6Cfg.XLEN-1:0];
         end else read_access_exception = 1'b1;
         riscv::CSR_SCOUNTEREN:
         if (CVA6Cfg.RVS) csr_rdata = scounteren_q;
         else read_access_exception = 1'b1;
         riscv::CSR_SSCRATCH:
         if (CVA6Cfg.RVS) begin
-          csr_rdata = sscratch_q;
+          if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+            csr_rcap = sscratch_q;
+            csr_rcap_null = 1'b0;
+          end else csr_rdata = sscratch_q[CVA6Cfg.XLEN-1:0];
         end else read_access_exception = 1'b1;
         riscv::CSR_SEPC:
         if (CVA6Cfg.RVS) begin
-          csr_rdata = sepc_q;
+          if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+            csr_rcap = sepc_q;
+            csr_rcap_null = 1'b0;
+          end else csr_rdata = sepc_q[XLEN-1:0];
         end else read_access_exception = 1'b1;
         riscv::CSR_SCAUSE:
         if (CVA6Cfg.RVS) csr_rdata = scause_q;
@@ -656,13 +604,25 @@ end
         if (CVA6Cfg.RVS) csr_rdata = mideleg_q;
         else read_access_exception = 1'b1;
         riscv::CSR_MIE: csr_rdata = mie_q;
-        riscv::CSR_MTVEC:
-        csr_rdata = mtvec_q;
+        riscv::CSR_MTVEC: begin
+        if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+          csr_rcap = mtvec_q;
+          csr_rcap_null = 1'b0;
+        end else csr_rdata = mtvec_q[CVA6Cfg.XLEN-1:0];
+        end
         riscv::CSR_MCOUNTEREN: csr_rdata = mcounteren_q;
-        riscv::CSR_MSCRATCH:
-        csr_rdata = mscratch_q;
-        riscv::CSR_MEPC:
-        csr_rdata = mepc_q;
+        riscv::CSR_MSCRATCH: begin
+        if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+          csr_rcap = mscratch_q;
+          csr_rcap_null = 1'b0;
+        end else csr_rdata = mscratch_q[CVA6Cfg.XLEN-1:0];
+        end
+        riscv::CSR_MEPC: begin
+        if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+          csr_rcap = mepc_q;
+          csr_rcap_null = 1'b0;
+        end else csr_rdata = mepc_q[CVA6Cfg.XLEN-1:0];
+        end
         riscv::CSR_MCAUSE: csr_rdata = mcause_q;
         riscv::CSR_MTVAL: csr_rdata = mtval_q;
         riscv::CSR_MTINST:
@@ -914,10 +874,33 @@ end
           else csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b0};
         end
         riscv::CSR_DDC:
-        if (CVA6Cfg.CheriPresent) csr_rdata = ddc_q;
-        else read_access_exception = 1'b1;
+        if (CVA6Cfg.CheriPresent) begin
+          if (csr_read_cap) begin
+            csr_rcap = ddc_q;
+            csr_rcap_null = 1'b0;
+          end
+        end else read_access_exception = 1'b1;
         default: read_access_exception = 1'b1;
       endcase
+    end
+  end
+
+  // Perform a representability check set address on the legalised CSR write address
+  cap_reg_t csr_update_cap_prelegal;
+  logic [CVA6Cfg.XLEN-1:0] csr_wdata_legalised;
+  cap_reg_t csr_update_cap_postlegal;
+  logic csr_update_allow_sealed;
+  if (CVA6Cfg.CheriPresent) begin
+    always_comb begin
+      automatic logic csr_update_cap_meta = get_cap_reg_meta_data(csr_update_cap_prelegal);
+      csr_update_cap_postlegal = set_cap_reg_address(csr_update_cap_prelegal, csr_wdata_legalised, csr_update_cap_meta);
+      if (csr_update_cap_prelegal.otype != UNSEALED_CAP && !csr_update_allow_sealed) begin
+        csr_update_cap_postlegal.tag = 1'b0;
+      end
+    end
+  end else begin
+    always_comb begin
+      csr_update_cap_postlegal = '0;
     end
   end
 
@@ -931,6 +914,9 @@ end
     automatic hgatp_t hgatp;
     automatic logic [63:0] instret;
 
+    csr_update_cap_prelegal = CVA6Cfg.CheriPresent ? csr_wdata_i : '0;
+    csr_update_allow_sealed = 1'b0;
+    csr_wdata_legalised = csr_wdata_i[CVA6Cfg.XLEN-1:0];
 
     satp            = satp_q;
     hgatp           = hgatp_q;
@@ -1042,78 +1028,21 @@ end
 
     pmpcfg_d                 = pmpcfg_q;
     pmpaddr_d                = pmpaddr_q;
-        // a read access exception can only occur if we attempt to read a CSR which does not exist
-        cheri_update_access_exception = 1'b0;
-        ddc_d       = ddc_q;
 
-        if (mtvec_rst_load_q) begin
-          if (CVA6Cfg.RVFI_DII) begin
-            mtvec_d = cva6_cheri_pkg::REG_ROOT_CAP;
-          end else begin
-            mtvec_d = set_cap_reg_addr(cap_pcc_to_cap_reg(boot_addr_i), boot_addr_i[CVA6Cfg.XLEN-1:0] + 'h40);
-          end
-        end else begin
-            mtvec_d = mtvec_q;
-        end
+    ddc_d                    = ddc_q;
 
-        if(csr_we_cap && (pcc.hperms.access_sys_regs || csr_addr==riscv::CSR_DDC)) begin
-            unique case (csr_addr)
-                    riscv::CSR_DDC: begin
-                        ddc_d = csr_wdata;
-                    end
-                    riscv::CSR_VSTVEC: begin
-                        vstvec_d = csr_wdata;
-                        if (csr_wdata[1])
-                          vstvec_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:2], 2'b00});
-                        /* stvec_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:2], 2'b00}); */
-                        // we are in vector mode, this implementation requires the additional
-                        // alignment constraint of 64 * 4 bytes
-                        if (csr_wdata[0] && !CVA6Cfg.RVFI_DII) vstvec_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]});
-                    end
-                    riscv::CSR_VSSCRATCH: begin
-                        vsscratch_d = csr_wdata;
-                    end
-                    riscv::CSR_VSEPC: begin
-                      // TODO-cheri(ninolomata):fix this it should clear bit 1 only
-                        vsepc_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0});
-                    end
-                    riscv::CSR_STVEC: begin
-                        stvec_d = csr_wdata;
-                        if (csr_wdata[1])
-                          stvec_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:2], 2'b00});
-                        /* stvec_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:2], 2'b00}); */
-                        // we are in vector mode, this implementation requires the additional
-                        // alignment constraint of 64 * 4 bytes
-                        if (csr_wdata[0]) stvec_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]});
-                    end
-                    riscv::CSR_SSCRATCH: begin
-                        sscratch_d = csr_wdata;
-                    end
-                    riscv::CSR_SEPC: begin
-                        sepc_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0});
-                    end
-                    riscv::CSR_MTVEC: begin
-                        mtvec_d = csr_wdata;
-                        if (csr_wdata[1])
-                          mtvec_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:2], 2'b00});
-                        // we are in vector mode, this implementation requires the additional
-                        // alignment constraint of 64 * 4 bytes
-                        if (csr_wdata[0]) mtvec_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]});
-                    end
-                    riscv::CSR_MSCRATCH: begin
-                        mscratch_d = csr_wdata;
-                    end
-                    riscv::CSR_MEPC: begin
-                      mepc_d = cva6_cheri_pkg::set_cap_reg_addr(csr_wdata, {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0});
-                    end
-                    default: begin
-                        cheri_update_access_exception = 1'b1;
-                    end
-            endcase
-        end
+    if (mtvec_rst_load_q) begin
+      if (CVA6Cfg.RVFI_DII) begin
+        mtvec_d = cva6_cheri_pkg::REG_ROOT_CAP;
+      end else begin
+        mtvec_d = set_cap_reg_addr(cap_pcc_to_cap_reg(boot_addr_i), boot_addr_i[CVA6Cfg.XLEN-1:0] + 'h40);
+      end
+    end else begin
+        mtvec_d = mtvec_q;
+    end
 
     // check for correct access rights and that we are writing
-    if (csr_we && pcc.hperms.access_sys_regs) begin
+    if (csr_we) begin
       unique case (conv_csr_addr.address)
         // Floating-Point
         riscv::CSR_FFLAGS: begin
@@ -1217,10 +1146,16 @@ end
         end
         riscv::CSR_VSTVEC: begin
           if (CVA6Cfg.RVH) begin
+            csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
+            // we are in vector mode, this implementation requires the additional
+            // alignment constraint of 64 * 4 bytes
+            if (csr_wdata[0]) csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]};
             if (CVA6Cfg.CheriPresent) begin
-              vstvec_d =  wr_cap_csr_result;
+              // TODO We need to clear the tag if the max vector is unrepresentable
+              if (!csr_write_cap) csr_update_cap_prelegal = vstvec_q;
+              vstvec_d = csr_update_cap_postlegal;
             end else begin
-              vstvec_d = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
+              vstvec_d = csr_wdata_legalised;
             end
           end else begin
             update_access_exception = 1'b1;
@@ -1228,18 +1163,24 @@ end
         end
         riscv::CSR_VSSCRATCH:
         if (CVA6Cfg.RVH) begin
+          csr_wdata_legalised = csr_wdata;
           if (CVA6Cfg.CheriPresent) begin
-            vsscratch_d = wr_cap_csr_result;
+            if (!csr_write_cap) csr_update_cap_prelegal = vsscratch_q;
+            csr_update_allow_sealed = 1'b1;
+            vsscratch_d = csr_update_cap_postlegal;
           end else begin
-            vsscratch_d = csr_wdata;
+            vsscratch_d = csr_wdata_legalised;
           end
         end else update_access_exception = 1'b1;
         riscv::CSR_VSEPC:
         if (CVA6Cfg.RVS) begin
+          csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
           if (CVA6Cfg.CheriPresent) begin
-            vsepc_d =  wr_cap_csr_result;
+            if (!csr_write_cap) csr_update_cap_prelegal = vsepc_q;
+            csr_update_allow_sealed = csr_wdata[0] == 1'b0;
+            vsepc_d = csr_update_cap_postlegal;
           end else begin
-            vsepc_d = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
+            vsepc_d = csr_wdata_legalised;
           end
         end else update_access_exception = 1'b1;
         riscv::CSR_VSCAUSE:
@@ -1318,10 +1259,16 @@ end
 
         riscv::CSR_STVEC:
         if (CVA6Cfg.RVS) begin
+          csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
+          // we are in vector mode, this implementation requires the additional
+          // alignment constraint of 64 * 4 bytes
+          if (csr_wdata[0]) csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]};
           if (CVA6Cfg.CheriPresent) begin
-            stvec_d =  wr_cap_csr_result;
+            // TODO We need to clear the tag if the max vector is unrepresentable
+            if (!csr_write_cap) csr_update_cap_prelegal = stvec_q;
+            stvec_d = csr_update_cap_postlegal;
           end else begin
-            stvec_d = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
+            stvec_d = csr_wdata_legalised;
           end
         end
         else update_access_exception = 1'b1;
@@ -1330,18 +1277,24 @@ end
         else update_access_exception = 1'b1;
         riscv::CSR_SSCRATCH:
         if (CVA6Cfg.RVS) begin
+          csr_wdata_legalised = csr_wdata;
           if (CVA6Cfg.CheriPresent) begin
-            sscratch_d = wr_cap_csr_result;
+            if (!csr_write_cap) csr_update_cap_prelegal = sscratch_q;
+            csr_update_allow_sealed = 1'b1;
+            sscratch_d = csr_update_cap_postlegal;
           end else begin
-            sscratch_d = csr_wdata;
+            sscratch_d = csr_wdata_legalised;
           end
         end else update_access_exception = 1'b1;
         riscv::CSR_SEPC:
         if (CVA6Cfg.RVS) begin
+          csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
           if (CVA6Cfg.CheriPresent) begin
-            sepc_d =  wr_cap_csr_result;
+            if (!csr_write_cap) csr_update_cap_prelegal = sepc_q;
+            csr_update_allow_sealed = csr_wdata[0] == 1'b0;
+            sepc_d = csr_update_cap_postlegal;
           end else begin
-            sepc_d = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
+            sepc_d = csr_wdata_legalised;
           end
         end else update_access_exception = 1'b1;
         riscv::CSR_SCAUSE:
@@ -1593,13 +1546,16 @@ end
         end
 
         riscv::CSR_MTVEC: begin
+          csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
+          // we are in vector mode, this implementation requires the additional
+          // alignment constraint of 64 * 4 bytes
+          if (csr_wdata[0]) csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]};
           if (CVA6Cfg.CheriPresent) begin
-            mtvec_d =  wr_cap_csr_result;
+            // TODO We need to clear the tag if the max vector is unrepresentable
+            if (!csr_write_cap) csr_update_cap_prelegal = mtvec_q;
+            mtvec_d = csr_update_cap_postlegal;
           end else begin
-            mtvec_d = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
-            // we are in vector mode, this implementation requires the additional
-            // alignment constraint of 64 * 4 bytes
-            if (csr_wdata[0]) mtvec_d = {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]};
+            mtvec_d = csr_wdata_legalised;
           end
         end
         riscv::CSR_MCOUNTEREN: begin
@@ -1607,17 +1563,24 @@ end
           else update_access_exception = 1'b1;
         end
 
-        riscv::CSR_MSCRATCH:
-        if (CVA6Cfg.CheriPresent) begin
-          mscratch_d = wr_cap_csr_result;
-        end else begin
-          mscratch_d = csr_wdata;
+        riscv::CSR_MSCRATCH: begin
+          csr_wdata_legalised = csr_wdata;
+          if (CVA6Cfg.CheriPresent) begin
+            if (!csr_write_cap) csr_update_cap_prelegal = mscratch_q;
+            csr_update_allow_sealed = 1'b1;
+            mscratch_d = csr_update_cap_postlegal;
+          end else begin
+            mscratch_d = csr_wdata_legalised;
+          end
         end
         riscv::CSR_MEPC: begin
+          csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
           if (CVA6Cfg.CheriPresent) begin
-            mepc_d = wr_cap_csr_result;
+            if (!csr_write_cap) csr_update_cap_prelegal = mepc_q;
+            csr_update_allow_sealed = csr_wdata[0] == 1'b0;
+            mepc_d = csr_update_cap_postlegal;
           end else begin
-            mepc_d = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
+            mepc_d = csr_wdata_legalised;
           end
         end
         riscv::CSR_MCAUSE: mcause_d = csr_wdata;
@@ -1824,6 +1787,16 @@ end
           // check if the entry or the entry above is locked
           if (!pmpcfg_q[index].locked && !(pmpcfg_q[index+1].locked && pmpcfg_q[index+1].addr_mode == riscv::TOR)) begin
             pmpaddr_d[index] = csr_wdata[CVA6Cfg.PLEN-3:0];
+          end
+        end
+        riscv::CSR_DDC: begin
+          if (CVA6Cfg.CheriPresent) begin
+            // Unlike extended CSRs, DDC is written as a full cap on CSRRW independent of mode
+            if (csr_op_i != CSR_WRITE) csr_update_cap_prelegal = ddc_q;
+            csr_update_allow_sealed = 1'b1;
+            ddc_d = csr_update_cap_postlegal;
+          end else begin
+            update_access_exception = 1'b1;
           end
         end
         default: update_access_exception = 1'b1;
@@ -2288,9 +2261,9 @@ end
   // CSR OP Select Logic
   // ---------------------------
   always_comb begin : csr_op_logic
-    csr_wdata = {0,csr_wdata_i[CVA6Cfg.XLEN-1:0]};
+    csr_wdata = csr_wdata_i[CVA6Cfg.XLEN-1:0];
     csr_we    = 1'b1;
-    csr_we_cap = 1'b0;
+    csr_write_cap = (CVA6Cfg.CheriPresent && !commit_instr_i[0].int_mode && csr_op_i == CSR_WRITE) ? 1'b1 : 1'b0;;
     csr_read  = 1'b1;
     csr_read_cap = (CVA6Cfg.CheriPresent && !commit_instr_i[0].int_mode) ? 1'b1 : 1'b0;
     mret      = 1'b0;
@@ -2299,11 +2272,6 @@ end
 
     unique case (csr_op_i)
       CSR_WRITE: csr_wdata = csr_wdata_i[CVA6Cfg.XLEN-1:0];
-      CSR_WRITE_CAP: begin
-        csr_wdata = csr_wdata_i;
-        csr_we_cap = 1'b1;
-        csr_we = 1'b0;
-      end
       CSR_SET:   csr_wdata = csr_wdata_i[CVA6Cfg.XLEN-1:0] | csr_rdata;
       CSR_CLEAR: csr_wdata = (~csr_wdata_i[CVA6Cfg.XLEN-1:0]) & csr_rdata;
       CSR_READ:  csr_we = 1'b0;
@@ -2331,34 +2299,11 @@ end
       end
     endcase
     // if we are violating our privilges do not update the architectural state
-    if (privilege_violation) begin
+    if (privilege_violation || (CVA6Cfg.CheriPresent && cheri_access_violation)) begin
       csr_we     = 1'b0;
-      csr_we_cap = 1'b0;
       csr_read   = 1'b0;
     end
   end
-
-  /* ---------------------------
-    // SSR OP Select Logic
-    // ---------------------------
-    always_comb begin : scr_op_logic
-        csr_we_cap    = 1'b0;
-        csr_read_cap  = 1'b1;
-
-        unique case (csr_op_i)
-            SCR_READ: csr_we_cap         = 1'b0;
-            SCR_READWRITE: csr_we_cap    = 1'b1;
-            default: begin
-                csr_we_cap   = 1'b0;
-                csr_read_cap = 1'b0;
-            end
-        endcase
-        // if we are violating our privilges or system registers access is no permited (PCC.ACCESS_SYS_REGS == 0)
-        if (privilege_violation || cheri_access_violation) begin
-            csr_we_cap   = 1'b0;
-            csr_read_cap = 1'b0;
-        end
-    end*/
 
   assign irq_ctrl_o.mie = mie_q;
   assign irq_ctrl_o.mip = mip_q;
@@ -2388,7 +2333,7 @@ end
       virtual_privilege_violation = 1'b0;
       // if we are reading or writing, check for the correct privilege level this has
       // precedence over interrupts
-      if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ, CSR_WRITE_CAP}) begin
+      if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ}) begin
         if (access_priv < csr_addr.csr_decode.priv_lvl) begin
           if (v_q && csr_addr.csr_decode.priv_lvl == riscv::PRIV_LVL_HS)
             virtual_privilege_violation = 1'b1;
@@ -2423,7 +2368,7 @@ end
       privilege_violation = 1'b0;
       // if we are reading or writing, check for the correct privilege level this has
       // precedence over interrupts
-      if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ, CSR_WRITE_CAP}) begin
+      if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ}) begin
         if ((riscv::priv_lvl_t'(priv_lvl_o & csr_addr.csr_decode.priv_lvl) != csr_addr.csr_decode.priv_lvl)) begin
           privilege_violation = 1'b1;
         end
@@ -2448,26 +2393,25 @@ end
   if (CVA6Cfg.CheriPresent) begin
   // CHERI: check for system registers privilege violation
     always_comb begin : cheri_sys_regs_check
+      cheri_access_violation = 1'b0;
 
-        cheri_access_violation = 1'b0;
-
-        if (csr_op_i inside {CSR_WRITE, CSR_WRITE_CAP, CSR_SET, CSR_CLEAR, CSR_READ}) begin
-            if(!pcc.hperms.access_sys_regs) begin
-                cheri_access_violation = 1'b1;
-            end
-            // check for system registers access violation using a whitelist approach
-            // check if we are acessing a HPM registers
-            if (csr_addr_i inside {[riscv::CSR_CYCLE:riscv::CSR_HPM_COUNTER_31]}) begin
-                cheri_access_violation = 1'b0;
-            end
-            // check if we are acessing floating-point registers
-            if (csr_addr_i inside {[riscv::CSR_FFLAGS:riscv::CSR_FCSR]}) begin
-                cheri_access_violation = 1'b0;
-            end
-            if(csr_addr_i inside {riscv::CSR_DDC}) begin
-                cheri_access_violation = 1'b0;
-            end
+      if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ}) begin
+        if(!pcc.hperms.access_sys_regs) begin
+          cheri_access_violation = 1'b1;
         end
+        // check for system registers access violation using a whitelist approach
+        // check if we are acessing a HPM registers
+        if (csr_addr_i inside {[riscv::CSR_CYCLE:riscv::CSR_HPM_COUNTER_31]}) begin
+          cheri_access_violation = 1'b0;
+        end
+        // check if we are acessing floating-point registers
+        if (csr_addr_i inside {[riscv::CSR_FFLAGS:riscv::CSR_FCSR]}) begin
+          cheri_access_violation = 1'b0;
+        end
+        if(csr_addr_i inside {riscv::CSR_DDC}) begin
+          cheri_access_violation = 1'b0;
+        end
+      end
     end
   end
 
@@ -2501,21 +2445,17 @@ end
       csr_exception_o.cause = riscv::VIRTUAL_INSTRUCTION;
       csr_exception_o.valid = 1'b1;
     end
-    if (cheri_update_access_exception || cheri_read_access_exception ) begin
-            csr_exception_o.cause = riscv::ILLEGAL_INSTR;
-            csr_exception_o.valid = 1'b1;
-        end
 
-        if (cheri_access_violation) begin
-            // Violation of access system registers when accessing CSR sets tval msb bit to 1
-            // and encodes the CSR registers on the LSB [4:0]
-            cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
-            cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-            csr_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-            csr_exception_o.tval = '0;
-            csr_exception_o.tval2 = {'0, cheri_tval2};
-            csr_exception_o.valid = 1'b1;
-        end
+    if (cheri_access_violation) begin
+      // Violation of access system registers when accessing CSR sets tval msb bit to 1
+      // and encodes the CSR registers on the LSB [4:0]
+      cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
+      cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+      csr_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+      csr_exception_o.tval = '0;
+      csr_exception_o.tval2 = {'0, cheri_tval2};
+      csr_exception_o.valid = 1'b1;
+    end
   end
 
   // -------------------
@@ -2539,8 +2479,6 @@ end
   always_comb begin : priv_output
     automatic logic mvecmode, svecmode, vsvecmode;
     automatic cap_reg_t epc;
-
-    epc = cva6_cheri_pkg::REG_NULL_CAP;
 
     mvecmode = mtvec_q[0];
     svecmode = stvec_q[0];
@@ -2610,27 +2548,22 @@ end
     // When the SEIP bit is read with a CSRRW, CSRRS, or CSRRC instruction, the value
     // returned in the rd destination register contains the logical-OR of the software-writable
     // bit and the interrupt signal from the interrupt controller.
-    csr_rdata_o = (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : '0;
-    if (CVA6Cfg.CheriPresent && csr_addr inside {riscv::CSR_DSCRATCH0,riscv::CSR_DSCRATCH1,riscv::CSR_DSCRATCH2}) begin
-        csr_rdata_o = dbg_rdata;
-    end else if (CVA6Cfg.CheriPresent && csr_read_cap) begin
-        csr_rdata_o = csr_rdata;
-    end else begin
-        csr_rdata_o[CVA6Cfg.XLEN-1:0] = csr_rdata[CVA6Cfg.XLEN-1:0];
-    end
-
     unique case (conv_csr_addr.address)
       riscv::CSR_MIP:
-      csr_rdata_o[CVA6Cfg.XLEN-1:0] = csr_rdata | ({{CVA6Cfg.XLEN - 1{1'b0}}, irq_i[1]} << riscv::IRQ_S_EXT);
+      csr_rdata = csr_rdata | ({{CVA6Cfg.XLEN - 1{1'b0}}, irq_i[1]} << riscv::IRQ_S_EXT);
       // in supervisor mode we also need to check whether we delegated this bit
       riscv::CSR_SIP: begin
         if (CVA6Cfg.RVS) begin
-          csr_rdata_o[CVA6Cfg.XLEN-1:0] = csr_rdata
-                              | ({{CVA6Cfg.XLEN-1{1'b0}}, (irq_i[1] & mideleg_q[riscv::IRQ_S_EXT])} << riscv::IRQ_S_EXT);
+          csr_rdata = csr_rdata | ({{CVA6Cfg.XLEN-1{1'b0}}, (irq_i[1] & mideleg_q[riscv::IRQ_S_EXT])} << riscv::IRQ_S_EXT);
         end
       end
       default: ;
     endcase
+
+    if (CVA6Cfg.CheriPresent) begin
+      if (csr_rcap_null) csr_rdata_o = set_cap_reg_addr(REG_NULL_CAP, csr_rdata);
+      else               csr_rdata_o = csr_rcap;
+    end else csr_rdata_o = csr_rdata;
   end
 
   // in debug mode we execute with privilege level M
@@ -2796,7 +2729,7 @@ end
         dpc_cap_q    <= dpc_cap_d;
         dscratch0_q  <= dscratch0_d;
         dscratch1_q  <= dscratch1_d;
-        dscratch2_q  <= dscratch1_d;
+        dscratch2_q  <= dscratch2_d;
       end
       // machine mode registers
       mstatus_q        <= mstatus_d;
