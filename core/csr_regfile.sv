@@ -51,6 +51,8 @@ module csr_regfile
     input exception_t ex_i,
     // Operation to perform on the CSR file - COMMIT_STAGE
     input fu_op csr_op_i,
+    // Whether the current CSR operation is immediate-based - COMMIT_STAGE
+    input logic csr_op_is_imm_i,
     // Address of the register to read/write - EX_STAGE
     input logic [11:0] csr_addr_i,
     // Write data in - COMMIT_STAGE
@@ -2071,7 +2073,7 @@ module csr_regfile
         riscv::CSR_DDC: begin
           if (CVA6Cfg.CheriPresent) begin
             // Unlike extended CSRs, DDC is written as a full cap on CSRRW independent of mode
-            if (csr_op_i != CSR_WRITE) csr_update_cap_prelegal = ddc_q;
+            if (csr_op_i != CSR_WRITE || csr_op_is_imm_i) csr_update_cap_prelegal = ddc_q;
             csr_update_allow_sealed = 1'b1;
             ddc_d = csr_update_cap_postlegal;
           end else begin
@@ -2552,7 +2554,7 @@ module csr_regfile
   always_comb begin : csr_op_logic
     csr_wdata = csr_wdata_i[CVA6Cfg.XLEN-1:0];
     csr_we    = 1'b1;
-    csr_write_cap = (CVA6Cfg.CheriPresent && !commit_instr_i.int_mode && csr_op_i == CSR_WRITE) ? 1'b1 : 1'b0;;
+    csr_write_cap = (CVA6Cfg.CheriPresent && !commit_instr_i.int_mode && csr_op_i == CSR_WRITE && !csr_op_is_imm_i) ? 1'b1 : 1'b0;;
     csr_read  = 1'b1;
     csr_read_cap = (CVA6Cfg.CheriPresent && !commit_instr_i.int_mode) ? 1'b1 : 1'b0;
     mret      = 1'b0;

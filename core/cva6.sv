@@ -599,6 +599,7 @@ module cva6
   logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_csr_ex;
   logic [11:0] csr_addr_ex_csr;
   fu_op csr_op_commit_csr;
+  logic csr_op_is_imm_commit_csr;
   logic [CVA6Cfg.REGLEN-1:0]     csr_wdata_commit_csr;
   logic [CVA6Cfg.REGLEN-1:0]     csr_rdata_csr_commit;
   exception_t csr_exception_csr_commit;
@@ -1176,6 +1177,7 @@ module cva6
       .pc_o                (pc_commit),
       .dii_id_o            (dii_id_commit),
       .csr_op_o            (csr_op_commit_csr),
+      .csr_op_is_imm_o     (csr_op_is_imm_commit_csr),
       .csr_wdata_o         (csr_wdata_commit_csr),
       .csr_rdata_i         (csr_rdata_csr_commit),
       .csr_write_fflags_o  (csr_write_fflags_commit_cs),
@@ -1220,6 +1222,7 @@ module cva6
       .hart_id_i               (hart_id_i[CVA6Cfg.XLEN-1:0]),
       .ex_i                    (ex_commit),
       .csr_op_i                (csr_op_commit_csr),
+      .csr_op_is_imm_i         (csr_op_is_imm_commit_csr),
       .csr_addr_i              (csr_addr_ex_csr),
       .csr_wdata_i             (csr_wdata_commit_csr),
       .csr_rdata_o             (csr_rdata_csr_commit),
