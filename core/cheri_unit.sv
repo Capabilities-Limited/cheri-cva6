@@ -232,6 +232,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CSealEntry
             ariane_pkg::SENTRY: begin
                 clu_result = operand_a;
+                check_operand_a_violations = (1 << SEAL_CHECK_IDX);
                 clu_result.otype = SENTRY_CAP;
             end
             // CSetAddr
