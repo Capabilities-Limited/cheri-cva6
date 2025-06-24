@@ -319,8 +319,6 @@ package ariane_pkg;
     CSR_SET,
     CSR_CLEAR,
     // CLU functions
-    //Special Capabilty Register Access Instructions
-    CSR_WRITE_CAP,
     // 40 Capability-Inspection Instructions
     GCPERM, GCTYPE, GCBASE, GCLEN, GCTAG, GCMODE, GCHI,
     // 47 Capability-Modification Instructions
