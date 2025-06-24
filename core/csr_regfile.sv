@@ -2880,25 +2880,26 @@ module csr_regfile
   // Output Assignments
   // -------------------
   always_comb begin
+    automatic logic[CVA6Cfg.XLEN-1:0] csr_rdata_tmp = csr_rdata;
     // When the SEIP bit is read with a CSRRW, CSRRS, or CSRRC instruction, the value
     // returned in the rd destination register contains the logical-OR of the software-writable
     // bit and the interrupt signal from the interrupt controller.
     unique case (conv_csr_addr.address)
       riscv::CSR_MIP:
-      csr_rdata = csr_rdata | ({{CVA6Cfg.XLEN - 1{1'b0}}, CVA6Cfg.RVS && irq_i[1]} << riscv::IRQ_S_EXT);
+      csr_rdata_tmp = csr_rdata_tmp | ({{CVA6Cfg.XLEN - 1{1'b0}}, CVA6Cfg.RVS && irq_i[1]} << riscv::IRQ_S_EXT);
       // in supervisor mode we also need to check whether we delegated this bit
       riscv::CSR_SIP: begin
         if (CVA6Cfg.RVS) begin
-          csr_rdata = csr_rdata | ({{CVA6Cfg.XLEN-1{1'b0}}, (irq_i[1] & mideleg_q[riscv::IRQ_S_EXT])} << riscv::IRQ_S_EXT);
+          csr_rdata_tmp = csr_rdata_tmp | ({{CVA6Cfg.XLEN-1{1'b0}}, (irq_i[1] & mideleg_q[riscv::IRQ_S_EXT])} << riscv::IRQ_S_EXT);
         end
       end
       default: ;
     endcase
 
     if (CVA6Cfg.CheriPresent) begin
-      if (csr_rcap_null) csr_rdata_o = set_cap_reg_addr(REG_NULL_CAP, csr_rdata);
+      if (csr_rcap_null) csr_rdata_o = set_cap_reg_addr(REG_NULL_CAP, csr_rdata_tmp);
       else               csr_rdata_o = csr_rcap;
-    end else csr_rdata_o = csr_rdata;
+    end else csr_rdata_o = csr_rdata_tmp;
   end
 
   // in debug mode we execute with privilege level M
