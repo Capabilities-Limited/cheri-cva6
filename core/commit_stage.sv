@@ -62,6 +62,8 @@ module commit_stage
     output logic [CVA6Cfg.DIIIDLEN-1 : 0] dii_id_o,
     // Decoded CSR operation - CSR_REGFILE
     output fu_op csr_op_o,
+    // Whether the CSR operation is immediate-based - CSR_REGFILE
+    output logic csr_op_is_imm_o,
     // Data to write to CSR - CSR_REGFILE
     output logic [CVA6Cfg.REGLEN-1:0] csr_wdata_o,
     // Data to read from CSR - CSR_REGFILE
@@ -222,6 +224,7 @@ module commit_stage
           // write the CSR file
           csr_op_o    = commit_instr_i[0].op;
           csr_wdata_o = commit_instr_i[0].result;
+          csr_op_is_imm_o = commit_instr_i[0].use_zimm;
           if (!commit_drop_i[0]) begin
             if (!csr_exception_i.valid) begin
               commit_csr_o = 1'b1;
