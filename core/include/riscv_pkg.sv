@@ -259,7 +259,6 @@ package riscv;
   localparam OpcodeSystem = 7'b11_100_11;
   localparam OpcodeRsrvd3 = 7'b11_101_11;
   localparam OpcodeCustom3 = 7'b11_110_11;
-  localparam OpcodeCheri     = 7'b10_110_11;
 
   // RV64C/RV32C listings:
   // Quadrant 0

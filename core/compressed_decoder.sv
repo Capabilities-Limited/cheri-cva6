@@ -65,10 +65,10 @@ module compressed_decoder #(
                   instr_i[6],
                   2'b00,
                   5'h02,
-                  3'b001,
+                  3'b010,
                   2'b01,
                   instr_i[4:2],
-                  riscv::OpcodeCheri
+                  riscv::OpcodeOpImm32
                 };
             end else begin
               // c.addi4spn -> addi rd', x2, imm
@@ -458,9 +458,9 @@ module compressed_decoder #(
                   instr_i[6],
                   4'b0,
                   5'h02,
-                  3'b001,
+                  3'b010,
                   5'h02,
-                  riscv::OpcodeCheri
+                  riscv::OpcodeOpImm32
                 };
               end else begin
                // c.addi16sp -> addi x2, x2, nzimm
