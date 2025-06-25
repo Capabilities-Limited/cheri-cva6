@@ -478,7 +478,7 @@ package cva6_cheri_pkg;
 
     function automatic cap_reg_t set_cap_reg_flags(cap_reg_t cap, cap_flags_t flags);
         cap_reg_t ret = cap;
-        ret.flags = flags;
+        ret.flags = (legalize_arch_perms(cap.hperms).permit_execute) ? flags : 1'b0;
         return ret;
     endfunction
 

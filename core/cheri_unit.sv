@@ -95,9 +95,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     cap_reg_t tmp_cap, req_cap;
     addrwe_t tmp_length;
     always_comb begin
-        //cap_reg_t tmp_cap;
-        //automatic capw_t cap_mem;
-
         // exceptions signals reset
         check_operand_a_violations = {CAP_CHECK_NUM{1'b0}};
         check_operand_b_violations = {CAP_CHECK_NUM{1'b0}};
@@ -272,9 +269,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CSetFlags
             ariane_pkg::SCMODE: begin
                 check_operand_a_violations = (1 << SEAL_CHECK_IDX);
-                tmp_cap = operand_a;
-                tmp_cap.flags.int_mode = operand_b.addr[0];
-                clu_result = tmp_cap;
+                clu_result = set_cap_reg_flags(operand_a, operand_b.addr[0]);
             end
             // CSetHigh
             ariane_pkg::SCHI: begin
