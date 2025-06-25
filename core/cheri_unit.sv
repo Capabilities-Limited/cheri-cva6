@@ -40,6 +40,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     addrw_t operand_a_address;
     logic operand_a_is_sealed;
     cap_meta_data_t op_a_meta_info;
+    logic operand_a_hperms_malformed;
+    logic operand_b_hperms_malformed;
 
     // operand b decode fields
     cap_reg_t operand_b;
@@ -171,7 +173,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 if(!are_cap_reg_bounds_valid(operand_a, op_a_meta_info) | !are_cap_reg_bounds_valid(operand_b, op_b_meta_info)) begin
                     tmp_cap.tag = 1'b0;
                 end
-                if(operand_a.hperms != legalize_arch_perms(operand_a.hperms) | operand_b.hperms != legalize_arch_perms(operand_b.hperms)) begin
+                if(operand_a_hperms_malformed | operand_b_hperms_malformed) begin
                     tmp_cap.tag = 1'b0;
                 end
                 if(operand_a.res_lo != 0 | operand_a.res_hi != 0 | operand_b.res_lo != 0 | operand_b.res_hi != 0) begin
@@ -269,7 +271,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CSetFlags
             ariane_pkg::SCMODE: begin
                 check_operand_a_violations = (1 << SEAL_CHECK_IDX);
-                clu_result = set_cap_reg_flags(operand_a, operand_b.addr[0]);
+                clu_result = (operand_a_hperms_malformed) ? operand_a : set_cap_reg_flags(operand_a, operand_b.addr[0]);
             end
             // CSetHigh
             ariane_pkg::SCHI: begin
@@ -298,6 +300,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         operand_a_top    = get_cap_reg_top(operand_a, op_a_meta_info);
         operand_a_length = get_cap_reg_length(operand_a, op_a_meta_info);
         operand_a_is_sealed = (operand_a.otype != UNSEALED_CAP);
+        operand_a_hperms_malformed = (operand_a.hperms != legalize_arch_perms(operand_a.hperms));
         // Decode capability operand b fields
         operand_b_address = operand_b.addr;
         op_b_meta_info = get_cap_reg_meta_data(operand_b);
@@ -306,6 +309,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         //operand_b_length = get_cap_reg_length(operand_b, op_b_meta_info};
         //operand_b_offset = get_cap_reg_offset(operand_b, op_b_meta_info);
         operand_b_is_sealed = (operand_b.otype != UNSEALED_CAP);
+        operand_b_hperms_malformed = (operand_b.hperms != legalize_arch_perms(operand_b.hperms));
         // Decode pc metadata fields
         op_pc_meta_info = get_cap_reg_meta_data(pcc);
     end
