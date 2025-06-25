@@ -296,10 +296,10 @@ package ariane_pkg;
     JAL,
     BRANCH,
     AUIPCC,
-    // set lower than operations
+    // 23 set lower than operations
     SLTS,
     SLTU,
-    // CSR functions
+    // 25 CSR functions
     MRET,
     SRET,
     DRET,
@@ -315,19 +315,19 @@ package ariane_pkg;
     CSR_SET,
     CSR_CLEAR,
     // CLU functions
-    // 40 Capability-Inspection Instructions
+    // 39 Capability-Inspection Instructions
     GCPERM, GCTYPE, GCBASE, GCLEN, GCTAG, GCMODE, GCHI,
-    // 47 Capability-Modification Instructions
+    // 46 Capability-Modification Instructions
     ACPERM, SCMODE, SCHI, SCADDR, CADD, CADDI, SCBNDSR,
-    // 54
+    // 53
     SCBNDS, SCBNDSI, CBLD, SENTRY,
-    // 58 Pointer-Arithmetic Instructions
+    // 57 Pointer-Arithmetic Instructions
     CMV,
-    // 59 Pointer-Comparison Instructions
+    // 58 Pointer-Comparison Instructions
     SCSS, SCEQ,
-    // 61 Control-Flow Instructions
+    // 60 Control-Flow Instructions
     MODESW_CAP, MODESW_INT, CJAL, CJALR,
-    // 65 Adjusting to Compressed Capability Precision Instructions
+    // 64 Adjusting to Compressed Capability Precision Instructions
     CRAM,
     // LSU functions
     LC,
