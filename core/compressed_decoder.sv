@@ -907,7 +907,11 @@ module compressed_decoder #(
           riscv::OpcodeC2JalrMvAdd: begin
             if (instr_i[12] == 1'b0) begin
               // c.mv -> add rd/rs1, x0, rs2
-              instr_o = {7'b0, instr_i[6:2], 5'b0, 3'b0, instr_i[11:7], riscv::OpcodeOp};
+              if (CVA6Cfg.CheriPresent && !int_mode_i) begin
+                instr_o = {7'b0000110, 5'b0, instr_i[6:2], 3'b0, instr_i[11:7], riscv::OpcodeOp};
+              end else begin
+                instr_o = {7'b0, instr_i[6:2], 5'b0, 3'b0, instr_i[11:7], riscv::OpcodeOp};
+              end
 
               if (instr_i[6:2] == 5'b0) begin
                 // c.jr -> jalr x0, rd/rs1, 0
