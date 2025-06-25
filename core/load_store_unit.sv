@@ -261,6 +261,7 @@ module load_store_unit
   cva6_cheri_pkg::addrw_t check_cap_offset;
   cva6_cheri_pkg::addrw_t check_cap_address;
   logic check_cap_is_sealed;
+  logic check_cap_bounds_root;
 
 
   logic [1:0] sum, mxr;
@@ -902,6 +903,7 @@ module load_store_unit
       check_cap_length      = cva6_cheri_pkg::get_cap_reg_length(check_cap,check_cap_meta_data);
       check_cap_offset      = cva6_cheri_pkg::get_cap_reg_offset(check_cap,check_cap_meta_data);
       check_cap_is_sealed   = (check_cap.otype != cva6_cheri_pkg::UNSEALED_CAP);
+      check_cap_bounds_root = cva6_cheri_pkg::are_cap_reg_bounds_root(check_cap,check_cap_meta_data);
     end
     // ------------------------
     // CHERI Exception
@@ -947,7 +949,7 @@ module load_store_unit
         endcase
 
         if (lsu_ctrl.valid) begin
-            if((check_cap_address < check_cap_base) || ((lsu_ctrl.vaddr +  size) > check_cap_top)) begin
+            if(((check_cap_address < check_cap_base) || ((lsu_ctrl.vaddr +  size) > check_cap_top)) && !check_cap_bounds_root) begin
                 cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
                 cheri_exception.valid = 1'b1;
             end
