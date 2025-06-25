@@ -472,6 +472,10 @@ package cva6_cheri_pkg;
         return tb.bounds_valid;
     endfunction
 
+    function automatic bool_t are_cap_reg_bounds_root(cap_reg_t cap, cap_meta_data_t cap_meta_data);
+        return (are_cap_reg_bounds_valid(cap, cap_meta_data) && cap.bounds.exp == CAP_RESET_EXP);
+    endfunction
+
     function automatic cap_flags_t get_cap_reg_flags(cap_reg_t cap);
         return (legalize_arch_perms(cap.hperms).permit_execute) ? cap.flags : 1'b0;
     endfunction
