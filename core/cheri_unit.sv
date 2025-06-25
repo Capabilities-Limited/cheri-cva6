@@ -189,7 +189,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CGetFlags
             ariane_pkg::GCMODE: begin
-                clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},operand_a.flags});
+                clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN-1{1'b0}},get_cap_reg_flags(operand_a)});
             end
             // CGetLength
             ariane_pkg::GCLEN: begin
