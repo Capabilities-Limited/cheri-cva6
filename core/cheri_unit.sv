@@ -155,6 +155,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                     if(!operand_a.tag) begin
                         tmp_cap.tag = 1'b0;
                     end
+                    if(operand_a_is_sealed) begin
+                        tmp_cap.tag = 1'b0;
+                    end
                 end
                 if(operand_b_base < operand_a_base) begin
                     tmp_cap.tag = 1'b0;
