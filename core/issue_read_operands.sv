@@ -268,6 +268,7 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
           issue_pcc_ex_o.valid = 1'b1;
       end
     end
+    if (!issue_instr_valid_i) issue_pcc_ex_o.valid = 1'b0;
   end
 end
 
