@@ -725,7 +725,7 @@ module issue_read_operands
     end
 
     // Stall while there is an outstanding change to bounds.
-    if (CVA6Cfg.CheriPresent && pcc_jump_change_valid_q && !backend_empty_i) stall_raw[0] = 1'b1;
+    if (CVA6Cfg.CheriPresent && pcc_jump_change_valid_q) stall_raw[0] = 1'b1;
   end
 
   // third operand from fp regfile or gp regfile if NR_RGPR_PORTS == 3
