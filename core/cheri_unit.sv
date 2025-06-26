@@ -41,7 +41,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     logic operand_a_is_sealed;
     cap_meta_data_t op_a_meta_info;
     logic operand_a_hperms_malformed;
-    logic operand_b_hperms_malformed;
+    logic operand_a_bounds_malformed;
 
     // operand b decode fields
     cap_reg_t operand_b;
@@ -52,6 +52,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     //addrw_t operand_b_offset;
     logic operand_b_is_sealed;
     cap_meta_data_t op_b_meta_info;
+    logic operand_b_hperms_malformed;
+    logic operand_b_bounds_malformed;
 
     // operand pcc decode meta data
     cap_reg_t      pcc;
@@ -170,7 +172,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 if((operand_a.hperms & operand_b.hperms) != operand_b.hperms) begin
                     tmp_cap.tag = 1'b0;
                 end
-                if(!are_cap_reg_bounds_valid(operand_a, op_a_meta_info) | !are_cap_reg_bounds_valid(operand_b, op_b_meta_info)) begin
+                if(operand_a_bounds_malformed | operand_b_bounds_malformed) begin
                     tmp_cap.tag = 1'b0;
                 end
                 if(operand_a_hperms_malformed | operand_b_hperms_malformed) begin
@@ -185,7 +187,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CGetBase
             ariane_pkg::GCBASE: begin
-                clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_base);
+                clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_bounds_malformed ? '0 : operand_a_base);
             end
             // CGetFlags
             ariane_pkg::GCMODE: begin
@@ -193,7 +195,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CGetLength
             ariane_pkg::GCLEN: begin
-                clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_length);
+                clu_result = set_cap_reg_addr(REG_NULL_CAP, operand_a_bounds_malformed ? '0 : operand_a_length);
             end
             // CGetHigh
             ariane_pkg::GCHI: begin
@@ -301,11 +303,13 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         operand_a_length = get_cap_reg_length(operand_a, op_a_meta_info);
         operand_a_is_sealed = (operand_a.otype != UNSEALED_CAP);
         operand_a_hperms_malformed = (operand_a.hperms != legalize_arch_perms(operand_a.hperms));
+        operand_a_bounds_malformed = !are_cap_reg_bounds_valid(operand_a, op_a_meta_info);
         // Decode capability operand b fields
         operand_b_address = operand_b.addr;
         op_b_meta_info = get_cap_reg_meta_data(operand_b);
         operand_b_base   = get_cap_reg_base(operand_b, op_b_meta_info);
         operand_b_top    = get_cap_reg_top(operand_b, op_b_meta_info);
+        operand_b_bounds_malformed = !are_cap_reg_bounds_valid(operand_b, op_b_meta_info);
         //operand_b_length = get_cap_reg_length(operand_b, op_b_meta_info};
         //operand_b_offset = get_cap_reg_offset(operand_b, op_b_meta_info);
         operand_b_is_sealed = (operand_b.otype != UNSEALED_CAP);
