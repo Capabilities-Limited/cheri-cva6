@@ -1455,7 +1455,7 @@ module csr_regfile
           csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
           if (CVA6Cfg.CheriPresent) begin
             if (!csr_write_cap) csr_update_cap_prelegal = vsepc_q;
-            csr_update_allow_sealed = csr_wdata[0] == 1'b0;
+            csr_update_allow_sealed = (csr_wdata[0] == 1'b0) && csr_write_cap;
             vsepc_d = csr_update_cap_postlegal;
           end else begin
             vsepc_d = csr_wdata_legalised;
@@ -1569,7 +1569,7 @@ module csr_regfile
           csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
           if (CVA6Cfg.CheriPresent) begin
             if (!csr_write_cap) csr_update_cap_prelegal = sepc_q;
-            csr_update_allow_sealed = csr_wdata[0] == 1'b0;
+            csr_update_allow_sealed = (csr_wdata[0] == 1'b0) && csr_write_cap;
             sepc_d = csr_update_cap_postlegal;
           end else begin
             sepc_d = csr_wdata_legalised;
@@ -1900,7 +1900,7 @@ module csr_regfile
           csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
           if (CVA6Cfg.CheriPresent) begin
             if (!csr_write_cap) csr_update_cap_prelegal = mepc_q;
-            csr_update_allow_sealed = csr_wdata[0] == 1'b0;
+            csr_update_allow_sealed = (csr_wdata[0] == 1'b0) && csr_write_cap;
             mepc_d = csr_update_cap_postlegal;
           end else begin
             mepc_d = csr_wdata_legalised;
