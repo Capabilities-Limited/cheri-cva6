@@ -395,14 +395,16 @@ module commit_stage
       // ------------------------
       if (csr_exception_i.valid) begin
         exception_o      = csr_exception_i;
-        // if no earlier exception happened the commit instruction will still contain
-        // the instruction bits from the ID stage. If a earlier exception happened we don't care
-        // as we will overwrite it anyway in the next IF bl
-        exception_o.tval = commit_instr_i[0].ex.tval;
-        if (CVA6Cfg.RVH) begin
-          exception_o.tinst = commit_instr_i[0].ex.tinst;
-          exception_o.tval2 = commit_instr_i[0].ex.tval2;
-          exception_o.gva   = commit_instr_i[0].ex.gva;
+        if (!CVA6Cfg.CheriPresent || csr_exception_i.cause != cva6_cheri_pkg::CAP_EXCEPTION) begin
+          // if no earlier exception happened the commit instruction will still contain
+          // the instruction bits from the ID stage. If a earlier exception happened we don't care
+          // as we will overwrite it anyway in the next IF bl
+          exception_o.tval = commit_instr_i[0].ex.tval;
+          if (CVA6Cfg.RVH) begin
+            exception_o.tinst = commit_instr_i[0].ex.tinst;
+            exception_o.tval2 = commit_instr_i[0].ex.tval2;
+            exception_o.gva   = commit_instr_i[0].ex.gva;
+          end
         end
       end
       // ------------------------
