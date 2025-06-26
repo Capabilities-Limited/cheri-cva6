@@ -1389,7 +1389,7 @@ module csr_regfile
           csr_wdata_legalised = csr_wdata;
           if (CVA6Cfg.CheriPresent) begin
             if (!csr_write_cap) csr_update_cap_prelegal = vsscratch_q;
-            csr_update_allow_sealed = 1'b1;
+            csr_update_allow_sealed = csr_write_cap;
             vsscratch_d = csr_update_cap_postlegal;
           end else begin
             vsscratch_d = csr_wdata_legalised;
@@ -1503,7 +1503,7 @@ module csr_regfile
           csr_wdata_legalised = csr_wdata;
           if (CVA6Cfg.CheriPresent) begin
             if (!csr_write_cap) csr_update_cap_prelegal = sscratch_q;
-            csr_update_allow_sealed = 1'b1;
+            csr_update_allow_sealed = csr_write_cap;
             sscratch_d = csr_update_cap_postlegal;
           end else begin
             sscratch_d = csr_wdata_legalised;
@@ -1809,7 +1809,7 @@ module csr_regfile
           csr_wdata_legalised = csr_wdata;
           if (CVA6Cfg.CheriPresent) begin
             if (!csr_write_cap) csr_update_cap_prelegal = mscratch_q;
-            csr_update_allow_sealed = 1'b1;
+            csr_update_allow_sealed = csr_write_cap;
             mscratch_d = csr_update_cap_postlegal;
           end else begin
             mscratch_d = csr_wdata_legalised;
