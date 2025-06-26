@@ -129,7 +129,7 @@ module scoreboard #(
 
   assign sb_full_o  = issue_full;
 
-  assign backend_empty_o = issue_pointer_q == commit_pointer_q[0];
+  assign backend_empty_o = (issue_cnt_q == '0);
 
   // output commit instruction directly
   always_comb begin : commit_ports
