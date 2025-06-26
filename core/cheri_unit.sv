@@ -142,6 +142,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 tmp_cap = operand_a;
                 tmp_cap.uperms = (tmp_cap.uperms & (operand_b_address[CAP_UPERMS_WIDTH+CAP_UPERMS_SHIFT-1:CAP_UPERMS_SHIFT]));
                 tmp_cap.hperms = cap_hperms_t'(tmp_cap.hperms & report_perms_to_hperms(operand_b_address));
+                if(!tmp_cap.hperms.permit_execute) tmp_cap.flags.int_mode = 1'b0;
                 clu_result = tmp_cap;
             end
             // CTestSubset
