@@ -492,6 +492,7 @@ module issue_read_operands
           end
         end
       end
+      if (!issue_instr_valid_i) issue_pcc_ex_o.valid = 1'b0;
     end
   end
 
