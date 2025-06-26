@@ -2886,8 +2886,6 @@ module csr_regfile
     end
 
     if (cheri_access_violation) begin
-      // Violation of access system registers when accessing CSR sets tval msb bit to 1
-      // and encodes the CSR registers on the LSB [4:0]
       cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
       cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
       csr_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
