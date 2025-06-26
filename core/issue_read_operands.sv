@@ -235,7 +235,6 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     next_pc_off = ((issue_instr_i.is_compressed) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
     next_pc_addr = issue_instr_i.pc + next_pc_off;
     issue_pcc_ex_o = 0;
-    if (!issue_instr_valid_i) pcc = cva6_cheri_pkg::set_cap_reg_flags(pcc, issue_instr_i.int_mode);
     // Check PCC bounds every instruction
     if (!issue_instr_i.ex.valid) begin
       if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top)) begin
