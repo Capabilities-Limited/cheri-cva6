@@ -205,8 +205,7 @@ module cva6_hpdcache_subsystem
     userCfg.dataWaysPerRamWord = __minu(CVA6Cfg.DCACHE_SET_ASSOC, 128 / userCfg.wordWidth);
     userCfg.dataSetsPerRam = CVA6Cfg.DCACHE_NUM_WORDS;
     userCfg.dataRamByteEnable = 1'b1;
-    userCfg.accessWords =
-        __maxu(CVA6Cfg.AxiDataWidth / userCfg.wordWidth, userCfg.reqWords  /* 1? */);
+    userCfg.accessWords = __maxu(CVA6Cfg.AxiDataWidth / userCfg.wordWidth, userCfg.reqWords);
     userCfg.accessUserWidth =
         __minu((userCfg.accessWords / userCfg.reqWords) * userCfg.reqUserWidth, 1);
     userCfg.mshrSets = CVA6Cfg.NrLoadBufEntries < 16 ? 1 : CVA6Cfg.NrLoadBufEntries / 2;

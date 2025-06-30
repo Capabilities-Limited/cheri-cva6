@@ -47,9 +47,6 @@ package cva6_config_pkg;
   localparam CVA6ConfigDcacheSetAssoc = 8;
   localparam CVA6ConfigDcacheLineWidth = 128;
 
-  localparam CVA6ConfigDcacheFlushOnFence = 1'b0;
-  localparam CVA6ConfigDcacheInvalidateOnFlush = 1'b0;
-
   localparam CVA6ConfigDcacheFlushOnFence = 1'b1;
   localparam CVA6ConfigDcacheInvalidateOnFlush = 1'b0;
 
@@ -116,8 +113,6 @@ package cva6_config_pkg;
       RVZihpm: bit'(1),
       RVZcheripurecap: bit'(CVA6ConfigRVZcheripurecap),
       RVZcherihybrid: bit'(CVA6ConfigRVZcherihybrid),
-      RVZicntr: bit'(1),
-      RVZihpm: bit'(1),
       NrScoreboardEntries: unsigned'(CVA6ConfigNrScoreboardEntries),
       PerfCounterEn: bit'(CVA6ConfigPerfCounterEn),
       MmuPresent: bit'(CVA6ConfigMmuPresent),
