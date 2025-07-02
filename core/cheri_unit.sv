@@ -377,8 +377,8 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     always_comb begin: cheri_output_logic
         clu_result_o = clu_result;
         // Clear result capability tag if there was any violations
-        if ((operand_a_violations & check_operand_a_violations) != 0 ||
-            (operand_b_violations & check_operand_b_violations) != 0) begin
+        if ((operand_a_violations & check_operand_a_violations) != {CAP_CHECK_NUM{1'b0}} ||
+            (operand_b_violations & check_operand_b_violations) != {CAP_CHECK_NUM{1'b0}}) begin
             clu_result_o.tag = 1'b0;
         end
     end
