@@ -619,6 +619,8 @@ module cva6
   logic acc_cons_en_csr;
   logic debug_mode;
   logic single_step_csr_commit;
+  logic halt_for_single_step;
+  logic commit_single_step;
   riscv::pmpcfg_t [avoid_neg(CVA6Cfg.NrPMPEntries-1):0] pmpcfg;
   logic [avoid_neg(CVA6Cfg.NrPMPEntries-1):0][CVA6Cfg.PLEN-3:0] pmpaddr;
   logic [31:0] mcountinhibit_csr_perf;
@@ -1154,6 +1156,8 @@ module cva6
       .exception_o       (ex_commit),
       .dirty_fp_state_o  (dirty_fp_state),
       .single_step_i     (single_step_csr_commit || single_step_acc_commit),
+      .halt_for_single_step_i (halt_for_single_step),
+      .commit_single_step_o   (commit_single_step),
       .commit_instr_i    (commit_instr_id_commit),
       .commit_drop_i     (commit_drop_id_commit),
       .commit_ack_o      (commit_ack_commit_id),
@@ -1263,6 +1267,8 @@ module cva6
       .ddc_o                  ( ddc                           ),
       .debug_mode_o            (debug_mode),
       .single_step_o           (single_step_csr_commit),
+      .halt_for_single_step_o  (halt_for_single_step),
+      .commit_single_step_i    (commit_single_step),
       .icache_en_o             (icache_en_csr),
       .dcache_en_o             (dcache_en_csr_nbdcache),
       .acc_cons_en_o           (acc_cons_en_csr),
