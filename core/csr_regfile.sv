@@ -156,6 +156,10 @@ module csr_regfile
     output logic debug_mode_o,
     // we are in single-step mode - COMMIT_STAGE
     output logic single_step_o,
+    // Don't commit the next instruction as we've already done the single step - COMMIT_STAGE
+    output logic halt_for_single_step_o,
+    // We've caught the instruction after a single step - COMMIT_STAGE
+    input logic commit_single_step_i,
     // L1 ICache Enable - CACHE
     output logic icache_en_o,
     // L1 DCache Enable - CACHE
@@ -222,6 +226,7 @@ module csr_regfile
   logic csr_read_cap;
   logic csr_rcap_null;
   cva6_cheri_pkg::cap_pcc_t pcc;
+  cva6_cheri_pkg::cap_reg_t pcc_reg;
   riscv::priv_lvl_t trap_to_priv_lvl;
   logic             trap_to_v;
   // register for enabling load store address translation, this is critical, hence the register
@@ -242,8 +247,6 @@ module csr_regfile
   satp_t vsatp_q, vsatp_d;
   hgatp_t hgatp_q, hgatp_d;
   riscv::dcsr_t dcsr_q, dcsr_d;
-  cva6_cheri_pkg::cap_reg_t dpc_cap_q,   dpc_cap_d;
-  cva6_cheri_pkg::cap_meta_data_t dpc_cap_meta_data;
   riscv::csr_t csr_addr;
   riscv::csr_t conv_csr_addr;
   // privilege level register
@@ -254,7 +257,7 @@ module csr_regfile
   logic mtvec_rst_load_q;  // used to determine whether we came out of reset
 
   // TODO-cheri(ninolomata): There should be the CHERI extended registers for debug module
-  logic [CVA6Cfg.XLEN-1:0] dpc_q, dpc_d;
+  logic [CVA6Cfg.REGLEN-1:0] dpc_q, dpc_d;
   logic [CVA6Cfg.REGLEN-1:0] dscratch0_q, dscratch0_d;
   logic [CVA6Cfg.REGLEN-1:0] dscratch1_q, dscratch1_d;
   logic [CVA6Cfg.REGLEN-1:0] dscratch2_q, dscratch2_d;
@@ -316,6 +319,9 @@ module csr_regfile
 
   logic wfi_d, wfi_q;
 
+  logic single_step_done_d, single_step_done_q;
+  assign halt_for_single_step_o = single_step_done_q;
+
   logic [63:0] cycle_q, cycle_d;
   logic [63:0] instret_q, instret_d;
 
@@ -357,8 +363,8 @@ module csr_regfile
   assign pmpcfg_o  = pmpcfg_q[(CVA6Cfg.NrPMPEntries>0?CVA6Cfg.NrPMPEntries-1 : 0):0];
   assign pmpaddr_o = pmpaddr_q[(CVA6Cfg.NrPMPEntries>0?CVA6Cfg.NrPMPEntries-1 : 0):0];
 
-  assign dpc_cap_meta_data = get_cap_reg_meta_data(dpc_cap_q);
-  assign  pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);
+  assign pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);
+  assign pcc_reg = cap_pcc_to_cap_reg(pcc);
 
   riscv::fcsr_t fcsr_q, fcsr_d;
   jvt_t jvt_q, jvt_d;
@@ -1160,7 +1166,7 @@ module csr_regfile
       dscratch0_d = dscratch0_q;
       dscratch1_d = dscratch1_q;
       dscratch2_d = dscratch2_q;
-      if (CVA6Cfg.CheriPresent) dpc_cap_d   = dpc_cap_q;
+      single_step_done_d = single_step_done_q;
     end
     mstatus_d = mstatus_q;
     if (CVA6Cfg.RVH) begin
@@ -1323,7 +1329,15 @@ module csr_regfile
           end
         end
         riscv::CSR_DPC:
-        if (CVA6Cfg.DebugEn) dpc_d = csr_wdata;
+        if (CVA6Cfg.DebugEn) begin
+          if (CVA6Cfg.CheriPresent) begin
+            // XXX debugger injects infinite cap on PCC changes
+            csr_update_cap_prelegal = cva6_cheri_pkg::REG_ROOT_CAP;
+            dpc_d = csr_update_cap_postlegal;
+          end else begin
+            dpc_d = csr_wdata;
+          end
+        end
         else update_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
         if (CVA6Cfg.DebugEn) dscratch0_d = csr_wdata;
@@ -2277,7 +2291,7 @@ module csr_regfile
           vscause_d = ex_i.cause[CVA6Cfg.XLEN-1] ? {ex_i.cause[CVA6Cfg.XLEN-1:2], 2'b01} : ex_i.cause;
           // set epc
           if (CVA6Cfg.CheriPresent) begin
-            vsepc_d = cap_pcc_to_cap_reg(pcc);
+            vsepc_d = pcc_reg;
           end else begin
             vsepc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
           end
@@ -2298,7 +2312,7 @@ module csr_regfile
           scause_d = ex_i.cause;
           // set epc
           if (CVA6Cfg.CheriPresent) begin
-            sepc_d = cap_pcc_to_cap_reg(pcc);
+            sepc_d = pcc_reg;
           end else begin
             sepc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
           end
@@ -2343,7 +2357,7 @@ module csr_regfile
         mcause_d = (break_from_trigger) ? 32'h00000003 : ex_i.cause;
         // set epc
         if (CVA6Cfg.CheriPresent) begin
-          mepc_d = cap_pcc_to_cap_reg(pcc);
+          mepc_d = pcc_reg;
         end else begin
           mepc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
         end
@@ -2441,8 +2455,11 @@ module csr_regfile
           default: ;
         endcase
         // save PC of next this instruction e.g.: the next one to be executed
-        dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
-        dpc_cap_d =  cap_pcc_to_cap_reg(pcc);
+        if (CVA6Cfg.CheriPresent) begin
+          dpc_d = pcc_reg;
+        end else begin
+          dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
+        end
         dcsr_d.cause = ariane_pkg::CauseBreakpoint;
       end
 
@@ -2451,8 +2468,11 @@ module csr_regfile
         dcsr_d.prv = priv_lvl_o;
         dcsr_d.v = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
         // save the PC
-        dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
-        dpc_cap_d = cap_pcc_to_cap_reg(pcc);
+        if (CVA6Cfg.CheriPresent) begin
+          dpc_d = pcc_reg;
+        end else begin
+          dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
+        end
         // enter debug mode
         debug_mode_d = 1'b1;
         // jump to the base address
@@ -2463,31 +2483,18 @@ module csr_regfile
 
       // single step enable and we just retired an instruction
       if (dcsr_q.step && commit_ack_i[0]) begin
+        single_step_done_d = 1'b1;
+      end
+
+      if (CVA6Cfg.DebugEn && commit_single_step_i) begin
+        single_step_done_d = 1'b0;
         dcsr_d.prv = priv_lvl_o;
         dcsr_d.v   = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
-        // valid CTRL flow change
-        if (commit_instr_i.fu == CTRL_FLOW) begin
-          // we saved the correct target address during execute
-          dpc_d = {
-            {CVA6Cfg.XLEN - CVA6Cfg.VLEN{commit_instr_i.bp.predict_address}},
-            commit_instr_i.bp.predict_address
-          };
-          dpc_cap_d =  cap_pcc_to_cap_reg(pcc);
-          // exception valid
-        end else if (ex_i.valid) begin
-          dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, trap_vector_base_o[CVA6Cfg.VLEN-1:0]};
-          dpc_cap_d = trap_vector_base_o;
-          // return from environment
-        end else if (eret_o) begin
-          dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, epc_o[CVA6Cfg.VLEN-1:0]};
-          dpc_cap_d = epc_o;
-          // consecutive PC
+        // save the PC
+        if (CVA6Cfg.CheriPresent) begin
+          dpc_d = pcc_reg;
         end else begin
-          dpc_d = {
-            {CVA6Cfg.XLEN - CVA6Cfg.VLEN{commit_instr_i.pc[CVA6Cfg.VLEN-1]}},
-            commit_instr_i.pc + (commit_instr_i.is_compressed ? 'h2 : 'h4)
-          };
-          dpc_cap_d = cap_pcc_to_cap_reg(commit_instr_i.pc);
+          dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
         end
         debug_mode_d   = 1'b1;
         set_debug_pc_o = 1'b1;
@@ -2893,7 +2900,6 @@ module csr_regfile
   // output assignments dependent on privilege mode
   always_comb begin : priv_output
     automatic logic mvecmode, svecmode, vsvecmode;
-    automatic cap_reg_t epc;
 
     mvecmode = mtvec_q[0];
     svecmode = stvec_q[0];
@@ -2948,7 +2954,7 @@ module csr_regfile
     if (CVA6Cfg.DebugEn) begin
       if (dret) begin
         if (CVA6Cfg.CheriPresent) begin
-          epc_o = set_cap_reg_address(dpc_cap_q, dpc_q, dpc_cap_meta_data);
+          epc_o = dpc_q;
         end else begin
           epc_o[CVA6Cfg.VLEN-1:0] = dpc_q[CVA6Cfg.VLEN-1:0];
         end
@@ -3078,11 +3084,11 @@ module csr_regfile
       if (CVA6Cfg.DebugEn) begin
         debug_mode_q <= 1'b0;
         dcsr_q       <= '{xdebugver: 4'h4, prv: riscv::PRIV_LVL_M, default: '0};
-        dpc_q        <= '0;
-        if (CVA6Cfg.CheriPresent) dpc_cap_q <= cva6_cheri_pkg::REG_ROOT_CAP;
+        dpc_q        <= CVA6Cfg.CheriPresent ? cva6_cheri_pkg::REG_ROOT_CAP : '0;
         dscratch0_q  <= {CVA6Cfg.XLEN{1'b0}};
         dscratch1_q  <= {CVA6Cfg.XLEN{1'b0}};
         dscratch2_q  <= {CVA6Cfg.XLEN{1'b0}};
+        single_step_done_q <= 1'b0;
       end
       // machine mode registers
       mstatus_q        <= 64'b0;
@@ -3180,10 +3186,10 @@ module csr_regfile
         debug_mode_q <= debug_mode_d;
         dcsr_q       <= dcsr_d;
         dpc_q        <= dpc_d;
-        dpc_cap_q    <= dpc_cap_d;
         dscratch0_q  <= dscratch0_d;
         dscratch1_q  <= dscratch1_d;
         dscratch2_q  <= dscratch2_d;
+        single_step_done_q <= single_step_done_d;
       end
       // machine mode registers
       mstatus_q        <= mstatus_d;
