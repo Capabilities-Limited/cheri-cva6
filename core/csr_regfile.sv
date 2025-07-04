@@ -130,6 +130,8 @@ module csr_regfile
     output logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_o,
     // TO_BE_COMPLETED - EX_STAGE
     output logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_o,
+    // Capability load barrier generation - EX_STAGE
+    output logic cap_ucrg_o,
     // external interrupt in - SUBSYSTEM
     input logic [1:0] irq_i,
     // inter processor interrupt -> connected to machine mode sw - SUBSYSTEM
@@ -180,6 +182,7 @@ module csr_regfile
 );
 
   localparam logic [63:0] SMODE_STATUS_READ_MASK = ariane_pkg::smode_status_read_mask(CVA6Cfg);
+  localparam logic [63:0] SMODE_STATUS_WRITE_MASK = ariane_pkg::smode_status_write_mask(CVA6Cfg);
   localparam logic [63:0] HS_DELEG_INTERRUPTS = {
     {32{1'b0}}, ariane_pkg::hs_deleg_interrupts(CVA6Cfg)
   };
@@ -1134,7 +1137,7 @@ module csr_regfile
         // virtual supervisor registers
         riscv::CSR_VSSTATUS: begin
           if (CVA6Cfg.RVH) begin
-            mask = ariane_pkg::SMODE_STATUS_WRITE_MASK[CVA6Cfg.XLEN-1:0];
+            mask = SMODE_STATUS_WRITE_MASK[CVA6Cfg.XLEN-1:0];
             vsstatus_d = (vsstatus_q & ~{{64-CVA6Cfg.XLEN{1'b0}}, mask}) | {{64-CVA6Cfg.XLEN{1'b0}}, (csr_wdata & mask)};
             // hardwire to zero if floating point extension is not present
             vsstatus_d.xs = riscv::Off;
@@ -1228,7 +1231,7 @@ module csr_regfile
         // sstatus is a subset of mstatus - mask it accordingly
         riscv::CSR_SSTATUS: begin
           if (CVA6Cfg.RVS) begin
-            mask = ariane_pkg::SMODE_STATUS_WRITE_MASK[CVA6Cfg.XLEN-1:0];
+            mask = SMODE_STATUS_WRITE_MASK[CVA6Cfg.XLEN-1:0];
             mstatus_d = (mstatus_q & ~{{64-CVA6Cfg.XLEN{1'b0}}, mask}) | {{64-CVA6Cfg.XLEN{1'b0}}, (csr_wdata & mask)};
             // hardwire to zero if floating point extension is not present
             if (!CVA6Cfg.FpPresent) begin
@@ -1477,6 +1480,8 @@ module csr_regfile
               mstatus_d.mpp = riscv::PRIV_LVL_U;
             end
           end
+          mstatus_d.wpri5 = 1'b0;
+          mstatus_d.wpri4 = 21'b0;
           mstatus_d.wpri3 = 9'b0;
           mstatus_d.wpri1 = 1'b0;
           mstatus_d.wpri2 = 1'b0;
@@ -2635,6 +2640,9 @@ module csr_regfile
   assign debug_mode_o = debug_mode_q;
   assign single_step_o = dcsr_q.step;
   assign mcountinhibit_o = {{29 - MHPMCounterNum{1'b0}}, mcountinhibit_q};
+
+  // Extract capability revocation generation
+  assign cap_ucrg_o = CVA6Cfg.CheriPresent ? mstatus_q.ucrg : '0;
 
   // sequential process
   always_ff @(posedge clk_i or negedge rst_ni) begin

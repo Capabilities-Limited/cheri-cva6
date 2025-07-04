@@ -125,15 +125,19 @@ package ariane_pkg;
     | riscv::SSTATUS_UPIE
     | riscv::SSTATUS_SPIE
     | riscv::SSTATUS_UXL
+    | (Cfg.CheriPresent ? riscv::SSTATUS_CRG : '0)
     | riscv::sstatus_sd(Cfg.IS_XLEN64);
   endfunction
 
-  localparam logic [63:0] SMODE_STATUS_WRITE_MASK = riscv::SSTATUS_SIE
-                                                    | riscv::SSTATUS_SPIE
-                                                    | riscv::SSTATUS_SPP
-                                                    | riscv::SSTATUS_FS
-                                                    | riscv::SSTATUS_SUM
-                                                    | riscv::SSTATUS_MXR;
+  function automatic logic [63:0] smode_status_write_mask(config_pkg::cva6_cfg_t Cfg);
+    return riscv::SSTATUS_SIE
+    | riscv::SSTATUS_SPIE
+    | riscv::SSTATUS_SPP
+    | riscv::SSTATUS_FS
+    | riscv::SSTATUS_SUM
+    | (Cfg.CheriPresent ? riscv::SSTATUS_CRG : '0)
+    | riscv::SSTATUS_MXR;
+  endfunction
 
   localparam logic [63:0] HSTATUS_WRITE_MASK      = riscv::HSTATUS_VSBE
                                                     | riscv::HSTATUS_GVA

@@ -55,6 +55,7 @@ module cva6_mmu
     input logic [CVA6Cfg.VLEN-1:0] lsu_vaddr_i,  // virtual address in
     input logic [31:0] lsu_tinst_i,  // transformed instruction in
     input logic lsu_is_store_i,  // the translation is requested by a store
+    input logic lsu_is_cap_i,  // the data has the capability tag set
     output logic csr_hs_ld_st_inst_o,  // hyp load store instruction
     // if we need to walk the page table we can't grant in the same cycle
     // Cycle 0
@@ -77,6 +78,7 @@ module cva6_mmu
     input logic vmxr_i,
     input logic hlvx_inst_i,
     input logic hs_ld_st_inst_i,
+    input logic cap_ucrg_i,
     // input logic flag_mprv_i,
     input logic [CVA6Cfg.PPNW-1:0] satp_ppn_i,
     input logic [CVA6Cfg.PPNW-1:0] vsatp_ppn_i,
@@ -107,11 +109,9 @@ module cva6_mmu
 
   // memory management, pte for cva6
   localparam type pte_cva6_t = struct packed {
+    logic [2:0] res_hi;
     logic cw; // capability write
-    logic cr; // capability read
-    logic cd; // capability dirty
-    logic crm;
-    logic crg;
+    logic crg; // capability read generation
     logic [4:0] reserved;
     logic [CVA6Cfg.PPNW-1:0] ppn;  // PPN length for
     logic [1:0] rsw;
@@ -144,6 +144,7 @@ module cva6_mmu
   logic ptw_active;  // PTW is currently walking a page table
   logic walking_instr;  // PTW is walking because of an ITLB miss
   logic ptw_error;  // PTW threw an exception
+  logic [1:0] ptw_cheri_error;  // PTW threw a CHERI exception
   logic ptw_error_at_g_st;  // PTW threw an exception at the G-Stage
   logic ptw_err_at_g_int_st;  // PTW threw an exception at the G-Stage during S-Stage translation
 
@@ -303,11 +304,13 @@ module cva6_mmu
       .ptw_active_o          (ptw_active),
       .walking_instr_o       (walking_instr),
       .ptw_error_o           (ptw_error),
+      .ptw_cheri_error_o     (ptw_cheri_error),
       .ptw_error_at_g_st_o   (ptw_error_at_g_st),
       .ptw_err_at_g_int_st_o (ptw_err_at_g_int_st),
       .ptw_access_exception_o(ptw_access_exception),
 
-      .lsu_is_store_i(lsu_is_store_i),
+      .lsu_is_store_i        (lsu_is_store_i),
+      .lsu_is_cap_i          (lsu_is_cap_i),
       // PTW memory interface
       .req_port_i    (req_port_i),
       .req_port_o    (req_port_o),
@@ -534,6 +537,7 @@ module cva6_mmu
   exception_t  cheri_ex_n, cheri_ex_q;
   logic lsu_req_n, lsu_req_q;
   logic lsu_is_store_n, lsu_is_store_q;
+  logic lsu_is_cap_n, lsu_is_cap_q;
   logic dtlb_hit_n, dtlb_hit_q;
   logic [CVA6Cfg.PtLevels-2:0] dtlb_is_page_n, dtlb_is_page_q;
 
@@ -565,6 +569,7 @@ module cva6_mmu
     dtlb_pte_n = dtlb_content;
     dtlb_hit_n = dtlb_lu_hit;
     lsu_is_store_n = lsu_is_store_i;
+    if (CVA6Cfg.CheriPresent) lsu_is_cap_n = lsu_is_cap_i;
     dtlb_is_page_n = dtlb_is_page;
 
     lsu_valid_o = lsu_req_q;
@@ -573,24 +578,11 @@ module cva6_mmu
     lsu_strip_tag_o = 1'b0;
     cheri_cap_err = 1'b0;
 
-    if (CVA6Cfg.CheriPresent) begin
-      // Check for capability load errors, behaviours goes according to the following table:
-      // CR CRM CRG Behavior
-      // 0   0   0  Capability loads strip tags on loaded result
-      // 0   1   0  Capability loads fault (exception code 0x1A)
-      // 0   X   1  Reserved for future use
-      // 1   0   0  Capability loads are unaltered
-      // 1   0   1  Reserved for future use
-      // 1   1   X  Reserved for generational load barriers
-      if (en_ld_st_translation_i && !lsu_is_store_q && ((!dtlb_pte_q.cr && dtlb_pte_q.crm && !dtlb_pte_q.crg) || (dtlb_pte_q.crg && !dtlb_pte_q.cr ) || (dtlb_pte_q.cr && (dtlb_pte_q.crm || dtlb_pte_q.crg)))) begin
+    if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
+      if (!lsu_is_store_q && dtlb_pte_q.u && dtlb_pte_q.cw && (dtlb_pte_q.crg != cap_ucrg_i)) begin
         cheri_cap_err = 1'b1;
       end
-      // Check for capability store errors, behaviours goes according to the following table:
-      // CW CD Behavior
-      // 0  X  Trap on capability stores (exception code 0x1B)
-      // 1  0  Capability stores atomically raise CD or fault (as above)
-      // 1  1  Capability stores permitted
-      if (en_ld_st_translation_i && lsu_is_store_q && (!dtlb_pte_q.cw || !dtlb_pte_q.cd)) begin
+      if (lsu_is_store_q && !dtlb_pte_q.cw) begin
         cheri_cap_err = 1'b1;
       end
     end
@@ -640,7 +632,7 @@ module cva6_mmu
 
       if (CVA6Cfg.CheriPresent) begin
         // Check if strip tag is needed on capability loads
-        lsu_strip_tag_o = !(|({dtlb_pte_q.cr, dtlb_pte_q.crm, dtlb_pte_q.crg}));
+        lsu_strip_tag_o = !dtlb_pte_q.cw;
       end
 
       // ---------
@@ -669,7 +661,7 @@ module cva6_mmu
               lsu_exception_o.tinst = '0;
               lsu_exception_o.gva = ld_st_v_i;
             end
-          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || !dtlb_pte_q.d)) begin
+          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || (CVA6Cfg.CheriPresent && cheri_cap_err) || !dtlb_pte_q.d)) begin
             lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;
             lsu_exception_o.valid = 1'b1;
             if (CVA6Cfg.TvalEn)
@@ -681,20 +673,11 @@ module cva6_mmu
               lsu_exception_o.tinst = lsu_tinst_q;
               lsu_exception_o.gva   = ld_st_v_i;
             end
-          // Check if there was a CHERI exception
-          // TODO(cheri)-ninolomata: should we check the pmp first before the cheri exception?
-          end else if (CVA6Cfg.CheriPresent && cheri_cap_err && en_ld_st_translation_i) begin
-            lsu_exception_o.cause = cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT;
-            lsu_exception_o.valid = 1'b1;
-            if (CVA6Cfg.TvalEn)
-              lsu_exception_o.tval = {
-                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q
-              };
-            if (CVA6Cfg.RVH) begin
-              lsu_exception_o.tval2 = {CVA6Cfg.XLEN{1'b0}};
-              lsu_exception_o.tinst = lsu_tinst_q;
-              lsu_exception_o.gva = ld_st_v_i;
+            if (CVA6Cfg.CheriPresent) begin
+              if (cheri_cap_err) lsu_exception_o.tval2 = daccess_err ? 'd2 : 'd1;
+              else               lsu_exception_o.tval2 = '0;
             end
+          // TODO(cheri)-ninolomata: should we check the pmp first before the cheri exception?
           // Check if any PMPs are violated
           end else if ((!pmp_data_allow && !CVA6Cfg.RVFI_DII) || (!rvfii_addr_allowed && CVA6Cfg.RVFI_DII)) begin
             lsu_exception_o.cause = riscv::ST_ACCESS_FAULT;
@@ -724,7 +707,7 @@ module cva6_mmu
               lsu_exception_o.gva = ld_st_v_i;
             end
             // check for sufficient access privileges - throw a page fault if necessary
-          end else if (daccess_err) begin
+          end else if (daccess_err || (CVA6Cfg.CheriPresent && cheri_cap_err)) begin
             lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;
             lsu_exception_o.valid = 1'b1;
             if (CVA6Cfg.TvalEn)
@@ -736,20 +719,11 @@ module cva6_mmu
               lsu_exception_o.tinst = lsu_tinst_q;
               lsu_exception_o.gva   = ld_st_v_i;
             end
-          // Check if there was a CHERI exception
-          // TODO(cheri)-ninolomata: should we check the pmp first before the cheri exception?
-          end else if (CVA6Cfg.CheriPresent && cheri_cap_err && en_ld_st_translation_i) begin
-            lsu_exception_o.cause = cva6_cheri_pkg::CAP_LOAD_PAGE_FAULT;
-            lsu_exception_o.valid = 1'b1;
-            if (CVA6Cfg.TvalEn)
-              lsu_exception_o.tval = {
-                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q
-              };
-            if (CVA6Cfg.RVH) begin
-              lsu_exception_o.tval2 = {CVA6Cfg.XLEN{1'b0}};
-              lsu_exception_o.tinst= lsu_tinst_q;
-              lsu_exception_o.gva = ld_st_v_i;
+            if (CVA6Cfg.CheriPresent) begin
+              if (cheri_cap_err) lsu_exception_o.tval2 = daccess_err ? 'd2 : 'd1;
+              else               lsu_exception_o.tval2 = '0;
             end
+          // TODO(cheri)-ninolomata: should we check the pmp first before the cheri exception?
           // Check if any PMPs are violated
           end else if ((!pmp_data_allow && !CVA6Cfg.RVFI_DII) || (!rvfii_addr_allowed && CVA6Cfg.RVFI_DII)) begin
             lsu_exception_o.cause = riscv::LD_ACCESS_FAULT;
@@ -802,6 +776,9 @@ module cva6_mmu
                 lsu_exception_o.tinst = lsu_tinst_q;
                 lsu_exception_o.gva   = ld_st_v_i;
               end
+              if (CVA6Cfg.CheriPresent) begin
+                lsu_exception_o.tval2 = {'0, ptw_cheri_error};
+              end
             end
           end else begin
             if (CVA6Cfg.RVH && ptw_error_at_g_st) begin
@@ -827,6 +804,9 @@ module cva6_mmu
                 lsu_exception_o.tval2 = '0;
                 lsu_exception_o.tinst = lsu_tinst_q;
                 lsu_exception_o.gva   = ld_st_v_i;
+              end
+              if (CVA6Cfg.CheriPresent) begin
+                lsu_exception_o.tval2 = {'0, ptw_cheri_error};
               end
             end
           end
@@ -913,6 +893,7 @@ module cva6_mmu
       misaligned_ex_q <= '0;
       if (CVA6Cfg.CheriPresent) begin
         cheri_ex_q    <= '0;
+        lsu_is_cap_q <= '0;
       end
       dtlb_pte_q      <= '0;
       dtlb_gpte_q     <= '0;
@@ -927,6 +908,7 @@ module cva6_mmu
       misaligned_ex_q <= misaligned_ex_n;
       if (CVA6Cfg.CheriPresent) begin
         cheri_ex_q    <= cheri_ex_n;
+        lsu_is_cap_q  <= lsu_is_cap_n;
       end
       dtlb_pte_q      <= dtlb_pte_n;
       dtlb_hit_q      <= dtlb_hit_n;

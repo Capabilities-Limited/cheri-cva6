@@ -202,6 +202,8 @@ module ex_stage
     input logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_i,
     // TO_BE_COMPLETED - CSR_REGFILE
     input logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_i,
+    // Capability load barrier generation - CSR_REGFILE
+    input logic cap_ucrg_i,
     // icache translation response - CACHE
     input icache_arsp_t icache_areq_i,
     // icache translation request - CACHE
@@ -500,6 +502,7 @@ module ex_stage
       .vmid_to_be_flushed_i  (vmid_to_be_flushed),
       .vaddr_to_be_flushed_i (vaddr_to_be_flushed),
       .gpaddr_to_be_flushed_i(gpaddr_to_be_flushed),
+      .cap_ucrg_i,
       .flush_tlb_i,
       .flush_tlb_vvma_i,
       .flush_tlb_gvma_i,
