@@ -70,21 +70,10 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     cap_reg_t op_set_addr;
     cap_meta_data_t op_meta_set_addr;
     cap_reg_t res_set_addr;
-    // Operation set/inc offset signals
-    cap_reg_t op_set_offset;
-    cap_meta_data_t op_meta_set_offset;
-    bool_t set_offset;
-    addrw_t   offset;
-    cap_reg_t res_set_offset;
-    // Operation set bounds;
-    addrw_t set_bounds_len;
-    cap_reg_t op_set_bounds;
-    cap_reg_set_bounds_ret_t res_set_bounds;
 
     // Tag-clearing check signals
     cap_check_select_t operand_a_violations;
     cap_check_select_t check_operand_a_violations;
-    logic en_ex;
 
     // Output signals
     cap_reg_t clu_result;
@@ -97,6 +86,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     cap_mem_t cap_mem_null;
     cap_reg_t tmp_cap, req_cap;
     addrwe_t tmp_length;
+    cap_reg_set_bounds_ret_t res_set_bounds;
     always_comb begin
         // exceptions signals reset
         check_operand_a_violations = {1'b0, 1'b0, 1'b0};
@@ -105,16 +95,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         op_set_addr                = operand_a;
         op_meta_set_addr           = op_a_meta_info;
         address                    = '{default:0};
-
-        // Set offset operation reset signals
-        op_set_offset              = operand_a;
-        op_meta_set_offset         = op_a_meta_info;
-        set_offset                 = 1'b0;
-        offset                     = '{default:0};
-
-        // Set bounds operation reset signals
-        op_set_bounds              = operand_a;
-        set_bounds_len             = (fu_data_i.operation == ariane_pkg::SCBNDSI) ? fu_data_i.imm : $unsigned(operand_b_address);
 
         // Output reset values
         clu_result                 = REG_NULL_CAP;
@@ -217,16 +197,12 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CIncOffset and CIncOffsetImm
             // TODO-cheri(ninolomata): use ALU to calculate address
-            ariane_pkg::CADD,ariane_pkg::CADDI: begin
+            ariane_pkg::CADD: begin
                 check_operand_a_violations.seal = 1'b1;
-                offset = operand_b_address;
-                op_set_offset = operand_a;
-                op_meta_set_offset = op_a_meta_info;
-                set_offset = 1'b0;
-                offset = ((fu_data_i.operation == ariane_pkg::CADD) ? operand_b_address : fu_data_i.imm);
-                address = operand_a_address + offset;
-                tmp_cap = res_set_offset;
-                clu_result = tmp_cap;
+                op_set_addr  = operand_a;
+                op_meta_set_addr = op_a_meta_info;
+                address      = operand_a_address + operand_b_address;
+                clu_result = res_set_addr;
             end
             // CMV
             ariane_pkg::CMV: begin
@@ -240,7 +216,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CSetAddr
             ariane_pkg::SCADDR: begin
-                en_ex =  1'b0;
                 check_operand_a_violations.seal = 1'b1;
                 op_set_addr  = operand_a;
                 op_meta_set_addr = op_a_meta_info;
@@ -251,11 +226,11 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CRepresentableAlignmentMask
             ariane_pkg::SCBNDSR,
             ariane_pkg::SCBNDS,
-            ariane_pkg::SCBNDSI,
             ariane_pkg::CRAM: begin
                 check_operand_a_violations.tag = 1'b1;
                 check_operand_a_violations.seal = 1'b1;
                 check_operand_a_violations.bounds = 1'b1;
+                res_set_bounds = set_cap_reg_bounds(operand_a, operand_a_address, $unsigned(operand_b_address));
                 if (fu_data_i.operation == ariane_pkg::CRAM)
                     clu_result = set_cap_reg_addr(REG_NULL_CAP, res_set_bounds.mask);
                 else
@@ -327,14 +302,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                                            address,
                                            op_meta_set_addr
                                         );
-
-        res_set_offset = cap_reg_inc_offset(op_set_offset,
-                                            address,
-                                            offset,
-                                            op_meta_set_offset,
-                                            set_offset
-                                        );
-        res_set_bounds = set_cap_reg_bounds(op_set_bounds, operand_a_address, set_bounds_len);
     end
 
     // ----------------
@@ -355,7 +322,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             operand_a_violations.bounds = 1'b1;
         end
 
-        if ((operand_a_address + set_bounds_len) > operand_a_top) begin
+        if ((operand_a_address + $unsigned(operand_b_address)) > operand_a_top) begin
             operand_a_violations.bounds = 1'b1;
         end
     end

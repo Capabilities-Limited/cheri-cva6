@@ -1371,7 +1371,7 @@ module decoder
             unique case (instr.itype.funct3)
               3'b101: begin
                 if (instr.instr[31:26] == 6'b000_001) begin
-                  instruction_o.op = ariane_pkg::SCBNDSI;  // Set Bounds Immediate
+                  instruction_o.op = ariane_pkg::SCBNDS;  // Set Bounds
                   imm_select = SCIMM; // Scaled immediate; special for SCBNDSI
                   if (instr.instr[25] != 1'b0 && instr.instr[24:20] <= 5'b1) illegal_instr_cheri = 1'b1;
                 end else illegal_instr_cheri = 1'b1;
@@ -1429,7 +1429,7 @@ module decoder
             if (CVA6Cfg.CheriPresent) begin
               //CADDI CADDI=010
               unique case (instr.itype.funct3)
-                3'b010: instruction_o.op = ariane_pkg::CADDI;
+                3'b010: instruction_o.op = ariane_pkg::CADD;
                 default illegal_instr_cheri = 1'b1;
               endcase
               if (!illegal_instr_cheri) instruction_o.fu  = CLU;
