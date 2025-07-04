@@ -603,6 +603,7 @@ module cva6
   logic [CVA6Cfg.ASID_WIDTH-1:0] vs_asid_csr_ex;
   logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_csr_ex;
   logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_csr_ex;
+  logic cap_ucrg_ex;
   logic [11:0] csr_addr_ex_csr;
   fu_op csr_op_commit_csr;
   logic csr_op_is_imm_commit_csr;
@@ -1144,6 +1145,7 @@ module cva6
       .vs_asid_i               (vs_asid_csr_ex),                 // from CSR
       .hgatp_ppn_i             (hgatp_ppn_csr_ex),               // from CSR
       .vmid_i                  (vmid_csr_ex),                    // from CSR
+      .cap_ucrg_i              (cap_ucrg_ex),
       .icache_areq_i           (icache_areq_cache_ex),
       .icache_areq_o           (icache_areq_ex_cache),
       // DCACHE interfaces
@@ -1281,6 +1283,7 @@ module cva6
       .ipi_i,
       .debug_req_i,
       .set_debug_pc_o          (set_debug_pc),
+      .cap_ucrg_o              (cap_ucrg_ex),
       .tvm_o                   (tvm_csr_id),
       .tw_o                    (tw_csr_id),
       .vtw_o                   (vtw_csr_id),

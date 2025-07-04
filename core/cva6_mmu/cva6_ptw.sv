@@ -38,6 +38,7 @@ module cva6_ptw
     output logic ptw_active_o,
     output logic walking_instr_o,  // set when walking for TLB
     output logic ptw_error_o,  // set when an error occurred
+    output logic [1:0] ptw_cheri_error_o,  // set when a CHERI error occurred
     output logic ptw_error_at_g_st_o,  // set when an error occurred at the G-Stage
     output logic ptw_err_at_g_int_st_o,  // set when an error occurred at the G-Stage during S-Stage translation
     output logic ptw_access_exception_o,  // set when an PMP access exception occurred
@@ -50,6 +51,7 @@ module cva6_ptw
     input logic hlvx_inst_i,  // is a HLVX load/store instruction
 
     input logic lsu_is_store_i,  // this translation was triggered by a store
+    input logic lsu_is_cap_i,  // this translation was triggered by a cap store
 
     // PTW memory interface
     input dcache_req_o_t req_port_i,
@@ -79,6 +81,7 @@ module cva6_ptw
     input logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_i,  // ppn from hgatp
     input logic                    mxr_i,
     input logic                    vmxr_i,
+    input logic                    cap_ucrg_i,
 
     // Performance counters
     output logic shared_tlb_miss_o,
@@ -114,6 +117,7 @@ module cva6_ptw
     LATENCY
   }
       state_q, state_d;
+  logic [1:0] cheri_error_q, cheri_error_d;
 
   logic [CVA6Cfg.PtLevels-2:0] misaligned_page;
   logic shared_tlb_update_valid;
@@ -322,6 +326,11 @@ module cva6_ptw
     vaddr_n                 = vaddr_q;
     pptr                    = ptw_pptr_q;
 
+    if (CVA6Cfg.CheriPresent) begin
+      ptw_cheri_error_o       = 2'b0;
+      cheri_error_d           = cheri_error_q;
+    end
+
     if (CVA6Cfg.RVH) begin
       gpaddr_n    = gpaddr_q;
       gptw_pptr_n = gptw_pptr_q;
@@ -429,12 +438,15 @@ module cva6_ptw
           // Invalid PTE
           // -------------
           // If pte.v = 0, or if pte.r = 0 and pte.w = 1, or if pte.reserved !=0 in sv39 and sv39x4, stop and raise a page-fault exception.
-          if (!pte.v || (!pte.r && pte.w) || (|pte.reserved && CVA6Cfg.XLEN == 64) || (!CVA6Cfg.SvnapotEn && pte.n) || (CVA6Cfg.SvnapotEn && !(pte.r || pte.x) && pte.n))
+          if (!pte.v || (!pte.r && pte.w) || ((|pte.reserved || |pte.res_hi) && CVA6Cfg.XLEN == 64)|| (!CVA6Cfg.CheriPresent && (pte.cw || pte.crg)) || (!CVA6Cfg.SvnapotEn && pte.n) || (CVA6Cfg.SvnapotEn && !(pte.r || pte.x) && pte.n)) begin
             state_d = PROPAGATE_ERROR;
+            if (CVA6Cfg.CheriPresent) cheri_error_d = 2'b0;
+          end
           // -----------
           // Valid PTE
           // -----------
           else begin
+            automatic logic cheri_pte_fail = 1'b0;
             state_d = LATENCY;
             // if pte.r = 1 or pte.x = 1 it is a valid leaf PTE
             if (pte.r || pte.x) begin
@@ -449,6 +461,16 @@ module cva6_ptw
                 end
               end
 
+              if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && lsu_is_cap_i) begin
+                // These checks have to be duplicated here in case the PTW throws a non-CHERI error
+                // so that we can report "both" a CHERI and non-CHERI error occurred.
+                if (!lsu_is_store_i && pte.u && pte.cw && (pte.crg != cap_ucrg_i)) begin
+                  cheri_pte_fail = 1'b1;
+                end
+                if (lsu_is_store_i && !pte.cw) begin
+                  cheri_pte_fail = 1'b1;
+                end
+              end
               if (CVA6Cfg.RVH) begin
                 case (ptw_stage_q)
                   S_STAGE: begin
@@ -489,6 +511,7 @@ module cva6_ptw
                 if ((!pte.x && (!CVA6Cfg.RVH || ptw_stage_q != G_INTERMED_STAGE)) || !pte.a
                     || (CVA6Cfg.RVH && ptw_stage_q == G_INTERMED_STAGE && !pte.r)) begin
                   state_d = PROPAGATE_ERROR;
+                  if (CVA6Cfg.CheriPresent) cheri_error_d = 2'b0; // No CHERI errors in the ITLB
                   if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
                 end else if ((CVA6Cfg.RVH && ((ptw_stage_q == G_FINAL_STAGE) || !enable_g_translation_i)) || !CVA6Cfg.RVH)
                   shared_tlb_update_valid = 1'b1;
@@ -514,6 +537,7 @@ module cva6_ptw
                     shared_tlb_update_valid = 1'b1;
                 end else begin
                   state_d = PROPAGATE_ERROR;
+                  if (CVA6Cfg.CheriPresent) cheri_error_d = {cheri_pte_fail, 1'b0};
                   if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
                 end
               end
@@ -521,6 +545,7 @@ module cva6_ptw
               // if there is a misaligned page, propagate error
               if (|misaligned_page) begin
                 state_d = PROPAGATE_ERROR;
+                if (CVA6Cfg.CheriPresent) cheri_error_d = {cheri_pte_fail, 1'b0};
                 if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
                 shared_tlb_update_valid = 1'b0;
               end
@@ -528,6 +553,7 @@ module cva6_ptw
               // check if 63:41 are all zeros
               if (CVA6Cfg.RVH) begin
                 if (((v_i && is_instr_ptw_q) || (ld_st_v_i && !is_instr_ptw_q)) && ptw_stage_q == S_STAGE && !((|pte.ppn[CVA6Cfg.PPNW-1:CVA6Cfg.GPPNW]) == 1'b0)) begin
+                  if (CVA6Cfg.CheriPresent) cheri_error_d = {cheri_pte_fail, 1'b0};
                   state_d = PROPAGATE_ERROR;
                   ptw_stage_d = G_FINAL_STAGE;
                 end
@@ -539,10 +565,11 @@ module cva6_ptw
               // Should already be the last level page table => Error
               automatic logic last_level = ptw_lvl_q[0] == CVA6Cfg.PtLevels - 1;
               // A, D, and U bits are reserved for non-leaf entries => Error
-              automatic logic reserved_set = pte.a || pte.d || pte.u;
+              automatic logic reserved_set = pte.a || pte.d || pte.u || (CVA6Cfg.CheriPresent && (pte.cw || pte.crg));
 
               if (last_level || reserved_set) begin
                 ptw_lvl_n[0] = ptw_lvl_q[0];
+                if (CVA6Cfg.CheriPresent) cheri_error_d = 2'b0;
                 state_d = PROPAGATE_ERROR;
                 if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
 
@@ -584,6 +611,7 @@ module cva6_ptw
 
                 if (CVA6Cfg.RVH && (pte.a || pte.d || pte.u)) begin
                   state_d = PROPAGATE_ERROR;
+                  if (CVA6Cfg.CheriPresent) cheri_error_d = 2'b0;
                   ptw_stage_d = ptw_stage_q;
                 end
 
@@ -593,6 +621,7 @@ module cva6_ptw
               if (CVA6Cfg.RVH) begin
                 if (((v_i && is_instr_ptw_q) || (ld_st_v_i && !is_instr_ptw_q)) && ptw_stage_q == S_STAGE && !((|pte.ppn[CVA6Cfg.PPNW-1:CVA6Cfg.GPPNW]) == 1'b0)) begin
                   state_d = PROPAGATE_ERROR;
+                  if (CVA6Cfg.CheriPresent) cheri_error_d = 2'b0;
                   ptw_stage_d = ptw_stage_q;
                 end
               end
@@ -606,6 +635,7 @@ module cva6_ptw
             ptw_pptr_n = ptw_pptr_q;
             if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
             state_d = PROPAGATE_ACCESS_ERROR;
+            if (CVA6Cfg.CheriPresent) cheri_error_d = 2'b0;
           end
         end
         // we've got a data WAIT_GRANT so tell the cache that the tag is valid
@@ -617,6 +647,9 @@ module cva6_ptw
         if (CVA6Cfg.RVH) begin
           ptw_error_at_g_st_o   = (ptw_stage_q != S_STAGE) ? 1'b1 : 1'b0;
           ptw_err_at_g_int_st_o = (ptw_stage_q == G_INTERMED_STAGE) ? 1'b1 : 1'b0;
+        end
+        if (CVA6Cfg.CheriPresent) begin
+          ptw_cheri_error_o = cheri_error_q;
         end
       end
       PROPAGATE_ACCESS_ERROR: begin
@@ -679,6 +712,9 @@ module cva6_ptw
         gpte_q            <= '0;
         tlb_update_vmid_q <= '0;
       end
+      if (CVA6Cfg.CheriPresent) begin
+        cheri_error_q <= 2'b0;
+      end
     end else begin
       state_q           <= state_d;
       ptw_pptr_q        <= ptw_pptr_n;
@@ -697,6 +733,9 @@ module cva6_ptw
         ptw_stage_q       <= ptw_stage_d;
         gpte_q            <= gpte_d;
         tlb_update_vmid_q <= tlb_update_vmid_n;
+      end
+      if (CVA6Cfg.CheriPresent) begin
+        cheri_error_q     <= cheri_error_d;
       end
     end
   end

@@ -131,6 +131,8 @@ module load_store_unit
     input  logic             [      CVA6Cfg.PPNW-1:0] hgatp_ppn_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input  logic             [CVA6Cfg.VMID_WIDTH-1:0] vmid_i,
+    // Capability load barrier generation - EX_STAGE
+    input  logic                                      cap_ucrg_i,
     // Default Data Capability - CSR_REGFILE
     input  cva6_cheri_pkg::cap_reg_t     ddc_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
@@ -210,6 +212,8 @@ module load_store_unit
   logic ld_valid_i;
   logic ld_translation_req;
   logic st_translation_req, cva6_st_translation_req, acc_st_translation_req;
+  logic ld_translation_req_is_cap;
+  logic st_translation_req_is_cap, cva6_st_translation_req_is_cap;
   logic [CVA6Cfg.VLEN-1:0] ld_vaddr;
   logic [            31:0] ld_tinst;
   logic                    ld_hs_ld_st_inst;
@@ -220,6 +224,7 @@ module load_store_unit
   logic                    st_hlvx_inst;
   logic translation_req, cva6_translation_req, acc_translation_req;
   logic translation_valid, cva6_translation_valid;
+  logic translation_req_is_cap, cva6_translation_req_is_cap;
   logic [CVA6Cfg.VLEN-1:0] mmu_vaddr, cva6_mmu_vaddr, acc_mmu_vaddr;
   logic [CVA6Cfg.PLEN-1:0] mmu_paddr, cva6_mmu_paddr, acc_mmu_paddr, lsu_paddr;
   logic cva6_mmu_strip_tag;
@@ -303,6 +308,7 @@ module load_store_unit
         .lsu_vaddr_i(mmu_vaddr),
         .lsu_tinst_i(mmu_tinst),
         .lsu_is_store_i(st_translation_req),
+        .lsu_is_cap_i(translation_req_is_cap),
         .csr_hs_ld_st_inst_o(csr_hs_ld_st_inst_o),
         .lsu_dtlb_hit_o(dtlb_hit),  // send in the same cycle as the request
         .lsu_dtlb_ppn_o(dtlb_ppn),  // send in the same cycle as the request
@@ -320,6 +326,8 @@ module load_store_unit
         .vs_sum_i,
         .mxr_i,
         .vmxr_i,
+
+        .cap_ucrg_i,
 
         .hlvx_inst_i    (mmu_hlvx_inst),
         .hs_ld_st_inst_i(mmu_hs_ld_st_inst),
@@ -465,6 +473,9 @@ module load_store_unit
       // MMU input
       misaligned_exception             = cva6_misaligned_exception;
       st_translation_req               = cva6_st_translation_req;
+      if (CVA6Cfg.CheriPresent) begin
+        st_translation_req_is_cap = cva6_st_translation_req_is_cap;
+      end
       translation_req                  = cva6_translation_req;
       mmu_vaddr                        = cva6_mmu_vaddr;
       // MMU output
@@ -497,6 +508,9 @@ module load_store_unit
           // MMU input
           misaligned_exception             = acc_mmu_req_i.acc_mmu_misaligned_ex;
           st_translation_req               = acc_mmu_req_i.acc_mmu_is_store;
+          if (CVA6Cfg.CheriPresent) begin
+            st_translation_req_is_cap = 1'b0;
+          end
           translation_req                  = acc_mmu_req_i.acc_mmu_req;
           mmu_vaddr                        = acc_mmu_req_i.acc_mmu_vaddr;
           // MMU output
@@ -527,6 +541,9 @@ module load_store_unit
     // MMU input
     assign misaligned_exception   = cva6_misaligned_exception;
     assign st_translation_req     = cva6_st_translation_req;
+    if (CVA6Cfg.CheriPresent) begin
+      assign st_translation_req_is_cap = cva6_st_translation_req_is_cap;
+    end
     assign translation_req        = cva6_translation_req;
     assign mmu_vaddr              = cva6_mmu_vaddr;
     // MMU output
@@ -573,6 +590,7 @@ module load_store_unit
       .ex_o                 (st_ex),
       // MMU port
       .translation_req_o    (cva6_st_translation_req),
+      .translation_req_is_cap_o (cva6_st_translation_req_is_cap),
       .vaddr_o              (st_vaddr),
       .rvfi_mem_paddr_o     (rvfi_mem_paddr_o),
       .tinst_o              (st_tinst),
@@ -617,6 +635,7 @@ module load_store_unit
       .ex_o                 (ld_ex),
       // MMU port
       .translation_req_o    (ld_translation_req),
+      .translation_req_is_cap_o (ld_translation_req_is_cap),
       .vaddr_o              (ld_vaddr),
       .tinst_o              (ld_tinst),
       .hs_ld_st_inst_o      (ld_hs_ld_st_inst),
@@ -672,6 +691,7 @@ module load_store_unit
     st_valid_i           = 1'b0;
 
     cva6_translation_req = 1'b0;
+    cva6_translation_req_is_cap = 1'b0;
     cva6_mmu_vaddr       = {CVA6Cfg.VLEN{1'b0}};
     mmu_tinst            = {32{1'b0}};
     mmu_hs_ld_st_inst    = 1'b0;
@@ -683,6 +703,9 @@ module load_store_unit
       LOAD: begin
         ld_valid_i           = lsu_ctrl.valid;
         cva6_translation_req = ld_translation_req;
+        if (CVA6Cfg.CheriPresent) begin
+          cva6_translation_req_is_cap = ld_translation_req_is_cap;
+        end
         cva6_mmu_vaddr       = ld_vaddr;
         if (CVA6Cfg.RVH) begin
           mmu_tinst         = ld_tinst;
@@ -694,6 +717,9 @@ module load_store_unit
       STORE: begin
         st_valid_i           = lsu_ctrl.valid;
         cva6_translation_req = st_translation_req;
+        if (CVA6Cfg.CheriPresent) begin
+          cva6_translation_req_is_cap = st_translation_req_is_cap;
+        end
         cva6_mmu_vaddr       = st_vaddr;
         if (CVA6Cfg.RVH) begin
           mmu_tinst         = st_tinst;
