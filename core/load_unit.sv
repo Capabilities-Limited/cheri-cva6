@@ -53,6 +53,8 @@ module load_unit
     output exception_t ex_o,
     // Request address translation - MMU
     output logic translation_req_o,
+    // Request address translation for capability - TO_BE_COMPLETED
+    output logic translation_req_is_cap_o,
     // Virtual address - TO_BE_COMPLETED
     output logic [CVA6Cfg.VLEN-1:0] vaddr_o,
     // Transformed trap instruction out - MMU
@@ -275,6 +277,8 @@ module load_unit
   assign inflight_stores = (!dcache_wbuffer_not_ni_i || !store_buffer_empty_i);
   assign stall_ni = (inflight_stores || not_commit_time) && (paddr_ni && CVA6Cfg.NonIdemPotenceEn);
   assign cap_translation_req = (CVA6Cfg.CheriPresent) ? lsu_ctrl_i.operation inside {ariane_pkg::LC} : 1'b0;
+
+  assign translation_req_is_cap_o = cap_translation_req & !strip_tag_o;
 
   // ---------------
   // Load Control
