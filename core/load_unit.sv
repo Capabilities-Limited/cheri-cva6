@@ -534,16 +534,13 @@ module load_unit
   // ---------------
   // Sign Extend
   // ---------------
-  logic [CVA6Cfg.CLEN:0] shifted_data;
+  logic [CVA6Cfg.CLEN:0] data;
+  logic [CVA6Cfg.XLEN:0] shifted_data;
 
   // realign as needed
+  assign shifted_data = req_port_i.data_rdata >> {ldbuf_rdata.address_offset, 3'b000};
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_load_data
-    always_comb begin
-      shifted_data = {1'b0,req_port_i.data_rdata} >> {ldbuf_rdata.address_offset, 3'b000};
-      shifted_data[CVA6Cfg.CLEN] = req_port_i.data_ruser;
-    end
-  end else begin
-    assign shifted_data = req_port_i.data_rdata >> {ldbuf_rdata.address_offset, 3'b000};
+    assign data = {req_port_i.data_ruser,req_port_i.data_rdata};
   end
 
   /*  // result mux (leaner code, but more logic stages.
@@ -583,14 +580,9 @@ module load_unit
   // pull to 0 if unsigned
   assign rdata_sign_bit = (rdata_is_signed && rdata_sign_bits[rdata_offset]) || (CVA6Cfg.FpPresent && rdata_is_fp_signed);
 
-  cva6_cheri_pkg::cap_reg_t mem_reg;
   // result mux
   always_comb begin
     result_o    = (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : '{default:0};
-    // Convert memory capability to register capability
-    if (CVA6Cfg.CheriPresent) begin
-      mem_reg = cva6_cheri_pkg::cap_mem_to_cap_reg(shifted_data ^ cva6_cheri_pkg::MEM_NULL_CAP);
-    end
     unique case (ldbuf_rdata.operation)
       ariane_pkg::LW, ariane_pkg::LWU, ariane_pkg::HLV_W, ariane_pkg::HLV_WU, ariane_pkg::HLVX_WU:
       result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, {{CVA6Cfg.XLEN - 32{rdata_sign_bit}}, shifted_data[31:0]});
@@ -620,12 +612,12 @@ module load_unit
         end
 
         if (CVA6Cfg.CheriPresent) begin
-          unique case (ldbuf_rdata.operation)
-          ariane_pkg::LD, ariane_pkg::FLD, ariane_pkg::HLV_D:    result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, shifted_data[CVA6Cfg.XLEN-1:0]);
-          default: begin
-            result_o = mem_reg;
+          if (ldbuf_rdata.operation == ariane_pkg::LC) begin
+            // Convert memory capability to register capability
+            result_o = cva6_cheri_pkg::cap_mem_to_cap_reg(data);
+          end else begin
+            result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, shifted_data);
           end
-          endcase
         end else begin
           result_o = shifted_data[CVA6Cfg.XLEN-1:0];
         end
