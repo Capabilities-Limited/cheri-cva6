@@ -136,6 +136,7 @@ module commit_stage
   end
 
   assign commit_tran_id_o = commit_instr_i[0].trans_id;
+  assign csr_op_is_imm_o = commit_instr_i[0].use_zimm;
 
   logic instr_0_is_amo;
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_macro_ack;
@@ -224,7 +225,6 @@ module commit_stage
           // write the CSR file
           csr_op_o    = commit_instr_i[0].op;
           csr_wdata_o = commit_instr_i[0].result;
-          csr_op_is_imm_o = commit_instr_i[0].use_zimm;
           if (!commit_drop_i[0]) begin
             if (!csr_exception_i.valid) begin
               commit_csr_o = 1'b1;

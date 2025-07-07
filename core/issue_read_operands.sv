@@ -742,6 +742,8 @@ module issue_read_operands
       fu_data_n[i].operand_a = operand_a_regfile[i];
       fu_data_n[i].operand_b = operand_b_regfile[i];
 
+      pcc_jump_change_n = pcc_jump_change_q;
+
       // immediates are the third operands in the store case
       // for FP operations, the imm field can also be the third operand from the regfile
       if (OPERANDS_PER_INSTR == 3) begin
