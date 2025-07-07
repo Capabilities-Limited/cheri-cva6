@@ -169,7 +169,6 @@ module branch_unit #(
   always_comb begin : exception_handling
     automatic logic cheri_fault;
     automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
-    automatic cva6_cheri_pkg::addrw_t min_instr_off;
     cheri_fault = 1'b0;
     cheri_tval2.fault_type = cva6_cheri_pkg::CAP_JUMP_BRANCH_FAULT;
     // Do a jump if it is either unconditional jump (JAL | JALR) or `taken` conditional jump

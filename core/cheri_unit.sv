@@ -24,8 +24,7 @@ typedef struct packed {
 module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
     parameter type fu_data_t = logic,
-    parameter type exception_t = logic,
-    parameter int CHERI_ISA_V8       = 0
+    parameter type exception_t = logic
     ) (
     input  logic                     clk_i,         // Clock
     input  logic                     rst_ni,        // Asynchronous reset active low

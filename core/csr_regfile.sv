@@ -26,7 +26,6 @@ module csr_regfile
     parameter type                   scoreboard_entry_t = logic,
     parameter type                   rvfi_probes_csr_t  = logic,
     parameter int                    VmidWidth          = 1,
-    parameter int unsigned           MHPMCounterNum     = 6,
     parameter int unsigned           N_Triggers         = 4
 ) (
     // Subsystem Clock - SUBSYSTEM
