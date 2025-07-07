@@ -387,6 +387,7 @@ end
     trans_id_n = issue_instr_i.trans_id;
     fu_n       = issue_instr_i.fu;
     operator_n = issue_instr_i.op;
+    pcc_jump_change_n = pcc_jump_change_q;
 
     if (CVA6Cfg.CheriPresent) begin
       rs1_n = issue_instr_i.rs1;

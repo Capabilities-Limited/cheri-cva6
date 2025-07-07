@@ -149,6 +149,10 @@ module wt_axi_adapter
     end else begin
       axi_wr_data[0]  = {(CVA6Cfg.AxiDataWidth/CVA6Cfg.XLEN){dcache_data.data[CVA6Cfg.XLEN-1:0]}};
       axi_wr_user[0]  = dcache_data.user;
+      for (int k = 1; k < AxiWNumWords; k ++) begin
+        axi_wr_data[k]  = '0;
+        axi_wr_user[k]  = '0;
+      end
     end
     // Cast to AXI address width
     axi_wr_addr  = {{CVA6Cfg.AxiAddrWidth-CVA6Cfg.PLEN{1'b0}}, dcache_data.paddr};
