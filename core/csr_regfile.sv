@@ -1580,9 +1580,7 @@ module csr_regfile
                (1 << riscv::INSTR_PAGE_FAULT) |
                (1 << riscv::LOAD_PAGE_FAULT) |
                (1 << riscv::STORE_PAGE_FAULT) |
-               ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_LOAD_PAGE_FAULT) |
-               ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT) |
-               ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_EXCEPTION);
+               ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_EXCEPTION);
             hedeleg_d = (hedeleg_q & ~mask) | (csr_wdata & mask);
           end else begin
             update_access_exception = 1'b1;
@@ -1733,9 +1731,7 @@ module csr_regfile
                              ((CVA6Cfg.RVH ? 1 : 0)  << riscv::LOAD_GUEST_PAGE_FAULT) |
                              ((CVA6Cfg.RVH ? 1 : 0)  << riscv::VIRTUAL_INSTRUCTION) |
                              ((CVA6Cfg.RVH ? 1 : 0)  << riscv::STORE_GUEST_PAGE_FAULT) |
-                             ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_LOAD_PAGE_FAULT) |
-                             ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT) |
-                             ((CVA6Cfg.CheriPresent ? 1 : 0)  << cva6_cheri_pkg::CAP_EXCEPTION);
+                             ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_EXCEPTION);
             medeleg_d = (medeleg_q & ~mask) | (csr_wdata & mask);
           end else begin
             update_access_exception = 1'b1;

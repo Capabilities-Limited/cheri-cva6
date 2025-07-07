@@ -415,11 +415,7 @@ module load_unit
         // ----------
         // if we got an exception we need to kill the request immediately
         if (ex_i.valid) begin
-          if (ex_i.cause == cva6_cheri_pkg::CAP_LOAD_PAGE_FAULT && CVA6Cfg.CheriPresent) begin
-            cheri_ex_d[ldbuf_cap_ex_windex_q] = ex_i;
-          end else begin
-            req_port_o.kill_req = 1'b1;
-          end
+          req_port_o.kill_req = 1'b1;
         end
       end
 
@@ -502,9 +498,9 @@ module load_unit
       // the output is also valid if we got an exception. An exception arrives one cycle after
       // dtlb_hit_i is asserted, i.e. when we are in SEND_TAG. Otherwise, the exception
       // corresponds to the next request that is already being translated (see below).
-      if (ex_i.valid && (state_q == SEND_TAG) && ex_i.cause != cva6_cheri_pkg::CAP_LOAD_PAGE_FAULT) begin
-          valid_o    = 1'b1;
-          ex_o.valid = 1'b1;
+      if (ex_i.valid && (state_q == SEND_TAG)) begin
+        valid_o    = 1'b1;
+        ex_o.valid = 1'b1;
       end
     end
 
