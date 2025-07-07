@@ -39,11 +39,7 @@ package cva6_cheri_pkg;
 
     /* Capabilities RISC-V Exception Trap Encoding Extension */
 
-    localparam logic [XLEN-1:0] CAP_LOAD_PAGE_FAULT             = 26;
-    localparam logic [XLEN-1:0] CAP_STORE_AMO_PAGE_FAULT        = 27;
     localparam logic [XLEN-1:0] CAP_EXCEPTION                   = 28;
-    localparam logic [XLEN-1:0] CAP_GUEST_LOAD_PAGE_FAULT       = 29;
-    localparam logic [XLEN-1:0] CAP_GUEST_STORE_AMO_PAGE_FAULT  = 30;
     localparam logic [XLEN-1:0] CAP_GUEST_EXCEPTION             = 31;
 
     /* Capabilities Exception Codes */
