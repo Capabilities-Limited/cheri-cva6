@@ -488,6 +488,10 @@ module cva6
   // --------------
   scoreboard_entry_t [CVA6Cfg.NrCommitPorts-1:0] commit_instr_id_commit;
   // --------------
+  // ISSUE <-> COMMIT
+  // --------------
+  logic [CVA6Cfg.PCLEN-1:0] commit_pcc;
+  // --------------
   // RVFI
   // --------------
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] rvfi_issue_pointer;
@@ -796,6 +800,7 @@ module cva6
       .rs2_forwarding_o      (rs2_forwarding_id_ex),
       .fu_data_o             (fu_data_id_ex),
       .pc_o                  (pc_id_ex),
+      .commit_pcc_o          (commit_pcc),
       .dii_id_o              (dii_id_id_ex),
       .is_compressed_instr_o (is_compressed_instr_id_ex),
       .tinst_o               (tinst_ex),
@@ -1030,7 +1035,7 @@ module cva6
       .amo_valid_commit_o(amo_valid_commit),
       .amo_resp_i        (amo_resp),
       .commit_csr_o      (csr_commit_commit_ex),
-      .pcc_i             (pc_id_ex),
+      .pcc_i             (commit_pcc),
       .pc_o              (pc_commit),
       .dii_id_o          (dii_id_commit),
       .csr_op_o          (csr_op_commit_csr),

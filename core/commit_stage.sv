@@ -113,6 +113,7 @@ module commit_stage
   end
 
   always_comb begin : prepare_pc_o
+    // Recalculate the PCC with correct address. Representability check not required because this was in-bounds at issue.
     automatic cva6_cheri_pkg::cap_pcc_t pcc_o = cva6_cheri_pkg::set_cap_reg_addr(pcc_i, commit_instr_i[0].pc);
     pcc_o = cva6_cheri_pkg::set_cap_reg_flags(pcc_o, commit_instr_i[0].int_mode);
     pc_o = pcc_o;

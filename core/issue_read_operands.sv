@@ -80,6 +80,8 @@ module issue_read_operands
     output logic [CVA6Cfg.REGLEN-1:0] rs2_forwarding_o,
     // Instruction pc - TO_BE_COMPLETED
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
+    // Last committed pcc change - TO BE COMPLETED
+    output logic [CVA6Cfg.PCLEN-1:0] commit_pcc_o,
     // Instruction DII ID - TO_BE_COMPLETED
     output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is compressed instruction - TO_BE_COMPLETED
@@ -215,6 +217,7 @@ module issue_read_operands
   assign stall_issue_o = stall;
   assign tinst_o = CVA6Cfg.RVH ? tinst_q : '0;
   assign int_mode_o = cva6_cheri_pkg::get_cap_reg_flags(pcc_q);
+  assign commit_pcc_o = pcc_q;
   // ---------------
   // Issue Stage
   // ---------------
@@ -767,8 +770,8 @@ end
         pcc_q <= pcc_n;
         pcc_jump_change_valid_q <= pcc_jump_change_valid_n;
         pcc_jump_change_q <= pcc_jump_change_n;
+        pc_o <= cva6_cheri_pkg::set_cap_reg_flags(cva6_cheri_pkg::set_cap_reg_address(pcc, issue_instr_i.pc, pcc_meta),issue_instr_i.int_mode);
       end
-      pc_o                  <= cva6_cheri_pkg::set_cap_reg_flags(cva6_cheri_pkg::set_cap_reg_address(pcc, issue_instr_i.pc, pcc_meta),issue_instr_i.int_mode);
       is_compressed_instr_o <= issue_instr_i.is_compressed;
       branch_predict_o      <= issue_instr_i.bp;
       if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i.dii_id;
