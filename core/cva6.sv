@@ -561,6 +561,10 @@ module cva6
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_commit_id;
 
   // --------------
+  // ISSUE <-> COMMIT
+  // --------------
+  logic [CVA6Cfg.PCLEN-1:0] commit_pcc;
+  // --------------
   // RVFI
   // --------------
   logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] rvfi_issue_pointer;
@@ -910,6 +914,7 @@ module cva6
       .fu_data_o               (fu_data_id_ex),
       .alu_bypass_o            (alu_bypass_id_ex),
       .pc_o                    (pc_id_ex),
+      .commit_pcc_o            (commit_pcc),
       .dii_id_o                (dii_id_id_ex),
       .is_zcmt_o               (zcmt_id_ex),
       .is_compressed_instr_o   (is_compressed_instr_id_ex),
@@ -1175,7 +1180,7 @@ module cva6
       .we_gpr_o            (we_gpr_commit_id),
       .we_fpr_o            (we_fpr_commit_id),
       .amo_resp_i          (amo_resp),
-      .pcc_i               (pc_id_ex),
+      .pcc_i               (commit_pcc),
       .pc_o                (pc_commit),
       .dii_id_o            (dii_id_commit),
       .csr_op_o            (csr_op_commit_csr),
