@@ -1931,8 +1931,8 @@ module decoder
       };
     end
     imm_si_type = (CVA6Cfg.CheriPresent) ?
-      ( instruction_i[25] ? {'b0,instruction_i[24:20],4'b0} : {'b0, instruction_i[24:20]} )
-      :0;
+        {{CVA6Cfg.XLEN - 9{1'b0}}, instruction_i[25] ? {instruction_i[24:20], 4'b0} : {4'b0, instruction_i[24:20]}}
+      : {CVA6Cfg.XLEN{1'b0}};
 
     // TODO-cheri: make cheri optional
     instruction_o.result = '{default:0};
