@@ -105,13 +105,13 @@ module branch_unit #(
     resolved_branch_o.cf_type = branch_predict_i.cf;
     // calculate target address simple 64 bit addition
     target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
+    if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
     if (CVA6Cfg.CheriPresent) begin
       target_address = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_address(jump_base_cap,
                                               target_address[CVA6Cfg.VLEN-1:0],
                                               cva6_cheri_pkg::get_cap_reg_meta_data(jump_base_cap)) : '0;
     end
     // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
-    if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
     if (CVA6Cfg.CheriPresent) begin
       if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
         branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc), cva6_cheri_pkg::SENTRY_CAP);
