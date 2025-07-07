@@ -471,6 +471,7 @@ module ex_stage
 
   generate
     if (CVA6Cfg.FpPresent) begin : fpu_gen
+      automatic logic [CVA6Cfg.FLen-1:0] fpu_result;
       fu_data_t fpu_data;
       always_comb begin
         fpu_data = fpu_valid_i[0] ? fu_data_i[0] : '0;
@@ -502,6 +503,7 @@ module ex_stage
           .fpu_exception_o,
           .fpu_early_valid_o
       );
+      assign fpu_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, fpu_result);
     end else begin : no_fpu_gen
       assign fpu_ready_o       = '0;
       assign fpu_trans_id      = '0;
