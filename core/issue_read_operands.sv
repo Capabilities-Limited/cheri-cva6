@@ -68,6 +68,8 @@ module issue_read_operands
     output logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs2_forwarding_o,
     // Program Counter - EX_STAGE
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
+    // Last committed pcc change - EX_STAGE
+    output logic [CVA6Cfg.PCLEN-1:0] commit_pcc_o,
     // Instruction DII ID - EX_STAGE
     output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is zcmt - EX_STAGE
@@ -362,6 +364,7 @@ module issue_read_operands
   end
 
   assign int_mode_o = cva6_cheri_pkg::get_cap_reg_flags(pcc_q);
+  assign commit_pcc_o = pcc_q;
   // ---------------
   // Issue Stage
   // ---------------
@@ -1189,14 +1192,14 @@ module issue_read_operands
     branch_predict_n = {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
     if (CVA6Cfg.SuperscalarEn) begin
       if (issue_instr_i[1].fu == CTRL_FLOW) begin
-        pc_n                  = cva6_cheri_pkg::set_cap_reg_address(pcc[1], issue_instr_i[1].pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q))
+        pc_n                  = cva6_cheri_pkg::set_cap_reg_address(pcc[1], issue_instr_i[1].pc, pcc_meta);
         is_compressed_instr_n = issue_instr_i[1].is_compressed;
         branch_predict_n      = issue_instr_i[1].bp;
         if (CVA6Cfg.RVFI_DII) dii_id_n = issue_instr_i[1].dii_id;
       end
     end
     if (issue_instr_i[0].fu == CTRL_FLOW) begin
-      pc_n                  = cva6_cheri_pkg::set_cap_reg_address(pcc[0], issue_instr_i[0].pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q))
+      pc_n                  = cva6_cheri_pkg::set_cap_reg_address(pcc[0], issue_instr_i[0].pc, pcc_meta);
       is_compressed_instr_n = issue_instr_i[0].is_compressed;
       branch_predict_n      = issue_instr_i[0].bp;
       if (CVA6Cfg.RVFI_DII) dii_id_n = issue_instr_i[0].dii_id;
