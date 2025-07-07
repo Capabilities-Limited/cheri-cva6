@@ -27,7 +27,6 @@ package cva6_cheri_pkg;
     localparam CAP_ADDR_WIDTH       = XLEN;                      // Capability address width
     localparam CAP_UPERMS_WIDTH     = 4;
     localparam CAP_UPERMS_SHIFT     = 6;
-    localparam CAP_FLAGS_WIDTH      = 1;
     localparam CAP_RSERV_HI_WIDTH   = 7;
     localparam CAP_RSERV_LO_WIDTH   = 15;
     localparam CAP_M_WIDTH          = 14;
@@ -345,7 +344,6 @@ package cva6_cheri_pkg;
     endfunction
 
     function automatic capw_t set_cap_mem_addr_inc (capw_t cap, logic [11:0] inc);
-        cap_mem_t ret = cap;
         addrw_t addr = get_cap_mem_addr(cap);
         addrw_t sgn_ext_inc = $signed(inc);
         return set_cap_mem_addr_unsafe(cap, addr + sgn_ext_inc);
@@ -517,8 +515,6 @@ package cva6_cheri_pkg;
     function automatic addrw_t get_cap_reg_length(cap_reg_t cap, cap_meta_data_t cap_meta_data);
         mwe2_t top = {cap_meta_data.ct, cap.bounds.top_bits};
         mwe2_t base = {cap_meta_data.cb, cap.bounds.base_bits};
-        mw_t tmp = base;
-        mwe2_t tmp2 = tmp + base;
         addrw_t length = {(top - base), 52'b0} >> cap.bounds.exp;
         // TODO: same saturation behaviour as bsv... "short of being correct"
         return (cap.bounds.exp == CAP_RESET_EXP) ? ~0 : length;
@@ -777,7 +773,6 @@ package cva6_cheri_pkg;
         mw_t new_top_bits_ovflw = new_top_bits >> 1;
         addrwe2_t lmask_lo_ovflw = lmask >> (CAP_M_WIDTH - 1 - 3 - 1); // -1 drops the 0 in 14th bit of the length slice, -3 drops the exp bits
         bool_t lost_sig_top_ovflw = ((new_top & lmask_lo_ovflw) != 0) && int_exp;
-        bool_t lost_sig_base_ovflw = ((new_base & lmask_lo_ovflw) != 0) && int_exp;
 
         // determine whether the exponent needs rounding up
         ////////////////////////////////////////////////////////////////////////

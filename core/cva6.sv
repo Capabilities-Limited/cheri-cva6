@@ -1192,8 +1192,7 @@ module cva6
       .jvt_t             (jvt_t),
       .irq_ctrl_t        (irq_ctrl_t),
       .scoreboard_entry_t(scoreboard_entry_t),
-      .rvfi_probes_csr_t (rvfi_probes_csr_t),
-      .MHPMCounterNum    (MHPMCounterNum)
+      .rvfi_probes_csr_t (rvfi_probes_csr_t)
   ) csr_regfile_i (
       .clk_i,
       .rst_ni,
