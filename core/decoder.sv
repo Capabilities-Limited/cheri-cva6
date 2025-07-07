@@ -203,7 +203,6 @@ module decoder
     instruction_o.rd                       = '0;
     instruction_o.use_pc                   = 1'b0;
     instruction_o.is_compressed            = is_compressed_i;
-    instruction_o.needs_asr                = 1'b0;
     instruction_o.is_macro_instr           = is_macro_instr_i;
     instruction_o.is_last_macro_instr      = is_last_macro_instr_i;
     instruction_o.is_double_rd_macro_instr = is_double_rd_macro_instr_i;
@@ -2081,6 +2080,7 @@ module decoder
   always_comb begin : exception_handling
     interrupt_cause = '0;
     instruction_o.ex = ex_i;
+    instruction_o.needs_asr = 1'b0;
     orig_instr_o = '0;
     // look if we didn't already get an exception in any previous
     // stage - we should not overwrite it as we retain order regarding the exception
