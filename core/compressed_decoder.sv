@@ -97,7 +97,7 @@ module compressed_decoder #(
                   4'b0000,
                   2'b01,
                   instr_i[9:7],
-                  3'b010,
+                  3'b100,
                   2'b01,
                   instr_i[4:2],
                   riscv::OpcodeMiscMem
@@ -828,7 +828,7 @@ module compressed_decoder #(
                 instr_i[6],
                 4'b0000,
                 5'h02,
-                3'b010,
+                3'b100,
                 instr_i[11:7],
                 riscv::OpcodeMiscMem
               };
