@@ -91,6 +91,7 @@ CFLAGS := -I$(QUESTASIM_HOME)/include                                       \
 
 # this list contains the standalone components
 src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                                                         \
+        $(root-dir)/corev_apu/tb/tb_testRig_cheri/hdl/rvfi_dii_generator.sv                                      \
         $(root-dir)/corev_apu/src/ariane.sv                                                                      \
         $(wildcard $(root-dir)/corev_apu/bootrom/*.sv)                                                           \
         $(wildcard $(root-dir)/corev_apu/clint/*.sv)                                                             \
