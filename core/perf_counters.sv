@@ -68,7 +68,7 @@ module perf_counters
   //internal signal to keep track of exception
   logic read_access_exception, update_access_exception;
 
-  logic events[6:1];
+  logic events[MHPMCounterNum:1];
   //internal signal for  MUX select line input
   logic [4:0] mhpmevent_d[MHPMCounterNum:1];
   logic [4:0] mhpmevent_q[MHPMCounterNum:1];
@@ -146,7 +146,7 @@ module perf_counters
     update_access_exception = 1'b0;
 
     // Increment the non-inhibited counters with active events
-    for (int unsigned i = 1; i <= 6; i++) begin
+    for (int unsigned i = 1; i <= MHPMCounterNum; i++) begin
       if ((!debug_mode_i) && (!we_i)) begin
         if ((events[i]) == 1 && (!mcountinhibit_i[i+2])) begin
           generic_counter_d[i] = generic_counter_q[i] + 1'b1;
