@@ -107,9 +107,9 @@ module branch_unit #(
     target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
     if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
     if (CVA6Cfg.CheriPresent) begin
-      target_address = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_address(jump_base_cap,
-                                              target_address[CVA6Cfg.VLEN-1:0],
-                                              cva6_cheri_pkg::get_cap_reg_meta_data(jump_base_cap)) : '0;
+      target_address = cva6_cheri_pkg::set_cap_reg_address(jump_base_cap,
+                                                           target_address[CVA6Cfg.VLEN-1:0],
+                                                           cva6_cheri_pkg::get_cap_reg_meta_data(jump_base_cap));
     end
     // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
     if (CVA6Cfg.CheriPresent) begin
