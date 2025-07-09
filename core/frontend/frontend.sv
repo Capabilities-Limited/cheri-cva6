@@ -377,10 +377,12 @@ module frontend
     if (npc_rst_load_q) begin
       npc_d         = boot_addr_i;
       fetch_address = boot_addr_i;
+`ifdef DII
       if (CVA6Cfg.RVFI_DII) begin
         ndii_id_d     = test_dii_start();
         fetch_dii_id  = test_dii_start();
       end
+`endif
     end else begin
       fetch_address = npc_q;
       // keep stable by default

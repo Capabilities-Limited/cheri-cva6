@@ -735,7 +735,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
   always_comb begin : gen_boot_cap
     boot_cap = PCC_ROOT_CAP;
     boot_cap.addr = ariane_soc::ROMBase;
-    boot_cap.flags.cap_mode = 1'b0;
+    boot_cap.flags.int_mode = 1'b1;
   end
 
   ariane #(
