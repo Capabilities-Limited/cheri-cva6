@@ -252,7 +252,6 @@ module load_store_unit
   logic       hs_ld_st_inst;
   logic       hlvx_inst;
 
-  logic [5:0] fault_cap_idx;
   cva6_cheri_pkg::cap_reg_t check_cap;
   cva6_cheri_pkg::cap_meta_data_t check_cap_meta_data;
   cva6_cheri_pkg::addrw_t check_cap_base;
@@ -917,7 +916,6 @@ module load_store_unit
     // Consider moving this to CHERI unit
     always_comb begin
       check_cap             = (lsu_ctrl.use_ddc) ? ddc_i : lsu_ctrl.operand_a;
-      fault_cap_idx         = (lsu_ctrl.use_ddc) ? {6'b100001} : {1'b0,lsu_ctrl.rs1};
       check_cap_meta_data   = cva6_cheri_pkg::get_cap_reg_meta_data(check_cap);
       // TODO-cheri: add relocation check_cap.addr
       check_cap_address     = lsu_ctrl.vaddr;
