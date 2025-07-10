@@ -902,7 +902,7 @@ package cva6_cheri_pkg;
       * @returns permissions in the report format for gcperms.
       */
     function automatic cap_report_perms_t hperms_and_uperms_to_report_perms (cap_hperms_t hp_raw, upermsw_t up);
-        cap_hperms_t hp = legalize_arch_perms(hp_raw);
+        cap_hperms_t hp = legalize_arch_perms(hp_raw) == hp_raw ? hp_raw : '0;
         cap_report_perms_t rp = '{
             reserved_hi          : 0,//Newer spec:'1,
             permit_load          : hp.permit_load,
