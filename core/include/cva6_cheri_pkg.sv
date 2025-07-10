@@ -911,7 +911,7 @@ package cva6_cheri_pkg;
             reserved_lo          : 0,//Newer spec:'1,
             uperms               : up,
             permit_cap           : hp.permit_cap,
-            cap_level            : hp.cap_level,
+            cap_level            : hp_raw.cap_level, // Not a permission, so not subject to the same legalisation
             permit_store_level   : hp.permit_store_level,
             permit_elevate_level : hp.permit_elevate_level,
             permit_load_mutable  : hp.permit_load_mutable,
