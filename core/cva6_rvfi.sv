@@ -77,7 +77,7 @@ module cva6_rvfi
   logic [CVA6Cfg.NrCommitPorts-1:0][REG_ADDR_SIZE-1:0] commit_instr_rs2;
   logic [CVA6Cfg.NrCommitPorts-1:0][REG_ADDR_SIZE-1:0] commit_instr_rd;
   logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] commit_instr_result;
-  logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.VLEN-1:0] commit_instr_valid;
+  logic [CVA6Cfg.NrCommitPorts-1:0] commit_instr_valid;
 
   logic [CVA6Cfg.XLEN-1:0] ex_commit_cause;
   logic ex_commit_valid;
@@ -125,9 +125,8 @@ module cva6_rvfi
   assign fetch_entry_valid = instr.fetch_entry_valid;
   assign instruction = instr.instruction;
   assign is_compressed = instr.is_compressed;
-
   assign issue_pointer = instr.issue_pointer;
-  assign commit_pointer = instr.commit_pointer;
+  
 
   assign flush_unissued_instr = instr.flush_unissued_instr;
   assign decoded_instr_valid = instr.decoded_instr_valid;
@@ -136,15 +135,20 @@ module cva6_rvfi
   assign rs1_forwarding = instr.rs1_forwarding;
   assign rs2_forwarding = instr.rs2_forwarding;
 
-  assign commit_instr_pc = instr.commit_instr_pc;
-  assign commit_instr_next_pc = instr.commit_instr_next_pc;
-  assign commit_instr_op = instr.commit_instr_op;
-  assign commit_instr_fu = instr.commit_instr_fu;
-  assign commit_instr_rs1 = instr.commit_instr_rs1;
-  assign commit_instr_rs2 = instr.commit_instr_rs2;
-  assign commit_instr_rd = instr.commit_instr_rd;
-  assign commit_instr_result = instr.commit_instr_result;
-  assign commit_instr_valid = instr.commit_instr_valid;
+  for (genvar i = 0; i <= CVA6Cfg.NrCommitPorts; i++) begin
+    assign commit_pointer = instr.commit_pointer;
+    assign commit_instr_pc[i] = instr.commit_instr_pc[i];
+    assign commit_instr_next_pc[i] = instr.commit_instr_next_pc[i];
+    assign commit_instr_op[i] = instr.commit_instr_op[i];
+    assign commit_instr_fu[i] = instr.commit_instr_fu[i];
+    assign commit_instr_rs1[i] = instr.commit_instr_rs1[i];
+    assign commit_instr_rs2[i] = instr.commit_instr_rs2[i];
+    assign commit_instr_rd[i] = instr.commit_instr_rd[i];
+    assign commit_instr_result[i] = instr.commit_instr_result[i];
+    assign commit_instr_valid[i] = instr.commit_instr_valid[i];
+    assign wdata[i] = instr.wdata[i];
+    assign commit_ack[i] = instr.commit_ack[i];
+  end
 
   assign ex_commit_cause = instr.ex_commit_cause;
   assign ex_commit_valid = instr.ex_commit_valid;
@@ -152,10 +156,9 @@ module cva6_rvfi
   assign priv_lvl = instr.priv_lvl;
 
   assign wbdata = instr.wbdata;
-  assign commit_ack = instr.commit_ack;
   assign mem_paddr = instr.mem_paddr;
   assign debug_mode = instr.debug_mode;
-  assign wdata = instr.wdata;
+  
 
   assign lsu_addr = instr.lsu_ctrl_vaddr;
   assign lsu_rmask = (instr.lsu_ctrl_fu == LOAD || (((mem_q[lsu_addr_trans_id].instr & 32'hF800703F) == 32'h1000402F)) && instr.lsu_ctrl_fu == STORE) ? instr.lsu_ctrl_be : '0;
@@ -276,7 +279,7 @@ module cva6_rvfi
       logic [4:0] rd_addr;
       logic [4:0] rs2_addr;
       instr = mem_q[commit_pointer[i]].instr;
-      exception = commit_instr_valid[i][0] && ex_commit_valid;
+      exception = commit_instr_valid[i] && ex_commit_valid;
       rd_addr = commit_instr_rd[i][4:0];
       rs2_addr = (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs2[i][4:0];
       rvfi_instr_o[i].valid    <= (commit_ack[i] && !ex_commit_valid) ||
