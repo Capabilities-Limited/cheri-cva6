@@ -139,9 +139,8 @@ module cva6_rvfi
   assign fetch_entry_valid = instr.fetch_entry_valid;
   assign instruction = instr.instruction;
   assign is_compressed = instr.is_compressed;
-
   assign issue_pointer = instr.issue_pointer;
-  assign commit_pointer = instr.commit_pointer;
+  
 
   assign flush_unissued_instr = instr.flush_unissued_instr;
   assign decoded_instr_valid = instr.decoded_instr_valid;
@@ -150,16 +149,21 @@ module cva6_rvfi
   assign rs1 = instr.rs1;
   assign rs2 = instr.rs2;
 
-  assign commit_instr_pc = instr.commit_instr_pc;
-  assign commit_instr_next_pc = instr.commit_instr_next_pc;
-  assign commit_instr_op = instr.commit_instr_op;
-  assign commit_instr_fu = instr.commit_instr_fu;
-  assign commit_instr_rs1 = instr.commit_instr_rs1;
-  assign commit_instr_rs2 = instr.commit_instr_rs2;
-  assign commit_instr_rd = instr.commit_instr_rd;
-  assign commit_instr_result = instr.commit_instr_result;
-  assign commit_instr_valid = instr.commit_instr_valid;
-  assign commit_drop = instr.commit_drop;
+  for (genvar i = 0; i <= CVA6Cfg.NrCommitPorts; i++) begin
+    assign commit_pointer = instr.commit_pointer;
+    assign commit_instr_pc[i] = instr.commit_instr_pc[i];
+    assign commit_instr_next_pc[i] = instr.commit_instr_next_pc[i];
+    assign commit_instr_op[i] = instr.commit_instr_op[i];
+    assign commit_instr_fu[i] = instr.commit_instr_fu[i];
+    assign commit_instr_rs1[i] = instr.commit_instr_rs1[i];
+    assign commit_instr_rs2[i] = instr.commit_instr_rs2[i];
+    assign commit_instr_rd[i] = instr.commit_instr_rd[i];
+    assign commit_instr_result[i] = instr.commit_instr_result[i];
+    assign commit_instr_valid[i] = instr.commit_instr_valid[i];
+    assign wdata[i] = instr.wdata[i];
+    assign commit_ack[i] = instr.commit_ack[i];
+    assign commit_drop[i] = instr.commit_drop[i];
+  end
 
   assign ex_commit_cause = instr.ex_commit_cause;
   assign ex_commit_valid = instr.ex_commit_valid;
@@ -175,10 +179,9 @@ module cva6_rvfi
   assign priv_lvl = instr.priv_lvl;
 
   assign wbdata = instr.wbdata;
-  assign commit_ack = instr.commit_ack;
   assign mem_paddr = instr.mem_paddr;
   assign debug_mode = instr.debug_mode;
-  assign wdata = instr.wdata;
+  
 
   assign lsu_addr = instr.lsu_ctrl_vaddr;
   assign lsu_rmask = (instr.lsu_ctrl_fu == LOAD || (((mem_q[lsu_addr_trans_id].instr & 32'hF800703F) == 32'h1000402F)) && instr.lsu_ctrl_fu == STORE) ? instr.lsu_ctrl_be : '0;

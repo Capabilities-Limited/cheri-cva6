@@ -40,26 +40,46 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   input  logic                           rtc_i,
   input  logic                           rst_ni,
 `ifdef RVFI_TRACE
-  output logic                         rvfi_valid_o,
-  output logic [63:0]                  rvfi_order_o,
-  output logic [31:0]                  rvfi_insn_o,
-  output logic                         rvfi_trap_o,
-  output logic                         rvfi_halt_o,
-  output logic                         rvfi_intr_o,
-  output logic [ 1:0]                  rvfi_mode_o,
-  output logic [ 4:0]                  rvfi_rs1_addr_o,
-  output logic [ 4:0]                  rvfi_rs2_addr_o,
-  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs1_rdata_o,
-  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs2_rdata_o,
-  output logic [ 4:0]                  rvfi_rd_addr_o,
-  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rd_wdata_o,
-  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_rdata_o,
-  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_wdata_o,
-  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_addr_o,
-  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_rmask_o,
-  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_wmask_o,
-  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_rdata_o,
-  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_wdata_o,
+  output logic                         rvfi_valid_o_0,
+  output logic [63:0]                  rvfi_order_o_0,
+  output logic [31:0]                  rvfi_insn_o_0,
+  output logic                         rvfi_trap_o_0,
+  output logic                         rvfi_halt_o_0,
+  output logic                         rvfi_intr_o_0,
+  output logic [ 1:0]                  rvfi_mode_o_0,
+  output logic [ 4:0]                  rvfi_rs1_addr_o_0,
+  output logic [ 4:0]                  rvfi_rs2_addr_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs1_rdata_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs2_rdata_o_0,
+  output logic [ 4:0]                  rvfi_rd_addr_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rd_wdata_o_0,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_rdata_o_0,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_wdata_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_addr_o_0,
+  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_rmask_o_0,
+  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_wmask_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_rdata_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_wdata_o_0,
+  output logic                         rvfi_valid_o_1,
+  output logic [63:0]                  rvfi_order_o_1,
+  output logic [31:0]                  rvfi_insn_o_1,
+  output logic                         rvfi_trap_o_1,
+  output logic                         rvfi_halt_o_1,
+  output logic                         rvfi_intr_o_1,
+  output logic [ 1:0]                  rvfi_mode_o_1,
+  output logic [ 4:0]                  rvfi_rs1_addr_o_1,
+  output logic [ 4:0]                  rvfi_rs2_addr_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs1_rdata_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs2_rdata_o_1,
+  output logic [ 4:0]                  rvfi_rd_addr_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rd_wdata_o_1,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_rdata_o_1,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_wdata_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_addr_o_1,
+  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_rmask_o_1,
+  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_wmask_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_rdata_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_wdata_o_1,
 `endif
 
   output logic [31:0]                    exit_o
@@ -812,25 +832,47 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
 `endif
 
 `ifdef DII
-    assign rvfi_valid_o               = rvfi_instr[0].valid;
-    assign rvfi_order_o               = rvfi_instr[0].order;
-    assign rvfi_insn_o                = rvfi_instr[0].insn;
-    assign rvfi_trap_o                = rvfi_instr[0].trap;
-    assign rvfi_halt_o                = rvfi_instr[0].halt;
-    assign rvfi_intr_o                = rvfi_instr[0].intr;
-    assign rvfi_mode_o                = rvfi_instr[0].mode;
-    assign rvfi_rs1_addr_o            = rvfi_instr[0].rs1_addr;
-    assign rvfi_rs2_addr_o            = rvfi_instr[0].rs2_addr;
-    assign rvfi_rs1_rdata_o           = rvfi_instr[0].rs1_rdata;
-    assign rvfi_rs2_rdata_o           = rvfi_instr[0].rs2_rdata;
-    assign rvfi_rd_addr_o             = rvfi_instr[0].rd_addr;
-    assign rvfi_rd_wdata_o           = rvfi_instr[0].rd_wdata;
-    assign rvfi_pc_rdata_o            = rvfi_instr[0].pc_rdata;
-    assign rvfi_pc_wdata_o            = rvfi_instr[0].pc_wdata;
-    assign rvfi_mem_addr_o            = rvfi_instr[0].mem_addr;
-    assign rvfi_mem_rmask_o           = rvfi_instr[0].mem_rmask;
-    assign rvfi_mem_wmask_o           = rvfi_instr[0].mem_wmask;
-    assign rvfi_mem_rdata_o          = rvfi_instr[0].mem_rdata[CVA6Cfg.XLEN-1:0];
-    assign rvfi_mem_wdata_o          = rvfi_instr[0].mem_wdata[CVA6Cfg.XLEN-1:0];
+  assign rvfi_valid_o_0     = rvfi_instr[0].valid;
+  assign rvfi_order_o_0     = rvfi_instr[0].order;
+  assign rvfi_insn_o_0      = rvfi_instr[0].insn;
+  assign rvfi_trap_o_0      = rvfi_instr[0].trap;
+  assign rvfi_halt_o_0      = rvfi_instr[0].halt;
+  assign rvfi_intr_o_0      = rvfi_instr[0].intr;
+  assign rvfi_mode_o_0      = rvfi_instr[0].mode;
+  assign rvfi_rs1_addr_o_0  = rvfi_instr[0].rs1_addr;
+  assign rvfi_rs2_addr_o_0  = rvfi_instr[0].rs2_addr;
+  assign rvfi_rs1_rdata_o_0 = rvfi_instr[0].rs1_rdata;
+  assign rvfi_rs2_rdata_o_0 = rvfi_instr[0].rs2_rdata;
+  assign rvfi_rd_addr_o_0   = rvfi_instr[0].rd_addr;
+  assign rvfi_rd_wdata_o_0  = rvfi_instr[0].rd_wdata;
+  assign rvfi_pc_rdata_o_0  = rvfi_instr[0].pc_rdata;
+  assign rvfi_pc_wdata_o_0  = rvfi_instr[0].pc_wdata;
+  assign rvfi_mem_addr_o_0  = rvfi_instr[0].mem_addr;
+  assign rvfi_mem_rmask_o_0 = rvfi_instr[0].mem_rmask;
+  assign rvfi_mem_wmask_o_0 = rvfi_instr[0].mem_wmask;
+  assign rvfi_mem_rdata_o_0 = rvfi_instr[0].mem_rdata[CVA6Cfg.XLEN-1:0];
+  assign rvfi_mem_wdata_o_0 = rvfi_instr[0].mem_wdata[CVA6Cfg.XLEN-1:0];
+  if (CVA6Cfg.NrCommitPorts > 1) begin
+    assign rvfi_valid_o_1     = rvfi_instr[1].valid;
+    assign rvfi_order_o_1     = rvfi_instr[1].order;
+    assign rvfi_insn_o_1      = rvfi_instr[1].insn;
+    assign rvfi_trap_o_1      = rvfi_instr[1].trap;
+    assign rvfi_halt_o_1      = rvfi_instr[1].halt;
+    assign rvfi_intr_o_1      = rvfi_instr[1].intr;
+    assign rvfi_mode_o_1      = rvfi_instr[1].mode;
+    assign rvfi_rs1_addr_o_1  = rvfi_instr[1].rs1_addr;
+    assign rvfi_rs2_addr_o_1  = rvfi_instr[1].rs2_addr;
+    assign rvfi_rs1_rdata_o_1 = rvfi_instr[1].rs1_rdata;
+    assign rvfi_rs2_rdata_o_1 = rvfi_instr[1].rs2_rdata;
+    assign rvfi_rd_addr_o_1   = rvfi_instr[1].rd_addr;
+    assign rvfi_rd_wdata_o_1  = rvfi_instr[1].rd_wdata;
+    assign rvfi_pc_rdata_o_1  = rvfi_instr[1].pc_rdata;
+    assign rvfi_pc_wdata_o_1  = rvfi_instr[1].pc_wdata;
+    assign rvfi_mem_addr_o_1  = rvfi_instr[1].mem_addr;
+    assign rvfi_mem_rmask_o_1 = rvfi_instr[1].mem_rmask;
+    assign rvfi_mem_wmask_o_1 = rvfi_instr[1].mem_wmask;
+    assign rvfi_mem_rdata_o_1 = rvfi_instr[1].mem_rdata[CVA6Cfg.XLEN-1:0];
+    assign rvfi_mem_wdata_o_1 = rvfi_instr[1].mem_wdata[CVA6Cfg.XLEN-1:0];
+  end
 `endif
 endmodule
