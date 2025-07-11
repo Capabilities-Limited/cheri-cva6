@@ -571,7 +571,7 @@ module cva6
   // COMMIT <-> ID
   // --------------
   logic [CVA6Cfg.NrCommitPorts-1:0][4:0] waddr_commit_id;
-  logic [CVA6Cfg.REGLEN-1:0] [CVA6Cfg.NrCommitPorts-1:0] wdata_commit_id;
+  logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.REGLEN-1:0] wdata_commit_id;
   logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_commit_id;
   logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_commit_id;
   // --------------
@@ -1853,6 +1853,11 @@ module cva6
     assign rvfi_fetch_instr[i] = fetch_entry_if_id[i].instruction;
   end
 
+  logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] wdata_commit_rvfi;
+  for (genvar i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
+    assign wdata_commit_rvfi[i] = wdata_commit_id[i][CVA6Cfg.XLEN-1:0];
+  end
+
   cva6_rvfi_probes #(
       .CVA6Cfg            (CVA6Cfg),
       .exception_t        (exception_t),
@@ -1890,7 +1895,7 @@ module cva6
       .commit_ack_i(commit_ack),
       .mem_paddr_i (rvfi_mem_paddr),
       .debug_mode_i(debug_mode),
-      .wdata_i     (wdata_commit_id),
+      .wdata_i     (wdata_commit_rvfi),
 
       .csr_i(rvfi_csr),
       .irq_i(irq_i),
