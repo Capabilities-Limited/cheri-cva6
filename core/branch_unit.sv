@@ -117,6 +117,8 @@ module branch_unit #(
         branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc), cva6_cheri_pkg::SENTRY_CAP);
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
           target_address = cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
+          // If jumping into intmode, we must have been in capmode, so always mispredict
+          if (cva6_cheri_pkg::get_cap_reg_flags(target_address) == 1'b1) resolved_branch_o.is_mispredict = branch_valid_i;
         end
       end else begin
         branch_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, next_pc[CVA6Cfg.VLEN-1:0]);
