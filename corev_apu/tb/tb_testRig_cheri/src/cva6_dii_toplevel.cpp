@@ -152,8 +152,7 @@ int main(int argc, char **argv) {
       case 'h': usage(argv[0]);             return 0;
       case 'V': verbose = true;             break;
       case 'q': {
-        socket_name = (char*) malloc(strlen(optarg));
-        strcpy(socket_name,optarg);
+        socket_name = strdup(optarg);
         break;
       }
       case 'w': socket_default_port = atoi(optarg); break;
