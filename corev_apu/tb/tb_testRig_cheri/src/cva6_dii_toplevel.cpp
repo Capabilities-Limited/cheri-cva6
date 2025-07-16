@@ -66,7 +66,7 @@ static int current_test_dii_start = 0;
 // Routine to fetch intructions from the Vengine
 rvfi_pkt_t readRVFI_0(Variane_testharness_dii *top);
 rvfi_pkt_t readRVFI_1(Variane_testharness_dii *top);
-bool readTrace(Variane_testharness_dii *top, unsigned int *rvfi_id);
+void readTrace(Variane_testharness_dii *top, unsigned int *rvfi_id);
 void sendReset(unsigned int rvfi_id);
 
 // Called by $time in Verilog converts to double, to match what SystemC does
@@ -360,29 +360,25 @@ int test_dii_start() {
   return current_test_dii_start;
 }
 
-bool readTrace(Variane_testharness_dii *top, unsigned int *rvfi_id) {
+void readTrace(Variane_testharness_dii *top, unsigned int *rvfi_id) {
   // read rvfi data and add packet to list of packets to send
   // the condition to read data here is that there is an rvfi valid signal
   // this deals with counting instructions that the core has finished executing
   // modify rvfi_id to reflect instructions read
-  bool retval = false;
   if (top->rvfi_valid_o_0 || top->rvfi_trap_o_0) {
     rvfi_pkt_t execpacket = readRVFI_0(top);
     print_rvfi_pkt(&execpacket);
     put_rvfi_pkt_wrap(*rvfi_id, &execpacket);
     (*rvfi_id)++;
     (*rvfi_id) %= DII_ID_COUNT;
-    retval = true;
   }
-  if (top->rvfi_valid_o_1 && !top->rvfi_trap_o_0) { // If there was a trap, the 2nd port should be ignored.
+  if (top->rvfi_valid_o_1 && !top->rvfi_trap_o_0 && !(get_dii_cmd(*rvfi_id) == 0)) { // If there was a trap, the 2nd port should be ignored.
     rvfi_pkt_t execpacket = readRVFI_1(top);
     print_rvfi_pkt(&execpacket);
     put_rvfi_pkt_wrap(*rvfi_id, &execpacket);
     (*rvfi_id)++;
     (*rvfi_id) %= DII_ID_COUNT;
-    retval = true;
   }
-  return retval;
 }
 
 void sendReset(unsigned int rvfi_id) {
