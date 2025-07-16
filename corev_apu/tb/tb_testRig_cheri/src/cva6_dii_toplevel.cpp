@@ -374,7 +374,7 @@ bool readTrace(Variane_testharness_dii *top, unsigned int *rvfi_id) {
     (*rvfi_id) %= DII_ID_COUNT;
     retval = true;
   }
-  if (top->rvfi_valid_o_1) {
+  if (top->rvfi_valid_o_1 && !top->rvfi_trap_o_0) { // If there was a trap, the 2nd port should be ignored.
     rvfi_pkt_t execpacket = readRVFI_1(top);
     print_rvfi_pkt(&execpacket);
     put_rvfi_pkt_wrap(*rvfi_id, &execpacket);
