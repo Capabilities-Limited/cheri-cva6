@@ -365,22 +365,24 @@ bool readTrace(Variane_testharness_dii *top, unsigned int *rvfi_id) {
   // the condition to read data here is that there is an rvfi valid signal
   // this deals with counting instructions that the core has finished executing
   // modify rvfi_id to reflect instructions read
-  if (top->rvfi_valid_o_0 || top->rvfi_trap_o_0 ) {
+  bool retval = false;
+  if (top->rvfi_valid_o_0 || top->rvfi_trap_o_0) {
     rvfi_pkt_t execpacket = readRVFI_0(top);
     print_rvfi_pkt(&execpacket);
     put_rvfi_pkt_wrap(*rvfi_id, &execpacket);
     (*rvfi_id)++;
     (*rvfi_id) %= DII_ID_COUNT;
-    if (top->rvfi_valid_o_1 || top->rvfi_trap_o_1 ) {
-      execpacket = readRVFI_1(top);
-      print_rvfi_pkt(&execpacket);
-      put_rvfi_pkt_wrap(*rvfi_id, &execpacket);
-      (*rvfi_id)++;
-      (*rvfi_id) %= DII_ID_COUNT;
-    }
-    return true;
+    retval = true;
   }
-  return false;
+  if (top->rvfi_valid_o_1) {
+    rvfi_pkt_t execpacket = readRVFI_1(top);
+    print_rvfi_pkt(&execpacket);
+    put_rvfi_pkt_wrap(*rvfi_id, &execpacket);
+    (*rvfi_id)++;
+    (*rvfi_id) %= DII_ID_COUNT;
+    retval = true;
+  }
+  return retval;
 }
 
 void sendReset(unsigned int rvfi_id) {
