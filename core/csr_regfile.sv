@@ -909,7 +909,7 @@ module csr_regfile
   logic csr_update_allow_sealed;
   if (CVA6Cfg.CheriPresent) begin
     always_comb begin
-      automatic logic csr_update_cap_meta = get_cap_reg_meta_data(csr_update_cap_prelegal);
+      automatic cap_meta_data_t csr_update_cap_meta = get_cap_reg_meta_data(csr_update_cap_prelegal);
       csr_update_cap_postlegal = set_cap_reg_address(csr_update_cap_prelegal, csr_wdata_legalised, csr_update_cap_meta);
       if (csr_update_cap_prelegal.otype != UNSEALED_CAP && !csr_update_allow_sealed) begin
         csr_update_cap_postlegal.tag = 1'b0;
