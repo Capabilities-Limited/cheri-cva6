@@ -67,7 +67,7 @@ package ariane_soc;
     DRAMBase     = 64'h8000_0000
   } soc_bus_start_t;
 
-  localparam int unsigned TagCacheMemLength = {64'h00010000};
+  localparam int unsigned TagCacheMemLength = DRAMLength >> 7;
   localparam int unsigned TagCacheMemBase = DRAMBase + DRAMLength - TagCacheMemLength;
   localparam int unsigned SetAssociativity = 32'd8;
   localparam int unsigned NumLines = 32'd128;
