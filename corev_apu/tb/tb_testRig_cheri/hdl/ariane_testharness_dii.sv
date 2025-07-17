@@ -32,7 +32,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   parameter int unsigned AXI_USER_EN       = CVA6Cfg.AXI_USER_EN,
   parameter int unsigned AXI_ADDRESS_WIDTH = 64,
   parameter int unsigned AXI_DATA_WIDTH    = 64,
-  parameter int unsigned NUM_WORDS         = 2**25,         // memory size
+  parameter int unsigned NUM_WORDS         = 2**21,         // memory size
   parameter bit          StallRandomOutput = 1'b0,
   parameter bit          StallRandomInput  = 1'b0
 ) (
@@ -445,7 +445,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     axi_tagctrl_reg_wrap #(
         .DRAMMemBase     (ariane_soc::DRAMBase),
         .CapSize         (CVA6Cfg.CLEN),
-        .TagCacheMemBase ({64'h90000000}),
+        .TagCacheMemBase (ariane_soc::DRAMBase + 64'h800000),
         .SetAssociativity(ariane_soc::SetAssociativity),
         .NumLines        (ariane_soc::NumLines),
         .NumBlocks       (ariane_soc::NumBlocks),
@@ -472,7 +472,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
         .conf_req_i         (  /* not used */),
         .conf_resp_o        (  /* not used */),
         .cached_start_addr_i(ariane_soc::DRAMBase),
-        .cached_end_addr_i  (ariane_soc::DRAMBase + 64'h900000)
+        .cached_end_addr_i  (ariane_soc::DRAMBase + 64'h800000)
     );
   end
 
