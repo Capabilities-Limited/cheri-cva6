@@ -231,9 +231,8 @@ localparam NumWords = (24 * 1024 * 1024) / 8;
 localparam int unsigned CapSize = 128;
 localparam int unsigned DRAMMemBase = {64'h80000000};
 localparam int unsigned DRAMMemLength = {64'h40000000};
-//localparam int unsigned TagCacheMemBase = {64'hA0000000};
-localparam int unsigned TagCacheMemBase = {64'hB0000000};
-localparam int unsigned TagCacheMemLength = {64'h00010000};
+localparam int unsigned TagCacheMemLength = DRAMMemLength >> 7;
+localparam int unsigned TagCacheMemBase = DRAMMemBase + DRAMMemLength - TagCacheMemLength;
 localparam int unsigned AxiIdWidth = 64'd6;
 localparam int unsigned SetAssociativity = 32'd8;
 localparam int unsigned NumLines = 32'd128;
@@ -1289,8 +1288,8 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
       .mst_resp_i         (axi_tag_resp),
       .conf_req_i         (  /* not used */),
       .conf_resp_o        (  /* not used */),
-      .cached_start_addr_i(ariane_soc::DRAMBase),
-      .cached_end_addr_i  ({64'hA0000000})
+      .cached_start_addr_i(DRAMBase),
+      .cached_end_addr_i  (TagCacheMemBase)
   );
 
 
