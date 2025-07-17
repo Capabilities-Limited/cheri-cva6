@@ -238,38 +238,36 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     next_pc_off = ((issue_instr_i.is_compressed) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
     next_pc_addr = issue_instr_i.pc + next_pc_off;
     issue_pcc_ex_o = 0;
-    // Check PCC bounds every instruction
-    if (!issue_instr_i.ex.valid) begin
-      if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top)) begin
-          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
-          issue_pcc_ex_o.tval2 = cheri_tval2;
-          issue_pcc_ex_o.valid = 1'b1;
-      end
-      if (issue_instr_i.needs_asr && !pcc.hperms.access_sys_regs) begin
-          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-          issue_pcc_ex_o.tval2 = cheri_tval2;
-          issue_pcc_ex_o.valid = 1'b1;
-      end
-      if(!pcc.hperms.permit_execute) begin
-          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-          issue_pcc_ex_o.tval2  = cheri_tval2;
-          issue_pcc_ex_o.valid     = 1'b1;
-      end
-      if((pcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc.tag) begin
-          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
-          issue_pcc_ex_o.tval2 = cheri_tval2;
-          issue_pcc_ex_o.valid = 1'b1;
-      end
-      if (!pcc.tag) begin
-          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-          issue_pcc_ex_o.tval2 = cheri_tval2;
-          issue_pcc_ex_o.valid = 1'b1;
-      end
+    // Check PCC bounds every instruction, even if an exception was thrown already
+    if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top)) begin
+        issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+        cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
+        issue_pcc_ex_o.tval2 = cheri_tval2;
+        issue_pcc_ex_o.valid = 1'b1;
+    end
+    if (issue_instr_i.needs_asr && !pcc.hperms.access_sys_regs) begin
+        issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+        cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+        issue_pcc_ex_o.tval2 = cheri_tval2;
+        issue_pcc_ex_o.valid = 1'b1;
+    end
+    if(!pcc.hperms.permit_execute) begin
+        issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+        cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+        issue_pcc_ex_o.tval2  = cheri_tval2;
+        issue_pcc_ex_o.valid     = 1'b1;
+    end
+    if((pcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc.tag) begin
+        issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+        cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+        issue_pcc_ex_o.tval2 = cheri_tval2;
+        issue_pcc_ex_o.valid = 1'b1;
+    end
+    if (!pcc.tag) begin
+        issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+        cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+        issue_pcc_ex_o.tval2 = cheri_tval2;
+        issue_pcc_ex_o.valid = 1'b1;
     end
     if (!issue_instr_valid_i) issue_pcc_ex_o.valid = 1'b0;
   end
