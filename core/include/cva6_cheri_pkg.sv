@@ -558,7 +558,7 @@ package cva6_cheri_pkg;
         address >> CAP_M_WIDTH;
       logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] oldAddrTruncLSB =
         cap.addr >> CAP_M_WIDTH;
-      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] mask = ~0 << (CAP_MAX_EXP - e);
+      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] mask = {CAP_ADDR_WIDTH - CAP_M_WIDTH {1'b1}} << (CAP_MAX_EXP - e);
       logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] deltaAddrUpper =
         (newAddrTruncLSB & mask) - (oldAddrTruncLSB & mask);
 
