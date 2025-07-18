@@ -257,6 +257,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] mie_q, mie_d;
   logic [CVA6Cfg.XLEN-1:0] mcounteren_q, mcounteren_d;
   logic [CVA6Cfg.REGLEN-1:0] mscratch_q, mscratch_d;
+  logic [CVA6Cfg.REGLEN-1:0] mtid_q, mtid_d;
   logic [CVA6Cfg.REGLEN-1:0] mepc_q, mepc_d;
   logic [CVA6Cfg.XLEN-1:0] mcause_q, mcause_d;
   logic [CVA6Cfg.XLEN-1:0] mtval_q, mtval_d;
@@ -267,6 +268,7 @@ module csr_regfile
   logic [CVA6Cfg.REGLEN-1:0] stvec_q, stvec_d;
   logic [CVA6Cfg.XLEN-1:0] scounteren_q, scounteren_d;
   logic [CVA6Cfg.REGLEN-1:0] sscratch_q, sscratch_d;
+  logic [CVA6Cfg.REGLEN-1:0] stid_q, stid_d;
   logic [CVA6Cfg.REGLEN-1:0] sepc_q, sepc_d;
   logic [CVA6Cfg.XLEN-1:0] scause_q, scause_d;
   logic [CVA6Cfg.XLEN-1:0] stval_q, stval_d;
@@ -283,6 +285,7 @@ module csr_regfile
 
   logic [CVA6Cfg.REGLEN-1:0] vstvec_q, vstvec_d;
   logic [CVA6Cfg.REGLEN-1:0] vsscratch_q, vsscratch_d;
+  logic [CVA6Cfg.REGLEN-1:0] vstid_q, vstid_d;
   logic [CVA6Cfg.REGLEN-1:0] vsepc_q, vsepc_d;
   logic [CVA6Cfg.XLEN-1:0] vscause_q, vscause_d;
   logic [CVA6Cfg.XLEN-1:0] vstval_q, vstval_d;
@@ -301,6 +304,7 @@ module csr_regfile
 
   // Default data capability
   cap_reg_t ddc_d, ddc_q;
+  logic [CVA6Cfg.REGLEN-1:0] utid_q, utid_d;
 
   logic wfi_d, wfi_q;
 
@@ -466,6 +470,14 @@ module csr_regfile
           end
           csr_rdata = vsscratch_q[CVA6Cfg.XLEN-1:0];
         end else read_access_exception = 1'b1;
+        riscv::CSR_VSTID:
+        if (CVA6Cfg.RVH && CVA6Cfg.CheriPresent) begin
+          if (csr_read_cap) begin
+            csr_rcap = vstid_q;
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = vstid_q[CVA6Cfg.XLEN-1:0];
+        end else read_access_exception = 1'b1;
         riscv::CSR_VSEPC:
         if (CVA6Cfg.RVH) begin
           if (CVA6Cfg.CheriPresent && csr_read_cap) begin
@@ -521,6 +533,14 @@ module csr_regfile
             csr_rcap_null = 1'b0;
           end
           csr_rdata = sscratch_q[CVA6Cfg.XLEN-1:0];
+        end else read_access_exception = 1'b1;
+        riscv::CSR_STID:
+        if (CVA6Cfg.RVS && CVA6Cfg.CheriPresent) begin
+          if (csr_read_cap) begin
+            csr_rcap = stid_q;
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = stid_q[CVA6Cfg.XLEN-1:0];
         end else read_access_exception = 1'b1;
         riscv::CSR_SEPC:
         if (CVA6Cfg.RVS) begin
@@ -632,6 +652,14 @@ module csr_regfile
         end
         csr_rdata = mscratch_q[CVA6Cfg.XLEN-1:0];
         end
+        riscv::CSR_MTID:
+        if (CVA6Cfg.CheriPresent) begin
+          if (csr_read_cap) begin
+            csr_rcap = mtid_q;
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = mtid_q[CVA6Cfg.XLEN-1:0];
+        end else read_access_exception = 1'b1;
         riscv::CSR_MEPC: begin
         if (CVA6Cfg.CheriPresent && csr_read_cap) begin
           csr_rcap = mepc_q;
@@ -897,6 +925,14 @@ module csr_regfile
           end
           csr_rdata = ddc_q[CVA6Cfg.XLEN-1:0];
         end else read_access_exception = 1'b1;
+        riscv::CSR_UTID:
+        if (CVA6Cfg.CheriPresent) begin
+          if (csr_read_cap) begin
+            csr_rcap = utid_q;
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = utid_q[CVA6Cfg.XLEN-1:0];
+        end else read_access_exception = 1'b1;
         default: read_access_exception = 1'b1;
       endcase
     end
@@ -1005,6 +1041,7 @@ module csr_regfile
     mcause_d                 = mcause_q;
     mcounteren_d             = mcounteren_q;
     mscratch_d               = mscratch_q;
+    mtid_d                   = mtid_q;
     mtval_d                  = mtval_q;
     mtinst_d                 = mtinst_q;
     mtval2_d                 = mtval2_q;
@@ -1016,6 +1053,7 @@ module csr_regfile
     vsstatus_d               = vsstatus_q;
     vstvec_d                 = vstvec_q;
     vsscratch_d              = vsscratch_q;
+    vstid_d                  = vstid_q;
     vsepc_d                  = vsepc_q;
     vscause_d                = vscause_q;
     vstval_d                 = vstval_q;
@@ -1026,6 +1064,7 @@ module csr_regfile
     stvec_d                  = stvec_q;
     scounteren_d             = scounteren_q;
     sscratch_d               = sscratch_q;
+    stid_d                   = stid_q;
     stval_d                  = stval_q;
     stval2_d                 = stval2_q;
     sfiom_d                  = sfiom_q;
@@ -1047,6 +1086,7 @@ module csr_regfile
     pmpaddr_d                = pmpaddr_q;
 
     ddc_d                    = ddc_q;
+    utid_d                   = utid_q;
 
     if (mtvec_rst_load_q) begin
       if (CVA6Cfg.RVFI_DII) begin
@@ -1189,6 +1229,13 @@ module csr_regfile
             vsscratch_d = csr_wdata_legalised;
           end
         end else update_access_exception = 1'b1;
+        riscv::CSR_VSTID:
+        if (CVA6Cfg.RVH && CVA6Cfg.CheriPresent) begin
+          csr_wdata_legalised = csr_wdata;
+          if (!csr_write_cap) csr_update_cap_prelegal = vstid_q;
+          csr_update_allow_sealed = csr_write_cap;
+          vstid_d = csr_update_cap_postlegal;
+        end else update_access_exception = 1'b1;
         riscv::CSR_VSEPC:
         if (CVA6Cfg.RVS) begin
           csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
@@ -1302,6 +1349,13 @@ module csr_regfile
           end else begin
             sscratch_d = csr_wdata_legalised;
           end
+        end else update_access_exception = 1'b1;
+        riscv::CSR_STID:
+        if (CVA6Cfg.RVS && CVA6Cfg.CheriPresent) begin
+          csr_wdata_legalised = csr_wdata;
+          if (!csr_write_cap) csr_update_cap_prelegal = stid_q;
+          csr_update_allow_sealed = csr_write_cap;
+          stid_d = csr_update_cap_postlegal;
         end else update_access_exception = 1'b1;
         riscv::CSR_SEPC:
         if (CVA6Cfg.RVS) begin
@@ -1588,6 +1642,13 @@ module csr_regfile
             mscratch_d = csr_wdata_legalised;
           end
         end
+        riscv::CSR_MTID:
+        if (CVA6Cfg.CheriPresent) begin
+          csr_wdata_legalised = csr_wdata;
+          if (!csr_write_cap) csr_update_cap_prelegal = mtid_q;
+          csr_update_allow_sealed = csr_write_cap;
+          mtid_d = csr_update_cap_postlegal;
+        end else update_access_exception = 1'b1;
         riscv::CSR_MEPC: begin
           csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
           if (CVA6Cfg.CheriPresent) begin
@@ -1814,6 +1875,13 @@ module csr_regfile
             update_access_exception = 1'b1;
           end
         end
+        riscv::CSR_UTID:
+        if (CVA6Cfg.CheriPresent) begin
+          csr_wdata_legalised = csr_wdata;
+          if (!csr_write_cap) csr_update_cap_prelegal = utid_q;
+          csr_update_allow_sealed = csr_write_cap;
+          utid_d = csr_update_cap_postlegal;
+        end else update_access_exception = 1'b1;
         default: update_access_exception = 1'b1;
       endcase
     end
@@ -2426,6 +2494,9 @@ module csr_regfile
         if(csr_addr_i inside {riscv::CSR_DDC}) begin
           cheri_access_violation = 1'b0;
         end
+        if (csr_addr_i inside {riscv::CSR_MTID, riscv::CSR_VSTID, riscv::CSR_STID, riscv::CSR_UTID}) begin
+          if (csr_op_i == CSR_READ) cheri_access_violation = 1'b0;
+        end
       end
     end
   end
@@ -2674,6 +2745,7 @@ module csr_regfile
       icache_q         <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
       mcountinhibit_q  <= '0;
       acc_cons_q       <= {{CVA6Cfg.XLEN - 1{1'b0}}, CVA6Cfg.EnableAccelerator};
+      if (CVA6Cfg.CheriPresent) mtid_q <= cva6_cheri_pkg::REG_NULL_CAP;
       // supervisor mode registers
       if (CVA6Cfg.RVS) begin
         medeleg_q    <= {CVA6Cfg.XLEN{1'b0}};
@@ -2683,6 +2755,7 @@ module csr_regfile
         stvec_q      <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_ROOT_CAP : {CVA6Cfg.XLEN{1'b0}};
         scounteren_q <= {CVA6Cfg.XLEN{1'b0}};
         sscratch_q   <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : {CVA6Cfg.XLEN{1'b0}};
+        if (CVA6Cfg.CheriPresent) stid_q <= cva6_cheri_pkg::REG_NULL_CAP;
         stval_q      <= {CVA6Cfg.XLEN{1'b0}};
         stval2_q     <= {CVA6Cfg.XLEN{1'b0}};
         sfiom_q      <= '0;
@@ -2710,6 +2783,7 @@ module csr_regfile
         vscause_q                <= {CVA6Cfg.XLEN{1'b0}};
         vstvec_q                 <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_ROOT_CAP : {CVA6Cfg.XLEN{1'b0}};
         vsscratch_q              <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : {CVA6Cfg.XLEN{1'b0}};
+        if (CVA6Cfg.CheriPresent) vstid_q <= cva6_cheri_pkg::REG_NULL_CAP;
         vstval_q                 <= {CVA6Cfg.XLEN{1'b0}};
         vsatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
         en_ld_st_g_translation_q <= 1'b0;
@@ -2733,6 +2807,7 @@ module csr_regfile
       end
       if (CVA6Cfg.CheriPresent) begin
         ddc_q                  <= cva6_cheri_pkg::REG_ROOT_CAP;
+        utid_q                 <= cva6_cheri_pkg::REG_NULL_CAP;
       end
     end else begin
       priv_lvl_q <= priv_lvl_d;
@@ -2758,6 +2833,7 @@ module csr_regfile
       mcause_q         <= mcause_d;
       mcounteren_q     <= mcounteren_d;
       mscratch_q       <= mscratch_d;
+      if (CVA6Cfg.CheriPresent) mtid_q <= mtid_d;
       if (CVA6Cfg.TvalEn) mtval_q <= mtval_d;
       mfiom_q         <= mfiom_d;
       dcache_q        <= dcache_d;
@@ -2774,6 +2850,7 @@ module csr_regfile
         sfiom_q      <= sfiom_d;
         scounteren_q <= scounteren_d;
         sscratch_q   <= sscratch_d;
+        if (CVA6Cfg.CheriPresent) stid_q <= stid_d;
         if (CVA6Cfg.TvalEn) stval_q <= stval_d;
         if (CVA6Cfg.CheriPresent & CVA6Cfg.TvalEn) stval2_q <= stval2_d;
         satp_q <= satp_d;
@@ -2800,6 +2877,7 @@ module csr_regfile
         vscause_q                <= vscause_d;
         vstvec_q                 <= vstvec_d;
         vsscratch_q              <= vsscratch_d;
+        if (CVA6Cfg.CheriPresent) vstid_q <= vstid_d;
         vstval_q                 <= vstval_d;
         vsatp_q                  <= vsatp_d;
         en_ld_st_g_translation_q <= en_ld_st_g_translation_d;
@@ -2816,6 +2894,7 @@ module csr_regfile
       pmpaddr_q              <= pmpaddr_next;
       if (CVA6Cfg.CheriPresent) begin
         ddc_q                  <= ddc_d;
+        utid_q                 <= utid_d;
       end
     end
   end
