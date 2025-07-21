@@ -275,7 +275,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         operand_a_top    = get_cap_reg_top(operand_a, op_a_meta_info);
         operand_a_length = get_cap_reg_length(operand_a, op_a_meta_info);
         operand_a_is_sealed = (operand_a.otype != UNSEALED_CAP);
-        operand_a_hperms_malformed = (operand_a.hperms != legalize_arch_perms(operand_a.hperms));
+        operand_a_hperms_malformed = (operand_a.hperms != legalize_arch_perms(operand_a.hperms)) | (!operand_a.hperms.permit_execute & operand_a.flags.int_mode);
         operand_a_bounds_malformed = !are_cap_reg_bounds_valid(operand_a, op_a_meta_info);
         // Decode capability operand b fields
         operand_b_address = operand_b.addr;
@@ -286,7 +286,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         //operand_b_length = get_cap_reg_length(operand_b, op_b_meta_info};
         //operand_b_offset = get_cap_reg_offset(operand_b, op_b_meta_info);
         operand_b_is_sealed = (operand_b.otype != UNSEALED_CAP);
-        operand_b_hperms_malformed = (operand_b.hperms != legalize_arch_perms(operand_b.hperms));
+        operand_b_hperms_malformed = (operand_b.hperms != legalize_arch_perms(operand_b.hperms)) | (!operand_b.hperms.permit_execute & operand_b.flags.int_mode);
         // Decode pc metadata fields
         op_pc_meta_info = get_cap_reg_meta_data(pcc);
     end
