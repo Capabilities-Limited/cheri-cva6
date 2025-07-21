@@ -227,19 +227,22 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
   always_comb begin : pcc_bounds
     automatic cva6_cheri_pkg::addrw_t pcc_base;
     automatic cva6_cheri_pkg::addrwe_t pcc_top;
+    automatic logic pcc_bounds_root;
     automatic logic [CVA6Cfg.VLEN-1:0] next_pc_off;
     automatic logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
+    automatic logic next_pc_carry;
     automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
     cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
     pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_q);
     pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q);
     pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
     pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q, pcc_meta);
+    pcc_bounds_root = cva6_cheri_pkg::are_cap_reg_bounds_root(pcc_q, pcc_meta);
     next_pc_off = ((issue_instr_i.is_compressed) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
-    next_pc_addr = issue_instr_i.pc + next_pc_off;
+    {next_pc_carry, next_pc_addr} = {1'b0, issue_instr_i.pc} + {1'b0, next_pc_off};
     issue_pcc_ex_o = 0;
     // Check PCC bounds every instruction, even if an exception was thrown already
-    if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top)) begin
+    if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top) || (next_pc_carry && !pcc_bounds_root)) begin
         issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
         cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
         issue_pcc_ex_o.tval2 = cheri_tval2;
