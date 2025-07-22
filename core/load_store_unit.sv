@@ -764,16 +764,6 @@ module load_store_unit
                 cheri_exception.valid = 1'b1;
             end
 
-            if (!check_cap.hperms.permit_store_level && !operand_b.hperms.cap_level && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
-                cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-                cheri_exception.valid = 1'b1;
-            end
-
-            if (!(check_cap.hperms.permit_store && check_cap.hperms.permit_cap) && operand_b.tag && (lsu_ctrl.fu == STORE) && (lsu_ctrl.operation inside{ariane_pkg::SC,ariane_pkg::AMO_SCC, ariane_pkg::AMO_SWAPC})) begin
-                cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-                cheri_exception.valid = 1'b1;
-            end
-
             if (!check_cap.hperms.permit_store && (lsu_ctrl.fu == STORE)) begin
                 cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
                 cheri_exception.valid = 1'b1;
@@ -803,18 +793,23 @@ module load_store_unit
   logic ld_clr_elevate;
   logic ld_clr_cap_level;
   logic ld_clr_load_mutable;
+  logic [CVA6Cfg.REGLEN-1:0] st_data;
   if (CVA6Cfg.CheriPresent) begin
+    automatic cva6_cheri_pkg::cap_reg_t st_data_cap = fu_data_i.operand_b;
     assign ld_cap = ((lsu_ctrl.fu == LOAD) && (lsu_ctrl.operation inside{ariane_pkg::LC})) || ((lsu_ctrl.fu == STORE) && lsu_ctrl.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
     assign ld_clr_tag = !(check_cap.hperms.permit_load && check_cap.hperms.permit_cap) && ld_cap;
     assign ld_clr_elevate = !check_cap.hperms.permit_elevate_level && ld_cap && !ld_clr_tag;
     assign ld_clr_cap_level = ld_clr_elevate && !check_cap.hperms.cap_level;
     assign ld_clr_load_mutable = !check_cap.hperms.permit_load_mutable && ld_cap;
+    assign st_data[CVA6Cfg.REGLEN-2:0] = st_data_cap[CVA6Cfg.REGLEN-2:0];
+    assign st_data[CVA6Cfg.REGLEN-1] = st_data_cap.tag & check_cap.hperms.permit_store & check_cap.hperms.permit_cap & (check_cap.hperms.permit_store_level | st_data_cap.hperms.cap_level);
   end else begin
     assign ld_cap = 1'b0;
     assign ld_clr_tag = 1'b0;
     assign ld_clr_elevate = 1'b0;
     assign ld_clr_cap_level = 1'b0;
     assign ld_clr_load_mutable = 1'b0;
+    assign st_data = fu_data_i.operand_b;
   end
 
   assign lsu_req_i = {
@@ -826,7 +821,7 @@ module load_store_unit
     overflow,
     g_overflow,
     fu_data_i.operand_a,
-    fu_data_i.operand_b,
+    st_data,
     be_i,
     fu_data_i.fu,
     fu_data_i.operation,
