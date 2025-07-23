@@ -340,7 +340,7 @@ package cva6_cheri_pkg;
 
     function automatic capw_t set_cap_mem_addr_inc (capw_t cap, logic [11:0] inc);
         addrw_t addr = get_cap_mem_addr(cap);
-        addrw_t sgn_ext_inc = $signed(inc);
+        addrw_t sgn_ext_inc = {{CAP_ADDR_WIDTH-12{inc[11]}},inc};
         return set_cap_mem_addr_unsafe(cap, addr + sgn_ext_inc);
     endfunction
 
@@ -431,10 +431,10 @@ package cva6_cheri_pkg;
 
     function automatic top_base_t get_cap_reg_top_base(cap_reg_t cap, cap_meta_data_t cap_meta_data);
         ew_t exp = cap.bounds.exp;
-        addrw_t addr_bits = {2'b0, cap.addr} & ~(~66'b0 >> exp); // mask in relevant addr bits
+        addrw_t addr_bits = CAP_ADDR_WIDTH'({2'b0, cap.addr} & ~(~66'b0 >> exp)); // mask in relevant addr bits
         // base
-        addrw_t base_corr_bits = $signed({cap_meta_data.cb, 66'b0}) >>> exp;
-        addrw_t base_bits = {cap.bounds.base_bits, 52'b0} >> exp;
+        addrw_t base_corr_bits = CAP_ADDR_WIDTH'($signed({cap_meta_data.cb, 66'b0}) >>> exp);
+        addrw_t base_bits = CAP_ADDR_WIDTH'({cap.bounds.base_bits, 52'b0} >> exp);
         addrw_t base = (addr_bits + base_corr_bits) | base_bits;
         // are the bounds a valid set of bounds (not malformed)
         bool_t malformed_msb =    ((exp == 0) && (cap.bounds.base_bits != 0))
@@ -442,8 +442,8 @@ package cva6_cheri_pkg;
         bool_t malformed_lsb = (exp > CAP_MAX_EXP);
         bool_t bounds_valid = (cap.EF == IMPLIED_EXP) || (!malformed_msb && !malformed_lsb);
         // top
-        addrwe_t top_bits = {cap.bounds.top_bits, 52'b0} >> exp;
-        addrwe_t top_corr_bits = $signed({cap_meta_data.ct, 66'b0}) >>> exp;
+        addrwe_t top_bits = (CAP_ADDR_WIDTH+1)'({cap.bounds.top_bits, 52'b0} >> exp);
+        addrwe_t top_corr_bits = (CAP_ADDR_WIDTH+1)'($signed({cap_meta_data.ct, 66'b0}) >>> exp);
         addrwe_t top = (addr_bits + top_corr_bits) | top_bits;
         logic [1:0] diff = top[CAP_ADDR_WIDTH:CAP_ADDR_WIDTH-1] - {1'b0, base[CAP_ADDR_WIDTH-1]};
         if ((exp > 1) && (diff > 1)) top[CAP_ADDR_WIDTH] = ~top[CAP_ADDR_WIDTH];
@@ -501,7 +501,7 @@ package cva6_cheri_pkg;
     function automatic addrw_t get_cap_reg_length(cap_reg_t cap, cap_meta_data_t cap_meta_data);
         mwe2_t top = {cap_meta_data.ct, cap.bounds.top_bits};
         mwe2_t base = {cap_meta_data.cb, cap.bounds.base_bits};
-        addrw_t length = {(top - base), 52'b0} >> cap.bounds.exp;
+        addrw_t length = CAP_ADDR_WIDTH'({(top - base), 52'b0} >> cap.bounds.exp);
         // TODO: same saturation behaviour as bsv... "short of being correct"
         return (cap.bounds.exp == CAP_RESET_EXP) ? ~0 : length;
     endfunction
@@ -517,8 +517,7 @@ package cva6_cheri_pkg;
         mwe2_t base = {cap_meta_data.cb, cap.bounds.base_bits};
         mwe2_t offset_bits = {2'b0, cap.addr_mid} - base;
         addrw_t addr_lsb = cap.addr & (~0 >> (CAP_M_WIDTH - 2 + exp));
-        //addrw_t offset = ($signed(offset_bits) << (CAP_MAX_EXP-exp)) | addr_lsb;
-        addrw_t offset = $signed(offset_bits);
+        addrw_t offset = {{CAP_ADDR_WIDTH-CAP_M_WIDTH-2{offset_bits[CAP_M_WIDTH+1]}},offset_bits};
         offset = offset << (CAP_MAX_EXP-exp);
         offset = offset | addr_lsb;
         return offset;
@@ -536,18 +535,17 @@ package cva6_cheri_pkg;
       cap_reg_t ret = cap;
       ew_t e = cap.bounds.exp;
 
-      logic [CAP_ADDR_WIDTH + 1 : 0] newAddrMidTmp = $unsigned({2'b00, address} >> (CAP_MAX_EXP-e));
-      mw_t newAddrMid = newAddrMidTmp;
+      mw_t newAddrMid = CAP_M_WIDTH'({2'b00, address} >> (CAP_MAX_EXP-e));
       bool_t newAddrHi = newAddrMid < cap_meta_data.r;
       logic [1:0] diffTmp = {1'b0, newAddrHi} - {1'b0, cap_meta_data.addr_hi_r};
       logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] deltaAddrHi =
-        (CAP_ADDR_WIDTH - CAP_M_WIDTH)'(signed'(diffTmp)) << (CAP_MAX_EXP - e);
+        {{CAP_ADDR_WIDTH-CAP_M_WIDTH-2{diffTmp[1]}}, diffTmp} << (CAP_MAX_EXP - e);
         //$signed(diffTmp) >>> e;
 
       logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] newAddrTruncLSB =
-        address >> CAP_M_WIDTH;
+        (CAP_ADDR_WIDTH-CAP_M_WIDTH)'(address >> CAP_M_WIDTH);
       logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] oldAddrTruncLSB =
-        cap.addr >> CAP_M_WIDTH;
+        (CAP_ADDR_WIDTH-CAP_M_WIDTH)'(cap.addr >> CAP_M_WIDTH);
       logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] mask = {CAP_ADDR_WIDTH - CAP_M_WIDTH {1'b1}} << (CAP_MAX_EXP - e);
       logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] deltaAddrUpper =
         (newAddrTruncLSB & mask) - (oldAddrTruncLSB & mask);
@@ -569,7 +567,7 @@ package cva6_cheri_pkg;
         cap_reg_t ret = cap;
         ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
         ret.addr = address;
-        ret.addr_mid = address >> (CAP_MAX_EXP - exp);
+        ret.addr_mid = CAP_M_WIDTH'(address >> (CAP_MAX_EXP - exp));
         return ret;
     endfunction
 
@@ -703,8 +701,8 @@ package cva6_cheri_pkg;
         // account for the len msb to hang to the left of the lower 12
         // mantissa bits. The detected exponent here is at least 1, and may
         // fall to 0 later if need for rounding arises
-        addrmwm2_t lengh_msb_bits = lengthfull[CAP_ADDR_WIDTH:CAP_M_WIDTH-1];
-        ew_t msb_zeros = $unsigned(count_zeros_msb({1'b0, lengh_msb_bits}));
+        addrmwm2_t length_msb_bits = lengthfull[CAP_ADDR_WIDTH:CAP_M_WIDTH-1];
+        ew_t msb_zeros = count_zeros_msb(length_msb_bits);
         ew_t exp = msb_zeros;
 
         // we must track an internal exponent unless the length is small
@@ -716,12 +714,12 @@ package cva6_cheri_pkg;
         // prepare the new base and the mantissa-width bits version
         ////////////////////////////////////////////////////////////////////////
         addrwe2_t new_base = {2'b00, base};
-        mwe_t new_base_bits = new_base >> (CAP_ADDR_WIDTH + 2 - CAP_M_WIDTH - exp);
+        mwe_t new_base_bits = (CAP_M_WIDTH + 1)'(new_base >> (CAP_ADDR_WIDTH + 2 - CAP_M_WIDTH - exp));
 
         // prepare the new top and the mantissa-width bits version
         ////////////////////////////////////////////////////////////////////////
-        addrwe2_t new_top = {2'b00, lengthfull} + new_base;
-        mwe_t new_top_bits = new_top >> (CAP_ADDR_WIDTH + 2 - CAP_M_WIDTH - exp);
+        addrwe2_t new_top = (CAP_ADDR_WIDTH + 2)'({2'b00, lengthfull} + new_base);
+        mwe_t new_top_bits = (CAP_M_WIDTH + 1)'(new_top >> (CAP_ADDR_WIDTH + 2 - CAP_M_WIDTH - exp));
 
         // check if significant bits are lost from the bits used to store the
         // internal exponent...
@@ -738,17 +736,17 @@ package cva6_cheri_pkg;
         // necessary (due to updated length's msb being pushed up by one from
         // potential overflow)
         ////////////////////////////////////////////////////////////////////////
-        mw_t new_top_bits_ovflw = new_top_bits >> 1;
+        mw_t new_top_bits_ovflw = new_top_bits[CAP_M_WIDTH:1];
         addrwe2_t lmask_lo_ovflw = lmask >> (CAP_M_WIDTH - 1 - 3 - 1); // -1 drops the 0 in 14th bit of the length slice, -3 drops the exp bits
         bool_t lost_sig_top_ovflw = ((new_top & lmask_lo_ovflw) != 0) && int_exp;
 
         // determine whether the exponent needs rounding up
         ////////////////////////////////////////////////////////////////////////
         addrwe2_t mw_lsb_mask = lmask_lo ^ lmask_lo_ovflw;
-        bool_t len_carry_in = (mw_lsb_mask & new_top) != ((mw_lsb_mask & new_base) ^ (mw_lsb_mask & {2'b00, lengthfull}));
+        bool_t len_carry_in = (mw_lsb_mask & new_top) != ((mw_lsb_mask & new_base) ^ (mw_lsb_mask & {1'b0, lengthfull}));
         bool_t len_round_up = lost_sig_top;
-        bool_t len_max = ({2'b00, lengthfull} & ~lmask_lo) == (lmask ^ lmask_lo);
-        bool_t len_max_less_1 = ({2'b00, lengthfull} & ~lmask_lo) == (lmask ^ lmask_lo_ovflw);
+        bool_t len_max = ({1'b0, lengthfull} & ~lmask_lo) == (lmask ^ lmask_lo);
+        bool_t len_max_less_1 = ({1'b0, lengthfull} & ~lmask_lo) == (lmask ^ lmask_lo_ovflw);
 
         bool_t len_ovflw = (len_max && (len_carry_in || len_round_up)) ? 1'b1
                          : (len_max_less_1 && len_carry_in && len_round_up) ? 1'b1
@@ -760,11 +758,11 @@ package cva6_cheri_pkg;
         mw_t final_top_bits =
           bot3z( int_exp
                , (len_ovflw && int_exp) ? add_b1000(lost_sig_top_ovflw, new_top_bits_ovflw)
-                                        : add_b1000(lost_sig_top, new_top_bits)
+                                        : add_b1000(lost_sig_top, new_top_bits[CAP_M_WIDTH-1:0])
                );
         mw_t final_base_bits =
           bot3z( int_exp
-               , (len_ovflw && int_exp) ? (new_base_bits >> 1) : new_base_bits
+               , (len_ovflw && int_exp) ? new_base_bits[CAP_M_WIDTH:1] : new_base_bits[CAP_M_WIDTH-1:0]
                );
 
         bool_t exact = !(lost_sig_base || lost_sig_top);
@@ -776,7 +774,7 @@ package cva6_cheri_pkg;
         addrwe2_t base_mask =
           (int_exp) ? ( (len_max && lost_sig_top) ? ~lmask_lo_ovflw
                                                   : ~lmask_lo )
-                    : ~0;
+                    : {CAP_ADDR_WIDTH + 2{1'b1}};
 
         // fold in return values and return
         ////////////////////////////////////////////////////////////////////////
@@ -786,9 +784,7 @@ package cva6_cheri_pkg;
         ret.cap.bounds.base_bits = final_base_bits;
         ret.cap.addr_mid = final_base_bits;
         ret.exact = exact;
-        ret.mask = base_mask;
-        // dbg:
-        //ret.cap.addr = lmask;
+        ret.mask = base_mask[CAP_ADDR_WIDTH-1:0];
         return ret;
 
     endfunction
@@ -848,7 +844,7 @@ package cva6_cheri_pkg;
             EF:        cap.EF,
             bounds:    bounds,
             addr:      cap.addr,
-            addr_mid:  cap.addr >> (CAP_MAX_EXP - exp)
+            addr_mid:  CAP_M_WIDTH'(cap.addr >> (CAP_MAX_EXP - exp))
         };
         return ret;
     endfunction
