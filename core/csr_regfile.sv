@@ -314,7 +314,6 @@ module csr_regfile
   riscv::pmpcfg_t [15:0] pmpcfg_q, pmpcfg_d, pmpcfg_next;
   logic [15:0][CVA6Cfg.PLEN-3:0] pmpaddr_q, pmpaddr_d, pmpaddr_next;
   logic [MHPMCounterNum+3-1:0] mcountinhibit_d, mcountinhibit_q;
-  logic [3:0] index;
 
   localparam logic [CVA6Cfg.XLEN-1:0] IsaCode = (CVA6Cfg.XLEN'(CVA6Cfg.RVA) <<  0)                // A - Atomic Instructions extension
   | (CVA6Cfg.XLEN'(CVA6Cfg.RVB) << 1)  // C - Bitmanip extension
@@ -371,7 +370,6 @@ module csr_regfile
     csr_rcap = '0;
     csr_rcap_null = 1'b1;
     perf_addr_o = csr_addr.address[11:0];
-    index = '0;
 
     if (csr_read) begin
       unique case (conv_csr_addr.address)
@@ -909,7 +907,7 @@ module csr_regfile
                 riscv::CSR_PMPADDR14,
                 riscv::CSR_PMPADDR15: begin
           // index is specified by the last byte in the address
-          index = csr_addr.csr_decode.address[3:0];
+          automatic logic [3:0] index = csr_addr.csr_decode.address[3:0];
           // Important: we only support granularity 8 bytes (G=1)
           // -> last bit of pmpaddr must be set 0/1 based on the mode:
           // NA4, NAPOT: 1

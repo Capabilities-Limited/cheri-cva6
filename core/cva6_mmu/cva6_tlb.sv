@@ -94,9 +94,9 @@ module cva6_tlb
   // Translation
   //-------------
 
-  genvar i, x, z, w;
+  genvar x, z, w;
   generate
-    for (i = 0; i < TLB_ENTRIES; i++) begin
+    for (genvar i = 0; i < TLB_ENTRIES; i++) begin
       for (x = 0; x < CVA6Cfg.PtLevels; x++) begin
         //identify page_match for all TLB Entries  
         assign page_match[i][x] = x==0 ? 1 :((HYP_EXT==0 || x==(CVA6Cfg.PtLevels-1)) ? // PAGE_MATCH CONTAINS THE MATCH INFORMATION FOR EACH TAG OF is_1G and is_2M in sv39x4. HIGHER LEVEL (Giga page), THEN THERE IS THE Mega page AND AT THE LOWER LEVEL IS ALWAYS 1
