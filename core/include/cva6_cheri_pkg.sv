@@ -370,15 +370,6 @@ package cva6_cheri_pkg;
         return ret;
     endfunction
 
-    /* function automatic bool_t is_cap_reg_derivable (cap_reg_t cap);
-        bool_t derivable = ( cap.bounds.exp <= CAP_RESET_EXP &&
-            !(cap.bounds.exp == CAP_RESET_EXP && ((cap.bounds.top_bits[CAP_M_WIDTH-1] != 1'b0) ||
-                                     (cap.bounds.base_bits[CAP_M_WIDTH-1:CAP_M_WIDTH-2] != 2'b0))) &&
-            !(cap.bounds.exp == CAP_RESET_EXP-1 && (cap.bounds.base_bits[CAP_M_WIDTH-1] != 1'b0)) &&
-            (cap.res_lo == 0) && (cap.res_hi == 0));
-        return derivable;
-    endfunction */
-
     function automatic cap_reg_t seal(cap_reg_t cap, otypew_t otype);
         cap_reg_t ret = cap;
         // Update the fields of the new sealed capability (otype)
