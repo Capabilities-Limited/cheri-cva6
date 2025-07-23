@@ -242,7 +242,7 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     {next_pc_carry, next_pc_addr} = {1'b0, issue_instr_i.pc} + {1'b0, next_pc_off};
     issue_pcc_ex_o = 0;
     // Check PCC bounds every instruction, even if an exception was thrown already
-    if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top) || (next_pc_carry && !pcc_bounds_root)) begin
+    if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i.pc)) < pcc_base) || ({1'b0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top) || (next_pc_carry && !pcc_bounds_root)) begin
         issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
         cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
         issue_pcc_ex_o.tval2 = cheri_tval2;
