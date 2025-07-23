@@ -531,10 +531,12 @@ module load_unit
   // Sign Extend
   // ---------------
   logic [CVA6Cfg.CLEN:0] data;
-  logic [CVA6Cfg.XLEN:0] shifted_data;
+  logic [CVA6Cfg.CLEN-1:0] shifted_data_wide;
+  logic [CVA6Cfg.XLEN-1:0] shifted_data;
 
   // realign as needed
-  assign shifted_data = req_port_i.data_rdata >> {ldbuf_rdata.address_offset, 3'b000};
+  assign shifted_data_wide = req_port_i.data_rdata >> {ldbuf_rdata.address_offset, 3'b000};
+  assign shifted_data = shifted_data_wide[CVA6Cfg.XLEN-1:0]; // If not using cap, we need at most XLEN bits.
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_load_data
     assign data = {req_port_i.data_ruser,req_port_i.data_rdata};
   end
