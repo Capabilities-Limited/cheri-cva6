@@ -165,9 +165,9 @@ module cva6_shared_tlb #(
   assign itlb_req_o = itlb_req_q;
   assign v_st_enbl = {{v_i, g_st_enbl_i, s_st_enbl_i}, {ld_st_v_i, g_ld_st_enbl_i, s_ld_st_enbl_i}};
 
-  genvar i, x;
+  genvar x;
   generate
-    for (i = 0; i < SHARED_TLB_WAYS; i++) begin : gen_match_tlb_ways
+    for (genvar i = 0; i < SHARED_TLB_WAYS; i++) begin : gen_match_tlb_ways
       //identify page_match for all TLB Entries
 
       for (x = 0; x < CVA6Cfg.PtLevels; x++) begin : gen_match
