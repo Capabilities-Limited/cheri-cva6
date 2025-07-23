@@ -376,7 +376,7 @@ module cva6_mmu
   localparam int PPNWMin = (CVA6Cfg.PPNW - 1 > 29) ? 29 : CVA6Cfg.PPNW - 1;
   // Workaround to trap on invalid address outside of DRAM
   logic  rvfii_instr_addr_allowed;
-  assign rvfii_instr_addr_allowed = config_pkg::range_check(64'h8000_0000, 64'h000800000, icache_areq_o.fetch_paddr);
+  assign rvfii_instr_addr_allowed = config_pkg::range_check(64'h8000_0000, 64'h000800000, {{64 - CVA6Cfg.PLEN{1'b0}}, icache_areq_o.fetch_paddr});
 
   // The instruction interface is a simple request response interface
   always_comb begin : instr_interface
@@ -719,12 +719,12 @@ module cva6_mmu
                   {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr
                 };
               if (CVA6Cfg.RVH) begin
-                lsu_exception_o.tval2 = '0;
+                lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
                 lsu_exception_o.tinst = lsu_tinst_q;
                 lsu_exception_o.gva   = ld_st_v_i;
               end
               if (CVA6Cfg.CheriPresent) begin
-                lsu_exception_o.tval2 = {'0, ptw_cheri_error};
+                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN-2{1'b0}}, ptw_cheri_error};
               end
             end
           end else begin
@@ -748,12 +748,12 @@ module cva6_mmu
                   {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr
                 };
               if (CVA6Cfg.RVH) begin
-                lsu_exception_o.tval2 = '0;
+                lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
                 lsu_exception_o.tinst = lsu_tinst_q;
                 lsu_exception_o.gva   = ld_st_v_i;
               end
               if (CVA6Cfg.CheriPresent) begin
-                lsu_exception_o.tval2 = {'0, ptw_cheri_error};
+                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN-2{1'b0}}, ptw_cheri_error};
               end
             end
           end
