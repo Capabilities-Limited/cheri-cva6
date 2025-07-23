@@ -237,7 +237,6 @@ package cva6_cheri_pkg;
     typedef struct packed {
         cap_reg_t   cap;
         bool_t      exact;
-        addrwe_t    length;
         addrw_t     mask;
     } cap_reg_set_bounds_ret_t;
 
@@ -693,7 +692,6 @@ package cva6_cheri_pkg;
         cap_reg_set_bounds_ret_t ret = '{
             cap     : cap,
             exact   : 1'b0,
-            length  : lengthfull,
             mask    : '0
         };
 
@@ -733,7 +731,6 @@ package cva6_cheri_pkg;
         // with len msb shifted just below the mantissa and up 3 (internal exp)
         addrwe2_t lmask_lo = lmask >> (CAP_M_WIDTH - 1 - 3); // -1 drops the 0 in 14th bit of the length slice, -3 drops the exp bits
         // check for significant bits in the len, top and base
-        bool_t lost_sig_len = (({2'b00, lengthfull} & lmask_lo != 0)) && int_exp;
         bool_t lost_sig_top = ((new_top & lmask_lo) != 0) && int_exp;
         bool_t lost_sig_base = ((new_base & lmask_lo) != 0) && int_exp;
 
@@ -776,11 +773,6 @@ package cva6_cheri_pkg;
         // derive new length value and base mask
         ////////////////////////////////////////////////////////////////////////
         addrwe2_t length_lsb_set = (lmask ^ (lmask >> 1)) >> (CAP_M_WIDTH - 2 - 3);
-        addrwe2_t rounded_length = {2'b00, lengthfull} + length_lsb_set;
-        addrwe2_t final_length =
-          (int_exp) ? ( (lost_sig_len) ? (rounded_length & (~lmask_lo))
-                                       : ({2'b00, lengthfull} & (~lmask_lo)) )
-                    : {2'b00, lengthfull};
         addrwe2_t base_mask =
           (int_exp) ? ( (len_max && lost_sig_top) ? ~lmask_lo_ovflw
                                                   : ~lmask_lo )
@@ -794,7 +786,6 @@ package cva6_cheri_pkg;
         ret.cap.bounds.base_bits = final_base_bits;
         ret.cap.addr_mid = final_base_bits;
         ret.exact = exact;
-        ret.length = final_length;
         ret.mask = base_mask;
         // dbg:
         //ret.cap.addr = lmask;
