@@ -99,9 +99,9 @@ module cva6_tlb
   // Translation
   //-------------
 
-  genvar i, x, z, w;
+  genvar x, z, w;
   generate
-    for (i = 0; i < TLB_ENTRIES; i++) begin
+    for (genvar i = 0; i < TLB_ENTRIES; i++) begin
       for (x = 0; x < CVA6Cfg.PtLevels; x++) begin
         // Identify if virtual address at level `x` matches the vaddr / gpaddr to be flushed
         assign vaddr_vpn_match[i][0][x] = vaddr_to_be_flushed_i[12+((CVA6Cfg.VpnLen/CVA6Cfg.PtLevels)*(x+1))-1:12+((CVA6Cfg.VpnLen/CVA6Cfg.PtLevels)*x)] == tags_q[i].vpn[x];
