@@ -585,9 +585,9 @@ package cva6_cheri_pkg;
         // In Range test
 
         localparam T_W = CAP_ADDR_WIDTH - CAP_M_WIDTH;
-        logic [T_W-1:0] sgn_bits = T_W'($signed(1'(offset[CAP_ADDR_WIDTH-1])));
-        logic [T_W-1:0] og_hi_off_bits = T_W'(offset_addr[CAP_ADDR_WIDTH-1-:T_W]);
-        logic [T_W-1:0] hi_filt_bits = ~T_W'(0) << (CAP_MAX_EXP - exp);
+        logic [T_W-1:0] sgn_bits = T_W'($signed(offset[CAP_ADDR_WIDTH-1]));
+        logic [T_W-1:0] og_hi_off_bits = offset_addr[CAP_ADDR_WIDTH-1:CAP_M_WIDTH];
+        logic [T_W-1:0] hi_filt_bits = T_W'(~({T_W+2{1'b1}} >> exp));
         logic [T_W-1:0] hi_off_bits = (og_hi_off_bits ^ sgn_bits) & hi_filt_bits;
         bool_t in_range = hi_off_bits == 0;
 
