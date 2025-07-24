@@ -535,7 +535,7 @@ package cva6_cheri_pkg;
       cap_reg_t ret = cap;
       ew_t e = cap.bounds.exp;
 
-      mw_t newAddrMid = CAP_M_WIDTH'({2'b00, address} >> (CAP_MAX_EXP-e));
+      mw_t newAddrMid = extract_addr_mid(address, e);
       bool_t newAddrHi = newAddrMid < cap_meta_data.r;
       logic [1:0] diffTmp = {1'b0, newAddrHi} - {1'b0, cap_meta_data.addr_hi_r};
       logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] deltaAddrHi =
@@ -567,7 +567,7 @@ package cva6_cheri_pkg;
         cap_reg_t ret = cap;
         ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
         ret.addr = address;
-        ret.addr_mid = CAP_M_WIDTH'(address >> (CAP_MAX_EXP - exp));
+        ret.addr_mid = extract_addr_mid(address, exp);
         return ret;
     endfunction
 
@@ -579,7 +579,7 @@ package cva6_cheri_pkg;
         cap_reg_t ret = cap;
         ew_t exp = cap.bounds.exp;
         addrw_t offset_addr = offset;
-        mw_t offset_bits  = CAP_M_WIDTH'(offset_addr >> (CAP_MAX_EXP - exp));
+        mw_t offset_bits = extract_addr_mid(offset_addr, exp);
 
         // ----------------
         // In Range test
@@ -624,7 +624,7 @@ package cva6_cheri_pkg;
           ret.addr_mid = new_addr_bits & mask;
         end else begin
           ret.addr = cursor;
-          ret.addr_mid = CAP_M_WIDTH'(cursor >> (CAP_MAX_EXP - exp));
+          ret.addr_mid = extract_addr_mid(cursor, exp);
         end
         // Nullify the capability if the representable bounds check has failed
         if (!in_bounds) ret.tag = 1'b0;
@@ -844,7 +844,7 @@ package cva6_cheri_pkg;
             EF:        cap.EF,
             bounds:    bounds,
             addr:      cap.addr,
-            addr_mid:  CAP_M_WIDTH'(cap.addr >> (CAP_MAX_EXP - exp))
+            addr_mid:  extract_addr_mid(cap.addr, exp)
         };
         return ret;
     endfunction
@@ -930,6 +930,18 @@ package cva6_cheri_pkg;
             else return res;
         end
         return res;
+    endfunction
+
+
+    /**
+      * @brief Extract mantissa-relevant bits from an address
+      * @param addr Address to extract from
+      * @param exp Exponent to use for shift
+      * @returns the mantissa_width slice referred to by exp
+      */
+    function automatic mw_t extract_addr_mid(addrw_t addr, ew_t exp);
+        automatic addrwe2_t shifted_value = {2'b0, addr} << exp;
+        return shifted_value[CAP_ADDR_WIDTH+1-:CAP_M_WIDTH];
     endfunction
 
     /**
