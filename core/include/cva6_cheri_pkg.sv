@@ -532,28 +532,25 @@ package cva6_cheri_pkg;
       *          if the capability is not representable.
       */
     function automatic cap_reg_t set_cap_reg_address(cap_reg_t cap, addrw_t address, cap_meta_data_t cap_meta_data);
+      localparam T_W = CAP_ADDR_WIDTH - CAP_M_WIDTH;
       cap_reg_t ret = cap;
       ew_t e = cap.bounds.exp;
 
       mw_t newAddrMid = extract_addr_mid(address, e);
       bool_t newAddrHi = newAddrMid < cap_meta_data.r;
       logic [1:0] diffTmp = {1'b0, newAddrHi} - {1'b0, cap_meta_data.addr_hi_r};
-      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] deltaAddrHi =
-        {{CAP_ADDR_WIDTH-CAP_M_WIDTH-2{diffTmp[1]}}, diffTmp} << (CAP_MAX_EXP - e);
-        //$signed(diffTmp) >>> e;
+      logic [T_W-1:0] deltaAddrHi = T_W'($signed({diffTmp, {T_W+2{1'b0}}}) >>> e);
 
-      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] newAddrTruncLSB =
-        (CAP_ADDR_WIDTH-CAP_M_WIDTH)'(address >> CAP_M_WIDTH);
-      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] oldAddrTruncLSB =
-        (CAP_ADDR_WIDTH-CAP_M_WIDTH)'(cap.addr >> CAP_M_WIDTH);
-      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] mask = {CAP_ADDR_WIDTH - CAP_M_WIDTH {1'b1}} << (CAP_MAX_EXP - e);
-      logic [CAP_ADDR_WIDTH - CAP_M_WIDTH - 1 : 0] deltaAddrUpper =
-        (newAddrTruncLSB & mask) - (oldAddrTruncLSB & mask);
+      logic [T_W-1:0] newAddrTruncLSB = address[CAP_ADDR_WIDTH-1:CAP_M_WIDTH];
+      logic [T_W-1:0] oldAddrTruncLSB = cap.addr[CAP_ADDR_WIDTH-1:CAP_M_WIDTH];
+      logic [T_W-1:0] mask = T_W'(~({T_W+2{1'b1}} >> e));
+      logic [T_W-1:0] deltaAddrUpper = (newAddrTruncLSB & mask) - (oldAddrTruncLSB & mask);
 
       bool_t is_rep = deltaAddrHi == deltaAddrUpper;
       ret.addr = address;
       ret.addr_mid = newAddrMid;
-      if (!is_rep) ret.tag = 1'b0;
+      // The exp out-of-range check is required for formal bsv equivalence.
+      if (!is_rep || e > CAP_MAX_EXP) ret.tag = 1'b0;
       return ret;
     endfunction
 
