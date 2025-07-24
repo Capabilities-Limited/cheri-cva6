@@ -1017,8 +1017,9 @@ module load_store_unit
   logic ld_clr_cap_level;
   logic ld_clr_load_mutable;
   logic [CVA6Cfg.REGLEN-1:0] st_data;
+  cva6_cheri_pkg::cap_reg_t st_data_cap;
   if (CVA6Cfg.CheriPresent) begin
-    automatic cva6_cheri_pkg::cap_reg_t st_data_cap = fu_data_i.operand_b;
+    assign st_data_cap = fu_data_i.operand_b;
     assign ld_cap = ((lsu_ctrl.fu == LOAD) && (lsu_ctrl.operation inside{ariane_pkg::LC})) || ((lsu_ctrl.fu == STORE) && lsu_ctrl.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
     assign ld_clr_tag = !(check_cap.hperms.permit_load && check_cap.hperms.permit_cap) && ld_cap;
     assign ld_clr_elevate = !check_cap.hperms.permit_elevate_level && ld_cap && !ld_clr_tag;
