@@ -278,7 +278,7 @@ module store_unit
     // Access Exception
     // -----------------
     // we got an address translation exception (access rights, misaligned or page fault)
-    if (ex_i.valid && (state_q != IDLE) && !(amo_op_q == AMO_SC && ex_i.cause == riscv::ST_ACCESS_FAULT)) begin
+    if (ex_i.valid && (state_q != IDLE && state_q != VALID_STORE) && !(amo_op_q == AMO_SC && ex_i.cause == riscv::ST_ACCESS_FAULT)) begin
         // the only difference is that we do not want to store this request
         pop_st_o = 1'b1;
         st_valid = 1'b0;
