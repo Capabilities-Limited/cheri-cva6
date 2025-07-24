@@ -106,7 +106,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
 
         unique case (fu_data_i.operation)
             // AUIPCC
-            // TODO:change this to offset maybe
             ariane_pkg::AUIPCC: begin
                 address          = alu_result_i;
                 op_set_addr      = pcc;
