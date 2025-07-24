@@ -114,10 +114,11 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             end
             // CAndPerm
             ariane_pkg::ACPERM: begin
+                automatic cap_report_perms_t mask = cap_report_perms_t'(operand_b_address);
                 check_operand_a_violations.seal = 1'b1;
                 tmp_cap = operand_a;
-                tmp_cap.uperms = (tmp_cap.uperms & (operand_b_address[CAP_UPERMS_WIDTH+CAP_UPERMS_SHIFT-1:CAP_UPERMS_SHIFT]));
-                tmp_cap.hperms = cap_hperms_t'(tmp_cap.hperms & report_perms_to_hperms(operand_b_address));
+                tmp_cap.uperms = (tmp_cap.uperms & mask.uperms);
+                tmp_cap.hperms = cap_hperms_t'(tmp_cap.hperms & report_perms_to_hperms(mask));
                 if(!tmp_cap.hperms.permit_execute) tmp_cap.flags.int_mode = 1'b0;
                 clu_result = tmp_cap;
             end
