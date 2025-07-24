@@ -229,7 +229,7 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
                 check_operand_a_violations.tag = 1'b1;
                 check_operand_a_violations.seal = 1'b1;
                 check_operand_a_violations.bounds = 1'b1;
-                res_set_bounds = set_cap_reg_bounds(operand_a, operand_a_address, $unsigned(operand_b_address));
+                res_set_bounds = set_cap_reg_bounds(operand_a, operand_a_address, {1'b0,operand_b_address});
                 if (fu_data_i.operation == ariane_pkg::CRAM) begin
                     clu_result = set_cap_reg_addr(REG_NULL_CAP, res_set_bounds.mask);
                 end else begin
