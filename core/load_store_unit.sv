@@ -1017,16 +1017,18 @@ module load_store_unit
   logic ld_clr_cap_level;
   logic ld_clr_load_mutable;
   logic [CVA6Cfg.REGLEN-1:0] st_data;
+  cva6_cheri_pkg::cap_reg_t fu_data_check_cap;
   cva6_cheri_pkg::cap_reg_t st_data_cap;
   if (CVA6Cfg.CheriPresent) begin
+    assign fu_data_check_cap = fu_data_i.use_ddc ? ddc_i : fu_data_i.operand_a;
     assign st_data_cap = fu_data_i.operand_b;
     assign ld_cap = ((lsu_ctrl.fu == LOAD) && (lsu_ctrl.operation inside{ariane_pkg::LC})) || ((lsu_ctrl.fu == STORE) && lsu_ctrl.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
-    assign ld_clr_tag = !(check_cap.hperms.permit_load && check_cap.hperms.permit_cap) && ld_cap;
-    assign ld_clr_elevate = !check_cap.hperms.permit_elevate_level && ld_cap && !ld_clr_tag;
-    assign ld_clr_cap_level = ld_clr_elevate && !check_cap.hperms.cap_level;
-    assign ld_clr_load_mutable = !check_cap.hperms.permit_load_mutable && ld_cap;
+    assign ld_clr_tag = !(fu_data_check_cap.hperms.permit_load && fu_data_check_cap.hperms.permit_cap) && ld_cap;
+    assign ld_clr_elevate = !fu_data_check_cap.hperms.permit_elevate_level && ld_cap && !ld_clr_tag;
+    assign ld_clr_cap_level = ld_clr_elevate && !fu_data_check_cap.hperms.cap_level;
+    assign ld_clr_load_mutable = !fu_data_check_cap.hperms.permit_load_mutable && ld_cap;
     assign st_data[CVA6Cfg.REGLEN-2:0] = st_data_cap[CVA6Cfg.REGLEN-2:0];
-    assign st_data[CVA6Cfg.REGLEN-1] = st_data_cap.tag & check_cap.hperms.permit_store & check_cap.hperms.permit_cap & (check_cap.hperms.permit_store_level | st_data_cap.hperms.cap_level);
+    assign st_data[CVA6Cfg.REGLEN-1] = st_data_cap.tag & fu_data_check_cap.hperms.permit_store & fu_data_check_cap.hperms.permit_cap & (fu_data_check_cap.hperms.permit_store_level | st_data_cap.hperms.cap_level);
   end else begin
     assign ld_cap = 1'b0;
     assign ld_clr_tag = 1'b0;
