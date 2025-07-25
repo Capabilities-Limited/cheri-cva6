@@ -135,7 +135,6 @@ module cva6_rvfi
   assign instruction = instr.instruction;
   assign is_compressed = instr.is_compressed;
   assign issue_pointer = instr.issue_pointer;
-  
 
   assign flush_unissued_instr = instr.flush_unissued_instr;
   assign decoded_instr_valid = instr.decoded_instr_valid;
@@ -176,7 +175,6 @@ module cva6_rvfi
   assign wbdata = instr.wbdata;
   assign mem_paddr = instr.mem_paddr;
   assign debug_mode = instr.debug_mode;
-  
 
   assign lsu_addr = instr.lsu_ctrl_vaddr;
   assign lsu_rmask = (instr.lsu_ctrl_fu == LOAD || (((mem_q[lsu_addr_trans_id].instr & 32'hF800703F) == 32'h1000402F)) && instr.lsu_ctrl_fu == STORE) ? instr.lsu_ctrl_be : '0;
