@@ -671,7 +671,7 @@ module load_store_unit
       .d_i({ld_valid, ld_trans_id, ld_result, ld_ex, ld_strip_tag}),
       .d_o({load_valid_o, load_trans_id_o, load_result_shifted, load_exception_o, ld_strip_tag_o})
   );
-  assign load_result_o = {load_result_shifted[CVA6Cfg.REGLEN-1] & !ld_strip_tag, load_result_shifted[CVA6Cfg.REGLEN-2:0]};
+  assign load_result_o = {load_result_shifted[CVA6Cfg.REGLEN-1] & !ld_strip_tag_o, load_result_shifted[CVA6Cfg.REGLEN-2:0]};
 
   shift_reg #(
       .dtype(logic [$bits(st_valid) + $bits(st_trans_id) + $bits(st_result) + $bits(st_ex) - 1:0]),
