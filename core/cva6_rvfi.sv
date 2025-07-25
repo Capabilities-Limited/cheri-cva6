@@ -84,11 +84,6 @@ module cva6_rvfi
 
   riscv::priv_lvl_t priv_lvl;
 
-  logic [CVA6Cfg.VLEN-1:0] lsu_ctrl_vaddr;
-  fu_t lsu_ctrl_fu;
-  logic [(CVA6Cfg.CLEN/8)-1:0] lsu_ctrl_be;
-  logic [CVA6Cfg.TRANS_ID_BITS-1:0] lsu_ctrl_trans_id;
-
   logic [((CVA6Cfg.CvxifEn || CVA6Cfg.RVV) ? 5 : 4)-1:0][CVA6Cfg.REGLEN-1:0] wbdata;
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack;
   logic [CVA6Cfg.PLEN-1:0] mem_paddr;
