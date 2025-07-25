@@ -388,7 +388,7 @@ module cva6_rvfi
 
   `CONNECT_RVFI_FULL(1'b1, menvcfg, csr.fiom_q)
 
-  `CONNECT_RVFI_FULL(CVA6Cfg.XLEN == 32, menvcfgh, 0)
+  `CONNECT_RVFI_FULL(CVA6Cfg.XLEN == 32, menvcfgh, 32'b0)
 
   `CONNECT_RVFI_FULL(1'b1, mvendorid, OPENHWGROUP_MVENDORID)
   `CONNECT_RVFI_FULL(1'b1, marchid, ARIANE_MARCHID)
