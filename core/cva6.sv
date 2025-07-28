@@ -771,6 +771,48 @@ module cva6
     $error("X-interface and accelerator port cannot be enabled at the same time.");
   end
 
+  xlnx_ila i_ila_core (
+      .clk(clk_i), // input wire clk
+      .probe0(commit_pcc),
+      .probe1(pc_id_ex),
+      .probe2(fetch_entry_if_id[0].address),
+      .probe3(fetch_entry_if_id[0].instruction),
+      .probe4({fetch_valid_if_id, fetch_ready_id_if}),
+      .probe5(csr_regfile_i.sepc_q),
+      .probe6({
+                flush_csr_ctrl,
+                flush_unissued_instr_ctrl_id,
+                flush_ctrl_if,
+                flush_ctrl_id,
+                flush_ctrl_ex,
+                flush_ctrl_bp,
+                flush_tlb_ctrl_ex,
+                flush_tlb_vvma_ctrl_ex,
+                flush_tlb_gvma_ctrl_ex,
+                dcache_flush_ctrl_cache,
+                dcache_flush_ack_cache_ctrl,
+                flush_commit,
+                flush_acc,
+                resolved_branch.is_mispredict,
+                ex_commit.valid,
+                eret,
+                set_pc_ctrl_pcgen
+              }),
+      .probe7(pc_commit[31:0]),
+      .probe8(commit_ack[0]),
+      .probe9({
+                issue_stage_i.i_issue_read_operands.stall,
+                issue_stage_i.i_issue_read_operands.pcc_jump_change_valid_q,
+                issue_stage_i.i_issue_read_operands.eret_i,
+                issue_stage_i.i_issue_read_operands.set_pc_commit_i,
+                issue_stage_i.i_issue_read_operands.ex_valid_i,
+                issue_stage_i.i_issue_read_operands.backend_empty_i,
+                issue_stage_i.i_issue_read_operands.resolved_branch_i.valid
+              }),
+      .probe10(issue_stage_i.i_issue_read_operands.pcc_jump_change_q[9:0]),
+      .probe11(issue_stage_i.i_issue_read_operands.resolved_branch_i.target_address[9:0])
+  );
+
   // ---------
   // Issue
   // ---------

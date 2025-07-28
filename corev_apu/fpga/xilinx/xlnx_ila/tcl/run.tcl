@@ -7,13 +7,22 @@ create_project $ipName . -force -part $partNumber
 set_property board_part $boardName [current_project]
 
 create_ip -name ila -vendor xilinx.com -library ip -module_name $ipName
-set_property -dict [list  CONFIG.C_NUM_OF_PROBES {8} \
-                          CONFIG.C_PROBE3_WIDTH {4} \
-                          CONFIG.C_PROBE6_WIDTH {4} \
+set_property -dict [list  CONFIG.C_NUM_OF_PROBES {12} \
+                          CONFIG.C_PROBE0_WIDTH {151} \
+                          CONFIG.C_PROBE1_WIDTH {151} \
+                          CONFIG.C_PROBE2_WIDTH {64} \
+                          CONFIG.C_PROBE3_WIDTH {32} \
+                          CONFIG.C_PROBE4_WIDTH {2} \
+                          CONFIG.C_PROBE5_WIDTH {151} \
+                          CONFIG.C_PROBE6_WIDTH {17} \
+                          CONFIG.C_PROBE7_WIDTH {32} \
+                          CONFIG.C_PROBE8_WIDTH {1} \
+                          CONFIG.C_PROBE9_WIDTH {7} \
+                          CONFIG.C_PROBE10_WIDTH {10} \
+                          CONFIG.C_PROBE11_WIDTH {10} \
                           CONFIG.C_DATA_DEPTH {16384}  \
                           CONFIG.C_INPUT_PIPE_STAGES {1} \
                     ] [get_ips $ipName]
-
 
 generate_target {instantiation_template} [get_files ./$ipName.srcs/sources_1/ip/$ipName/$ipName.xci]
 generate_target all [get_files  ./$ipName.srcs/sources_1/ip/$ipName/$ipName.xci]
