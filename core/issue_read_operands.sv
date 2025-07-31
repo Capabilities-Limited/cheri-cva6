@@ -561,38 +561,39 @@ end
     if (issue_instr_valid_i) begin
       // check that the corresponding functional unit is not busy
       if (!stall && !fu_busy) begin
-        // -----------------------------------------
-        // WAW - Write After Write Dependency Check
-        // -----------------------------------------
-        // no other instruction has the same destination register -> issue the instruction
-        if ((CVA6Cfg.FpPresent && ariane_pkg::is_rd_fpr(
-                issue_instr_i.op
-            )) ? (rd_clobber_fpr_i[issue_instr_i.rd] == NONE) :
-                (rd_clobber_gpr_i[issue_instr_i.rd] == NONE)) begin
+        if (!fu_busy) begin
+          // -----------------------------------------
+          // WAW - Write After Write Dependency Check
+          // -----------------------------------------
+          // no other instruction has the same destination register -> issue the instruction
+          if ((CVA6Cfg.FpPresent && ariane_pkg::is_rd_fpr(
+                  issue_instr_i.op
+              )) ? (rd_clobber_fpr_i[issue_instr_i.rd] == NONE) :
+                  (rd_clobber_gpr_i[issue_instr_i.rd] == NONE)) begin
+            issue_ack_o = 1'b1;
+          end
+          // or check that the target destination register will be written in this cycle by the
+          // commit stage
+          for (int unsigned i = 0; i < CVA6Cfg.NrCommitPorts; i++)
+          if ((CVA6Cfg.FpPresent && ariane_pkg::is_rd_fpr(
+                  issue_instr_i.op
+              )) ? (we_fpr_i[i] && waddr_i[i] == issue_instr_i.rd[4:0]) :
+                  (we_gpr_i[i] && waddr_i[i] == issue_instr_i.rd[4:0])) begin
+            issue_ack_o = 1'b1;
+          end
+        end
+        // we can also issue the instruction under the following two circumstances:
+        // we can do this even if no functional unit is ready (as we don't need one)
+        // the decoder needs to make sure that the instruction is marked as valid when it does not
+        // need any functional unit or if an exception occurred previous to the execute stage.
+        // 1. we already got an exception
+        if (issue_instr_i.ex.valid) begin
           issue_ack_o = 1'b1;
         end
-        // or check that the target destination register will be written in this cycle by the
-        // commit stage
-        for (int unsigned i = 0; i < CVA6Cfg.NrCommitPorts; i++)
-        if ((CVA6Cfg.FpPresent && ariane_pkg::is_rd_fpr(
-                issue_instr_i.op
-            )) ? (we_fpr_i[i] && waddr_i[i] == issue_instr_i.rd[4:0]) :
-                (we_gpr_i[i] && waddr_i[i] == issue_instr_i.rd[4:0])) begin
+        // 2. it is an instruction which does not need any functional unit
+        if (issue_instr_i.fu == NONE) begin
           issue_ack_o = 1'b1;
         end
-
-      end
-      // we can also issue the instruction under the following two circumstances:
-      // we can do this even if we are stalled or no functional unit is ready (as we don't need one)
-      // the decoder needs to make sure that the instruction is marked as valid when it does not
-      // need any functional unit or if an exception occurred previous to the execute stage.
-      // 1. we already got an exception
-      if (issue_instr_i.ex.valid) begin
-        issue_ack_o = 1'b1;
-      end
-      // 2. it is an instruction which does not need any functional unit
-      if (issue_instr_i.fu == NONE) begin
-        issue_ack_o = 1'b1;
       end
     end
     // after a multiplication was issued we can only issue another multiplication
