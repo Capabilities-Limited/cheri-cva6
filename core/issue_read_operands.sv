@@ -1017,9 +1017,6 @@ module issue_read_operands
         if (!stall_raw[i]) begin
           issue_ack[i] = 1'b1;
         end
-        if (issue_instr_i[i].ex.valid) begin
-          issue_ack[i] = 1'b1;
-        end
       end
     end
 
