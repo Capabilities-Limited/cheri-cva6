@@ -560,7 +560,7 @@ end
     // and that the functional unit we need is not busy
     if (issue_instr_valid_i) begin
       // check that the corresponding functional unit is not busy
-      if (!stall && !fu_busy) begin
+      if (!stall) begin
         if (!fu_busy) begin
           // -----------------------------------------
           // WAW - Write After Write Dependency Check
