@@ -626,7 +626,7 @@ module ex_stage
           gpaddr_to_be_flushed <= '0;
           // if the current instruction in EX_STAGE is a sfence.vma, in the next cycle no writes will happen
         end else if ((~(current_instruction_is_sfence_vma || current_instruction_is_hfence_vvma || current_instruction_is_hfence_gvma)) && (~((fu_data_i.operation == SFENCE_VMA || fu_data_i.operation == HFENCE_VVMA || fu_data_i.operation == HFENCE_GVMA ) && csr_valid_i))) begin
-          vaddr_to_be_flushed  <= rs1_forwarding_i[CVA6Cfg.VLEN-1:2];
+          vaddr_to_be_flushed  <= rs1_forwarding_i[CVA6Cfg.VLEN-1:0];
           gpaddr_to_be_flushed <= {2'b00, rs1_forwarding_i[CVA6Cfg.GPLEN-1:2]};
           asid_to_be_flushed   <= rs2_forwarding_i[CVA6Cfg.ASID_WIDTH-1:0];
           vmid_to_be_flushed   <= rs2_forwarding_i[CVA6Cfg.VMID_WIDTH-1:0];
