@@ -49,9 +49,10 @@
 [submodule "docs/06_cv32a65x_riscv/riscv-isa-manual"]
 	path = docs/06_cv32a65x_riscv/riscv-isa-manual
 	url = https://github.com/riscv/riscv-isa-manual.git
-[submodule "vendor/zero-day/axi_tagcontroller"]
-	path = vendor/zero-day/axi_tagcontroller
-	url = https://github.com/ninolomata/axi_cheri_tagcontroller.git
 [submodule "corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils"]
 	path = corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils
 	url = https://github.com/CTSRD-CHERI/RVFI-DII-utils.git
+[submodule "vendor/capltd/axi_cheri_tagcontroller"]
+	path = vendor/capltd/axi_cheri_tagcontroller
+	url = https://github.com/Capabilities-Limited/axi_cheri_tagcontroller.git
+	branch = wip-hpdcache
