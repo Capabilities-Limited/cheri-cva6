@@ -25,8 +25,8 @@ package cva6_config_pkg;
   localparam CVA6ConfigBExtEn = 1;
   localparam CVA6ConfigVExtEn = 0;
   localparam CVA6ConfigRVZiCond = 1;
-  localparam CVA6ConfigRVZcheripurecap = 1;
-  localparam CVA6ConfigRVZcherihybrid = 1;
+  localparam CVA6ConfigRVZcheripurecap = 0;
+  localparam CVA6ConfigRVZcherihybrid = 0;
 
   localparam CVA6ConfigCheriCapTagWidth = 0;
   localparam CVA6ConfigRVFI_DII = 1;
@@ -37,8 +37,8 @@ package cva6_config_pkg;
   localparam CVA6ConfigAxiDataWidth = 64;
   localparam CVA6ConfigFetchUserEn = 0;
   localparam CVA6ConfigFetchUserWidth = CVA6ConfigXlen;
-  localparam CVA6ConfigDataUserEn = 1;
-  localparam CVA6ConfigDataUserWidth = CVA6ConfigCheriCapTagWidth;
+  localparam CVA6ConfigDataUserEn = 0;
+  localparam CVA6ConfigDataUserWidth = CVA6ConfigXlen;
 
   localparam CVA6ConfigIcacheByteSize = 16384;
   localparam CVA6ConfigIcacheSetAssoc = 4;
