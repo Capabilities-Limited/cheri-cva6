@@ -113,7 +113,7 @@ module wt_dcache_mem
   logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0][CVA6Cfg.CLEN-1:0] rdata_cl;  // selected word from each cacheline
   logic [DCACHE_NUM_BANKS-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0][CVA6Cfg.DCACHE_USER_WIDTH-1:0] bank_wuser;  //
   logic [DCACHE_NUM_BANKS-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0][CVA6Cfg.DCACHE_USER_WIDTH-1:0] bank_ruser;  //
-  logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0][CVA6Cfg.DCACHE_USER_WIDTH-1:0]          ruser_cl;          // selected user bits from each cacheline
+  logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0][CVA6Cfg.DCACHE_USER_WIDTH-1:0] ruser_cl;  // selected user bits from each cacheline
 
   logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag;
   logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] vld_req;  // bit enable for valid regs
@@ -153,7 +153,7 @@ module wt_dcache_mem
                                                                 '0;
       assign bank_wdata[k][j] = (wr_cl_we_i[j] & wr_cl_vld_i) ?  wr_cl_data_i[k*CVA6Cfg.CLEN +: CVA6Cfg.CLEN] :
                                                                  wr_data_i;
-      assign bank_wuser[k][j] = (wr_cl_we_i[j] & wr_cl_vld_i) ?  wr_cl_user_i[(CVA6Cfg.CLEN/CVA6Cfg.XLEN) * k * CVA6Cfg.DCACHE_USER_WIDTH +: CVA6Cfg.DCACHE_USER_WIDTH] :
+      assign bank_wuser[k][j] = (wr_cl_we_i[j] & wr_cl_vld_i) ?  wr_cl_user_i[k*CVA6Cfg.DCACHE_USER_WIDTH +: CVA6Cfg.DCACHE_USER_WIDTH] :
                                                                  wr_user_i;
 
     end
@@ -289,7 +289,7 @@ module wt_dcache_mem
   always_comb begin
     if (wr_cl_vld_i) begin
       rdata = wr_cl_data_i[wr_cl_off*CVA6Cfg.CLEN+:CVA6Cfg.CLEN];
-      ruser = wr_cl_user_i[(CVA6Cfg.CLEN/CVA6Cfg.XLEN) * wr_cl_off * CVA6Cfg.DCACHE_USER_WIDTH+:CVA6Cfg.DCACHE_USER_WIDTH];
+      ruser = wr_cl_user_i[wr_cl_off*CVA6Cfg.DCACHE_USER_WIDTH+:CVA6Cfg.DCACHE_USER_WIDTH];
     end else begin
       rdata = rdata_cl[rd_hit_idx];
       ruser = ruser_cl[rd_hit_idx];

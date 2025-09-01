@@ -150,7 +150,7 @@ module store_buffer
                                                                                     CVA6Cfg.DCACHE_INDEX_WIDTH-1 :
                                                                                     CVA6Cfg.DCACHE_INDEX_WIDTH];
   assign req_port_o.data_wdata    = commit_queue_q[commit_read_pointer_q].data;
-  assign req_port_o.data_wuser  = commit_queue_q[commit_read_pointer_q].cap_tag;
+  assign req_port_o.data_wuser  = {CVA6Cfg.DCACHE_USER_WIDTH{commit_queue_q[commit_read_pointer_q].cap_tag}};
   assign req_port_o.data_be = commit_queue_q[commit_read_pointer_q].be;
   assign req_port_o.data_size = commit_queue_q[commit_read_pointer_q].data_size;
   assign req_port_o.strip_tag = '0;
