@@ -167,6 +167,18 @@ module issue_stage
     output logic [CVA6Cfg.NrCommitPorts-1:0] commit_drop_o,
     // Commit acknowledge - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_i,
+    // Exception event - COMMIT
+    input logic ex_valid_i,
+    // Program counter capability last committed - TO_BE_COMPLETED
+    input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
+    // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
+    input logic set_pc_commit_i,
+    // Next PC when jumping into exception - CSR_FILE
+    input logic [CVA6Cfg.REGLEN-1:0] trap_vector_base_i,
+    // Exception PC - CSR_FILE
+    input logic [CVA6Cfg.REGLEN-1:0] epc_i,
+    // ERET now - CSR_FILE
+    input logic eret_i,
     // Issue stall - PERF_COUNTERS
     output logic stall_issue_o,
     // Information dedicated to RVFI - RVFI
@@ -197,7 +209,10 @@ module issue_stage
   logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_instr_valid_sb_iro;
   logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_ack_iro_sb;
 
-  assign issue_instr_o    = issue_instr_sb_iro[0];
+  logic                                               backend_empty;
+
+  exception_t                                         issue_pcc_ex;
+
   assign issue_instr_hs_o = issue_instr_valid_sb_iro[0] & issue_ack_iro_sb[0];
 
   logic x_transaction_accepted_iro_sb, x_issue_writeback_iro_sb;
@@ -234,6 +249,8 @@ module issue_stage
       .orig_instr_o            (orig_instr_sb_iro),
       .issue_instr_valid_o     (issue_instr_valid_sb_iro),
       .issue_ack_i             (issue_ack_iro_sb),
+      .issue_pcc_ex_i          (issue_pcc_ex),
+      .backend_empty_o         (backend_empty),
       .fwd_o                   (fwd),
       .resolved_branch_i       (resolved_branch_i),
       .trans_id_i              (trans_id_i),
@@ -251,7 +268,9 @@ module issue_stage
   // ---------------------------------------------------------
   issue_read_operands #(
       .CVA6Cfg(CVA6Cfg),
+      .bp_resolve_t(bp_resolve_t),
       .branchpredict_sbe_t(branchpredict_sbe_t),
+      .exception_t(exception_t),
       .fu_data_t(fu_data_t),
       .scoreboard_entry_t(scoreboard_entry_t),
       .rs3_len_t(rs3_len_t),
@@ -272,6 +291,8 @@ module issue_stage
       .issue_instr_valid_i     (issue_instr_valid_sb_iro),
       .issue_ack_o             (issue_ack_iro_sb),
       .fwd_i                   (fwd),
+      .issue_pcc_ex_o          (issue_pcc_ex),
+      .backend_empty_i         (backend_empty),
       .fu_data_o               (fu_data_o),
       .rs1_forwarding_o        (rs1_forwarding_o),
       .rs2_forwarding_o        (rs2_forwarding_o),
@@ -319,6 +340,13 @@ module issue_stage
       .quarter_i,
       .we_gpr_i,
       .we_fpr_i,
+      .pcc_commit_i,
+      .set_pc_commit_i,
+      .ex_valid_i,
+      .resolved_branch_i,
+      .trap_vector_base_i,
+      .epc_i,
+      .eret_i,
       .stall_issue_o,
       .rvfi_rs1_o              (rvfi_rs1_o),
       .rvfi_rs2_o              (rvfi_rs2_o),

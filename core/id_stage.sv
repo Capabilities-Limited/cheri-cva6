@@ -97,7 +97,9 @@ module id_stage #(
     // Data cache request input - CACHE
     output dcache_req_i_t dcache_req_ports_o,
     // CHERI Data Default capability - CSR_REGFILE
-    input logic[CVA6Cfg.REGLEN-1:0] ddc_i
+    input logic[CVA6Cfg.REGLEN-1:0] ddc_i,
+    // CHERI program counter capability; only used for metadata - ISSUE_STAGE
+    input cva6_cheri_pkg::cap_pcc_t pcc_i
 );
   // ID/ISSUE register stage
   typedef struct packed {
@@ -153,13 +155,6 @@ module id_stage #(
   logic              [CVA6Cfg.NrIssuePorts-1:0][31:0] instruction_deco;
   logic              [CVA6Cfg.NrIssuePorts-1:0]       is_compressed_deco;
 
-
-  cva6_cheri_pkg::cap_pcc_t [CVA6Cfg.NrIssuePorts-1:0] pcc;
-
-  for (genvar i = 0; i <= CVA6Cfg.NrIssuePorts; i++) begin
-    assign pcc[i] = (CVA6Cfg.CheriPresent) ? (cva6_cheri_pkg::cap_pcc_t'(fetch_entry_i[i].address)) : '0;
-  end
-
   if (CVA6Cfg.RVC) begin
     // ---------------------------------------------------------
     // 1. Check if they are compressed and expand in case they are
@@ -169,7 +164,7 @@ module id_stage #(
           .CVA6Cfg(CVA6Cfg)
       ) compressed_decoder_i (
           .instr_i         (fetch_entry_i[i].instruction),
-          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? pcc[i].flags.cap_mode : 1'b0),
+          .cap_mode_i      ((CVA6Cfg.CheriPresent) ? pcc_i.flags.cap_mode : 1'b0),
           .instr_o         (instruction_rvc[i]),
           .illegal_instr_o (is_illegal_rvc[i]),
           .is_compressed_o (is_compressed_rvc[i]),
@@ -326,6 +321,7 @@ module id_stage #(
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
         .ddc_i                     (ddc_i),
+        .pcc_i                     (pcc_i),
         .is_compressed_i           (is_compressed_deco[i]),
         .is_macro_instr_i          (is_macro_instr[i]),
         .is_zcmt_i                 (is_zcmt_instr[i]),

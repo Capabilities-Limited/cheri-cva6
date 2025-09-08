@@ -20,7 +20,9 @@ module issue_read_operands
   import ariane_pkg::*;
 #(
     parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
+    parameter type bp_resolve_t = logic,
     parameter type branchpredict_sbe_t = logic,
+    parameter type exception_t = logic,
     parameter type fu_data_t = logic,
     parameter type scoreboard_entry_t = logic,
     parameter type forwarding_t = logic,
@@ -48,6 +50,10 @@ module issue_read_operands
     input logic [CVA6Cfg.NrIssuePorts-1:0] issue_instr_valid_i,
     // Issue stage acknowledge - SCOREBOARD
     output logic [CVA6Cfg.NrIssuePorts-1:0] issue_ack_o,
+    // PCC exception - Execute
+    output exception_t issue_pcc_ex_o,
+    // Backend Empty - scoreboard
+    input logic backend_empty_i,
     // Forwarding - SCOREBOARD
     input forwarding_t fwd_i,
     // FU data useful to execute instruction - EX_STAGE
@@ -135,6 +141,20 @@ module issue_read_operands
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_i,
     // FPR write enable - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_i,
+    // Program counter capability last committed - TO_BE_COMPLETED
+    input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
+    // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
+    input logic set_pc_commit_i,
+    // Exception event - COMMIT
+    input logic ex_valid_i,
+    // Mispredict event and next PC - EXECUTE
+    input bp_resolve_t resolved_branch_i,
+    // Next PC when jumping into exception - CSR_FILE
+    input logic [CVA6Cfg.REGLEN-1:0] trap_vector_base_i,
+    // Exception PC - CSR_FILE
+    input logic [CVA6Cfg.REGLEN-1:0] epc_i,
+    // ERET now - CSR_FILE
+    input logic eret_i,
     // Issue stall - PERF_COUNTERS
     output logic stall_issue_o,
     // Information dedicated to RVFI - RVFI
@@ -221,7 +241,11 @@ module issue_read_operands
   logic [ CVA6Cfg.NrIssuePorts-1:0][             CVA6Cfg.XLEN-1:0] rs3_res;
 
   logic [ CVA6Cfg.NrIssuePorts-1:0][31:0]                          tinst_n, tinst_q;  // transformed instruction
-  logic [ CVA6Cfg.NrIssuePorts-1:0]                                use_ddc_n, use_ddc_q;
+
+  // PCC signals : we only have one as we only allow one PCC change at a time
+  logic [CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
+  logic pcc_jump_change_valid_n, pcc_jump_change_valid_q;
+  logic [CVA6Cfg.PCLEN-1:0] pcc_jump_change_n, pcc_jump_change_q;
 
   // forwarding signals
   logic [CVA6Cfg.NrIssuePorts-1:0] forward_rs1, forward_rs2, forward_rs3;
@@ -409,6 +433,59 @@ module issue_read_operands
         CVXIF: ;
         default: ;
       endcase
+    end
+  end
+
+  if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
+    // check PCC bounds
+    always_comb begin : pcc_bounds
+      automatic cva6_cheri_pkg::cap_pcc_t pcc;
+      automatic cva6_cheri_pkg::cap_meta_data_t pcc_meta;
+      automatic cva6_cheri_pkg::addrw_t pcc_base;
+      automatic cva6_cheri_pkg::addrwe_t pcc_top;
+      pcc = cva6_cheri_pkg::cap_pcc_t'(pcc_q);
+      pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q);
+      pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
+      pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q, pcc_meta);
+      issue_pcc_ex_o = 0;
+      // Check PCC bounds every instruction
+      for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
+        automatic logic [CVA6Cfg.VLEN-1:0] next_pc_off;
+        automatic logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
+        automatic cva6_cheri_pkg::cap_tval_t cheri_tval;
+        next_pc_off = ((issue_instr_i[i].is_compressed) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
+        next_pc_addr = issue_instr_i[i].pc + next_pc_off;
+        if (!issue_instr_i[i].ex.valid) begin
+          if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i[i].pc)) < pcc_base) || ({0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top)) begin
+              issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+              cheri_tval.cause     = cva6_cheri_pkg::CAP_LENGTH_VIOLATION;
+              cheri_tval.cap_idx   = {6'b100000};
+              issue_pcc_ex_o.tval  = cheri_tval;
+              issue_pcc_ex_o.valid = 1'b1;
+          end
+          if(!pcc.hperms.permit_execute) begin
+              issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+              cheri_tval.cause   = cva6_cheri_pkg::CAP_PERM_EXEC_VIOLATION;
+              cheri_tval.cap_idx   = {6'b100000};
+              issue_pcc_ex_o.tval  = cheri_tval;
+              issue_pcc_ex_o.valid     = 1'b1;
+          end
+          if((pcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc.tag) begin
+              issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+              cheri_tval.cause   = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+              cheri_tval.cap_idx   = {6'b100000};
+              issue_pcc_ex_o.tval  = cheri_tval;
+              issue_pcc_ex_o.valid     = 1'b1;
+          end
+          if (!pcc.tag) begin
+              issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+              cheri_tval.cause     = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+              cheri_tval.cap_idx   = {6'b100000};
+              issue_pcc_ex_o.tval  = cheri_tval;
+              issue_pcc_ex_o.valid = 1'b1;
+          end
+        end
+      end
     end
   end
 
@@ -639,6 +716,9 @@ module issue_read_operands
         stall_raw[1] = 1'b1;
       end
     end
+
+    // Stall while there is an outstanding change to bounds.
+    if (CVA6Cfg.CheriPresent && pcc_jump_change_valid_q && !backend_empty_i) stall_raw[0] = 1'b1;
   end
 
   // third operand from fp regfile or gp regfile if NR_RGPR_PORTS == 3
@@ -671,6 +751,23 @@ module issue_read_operands
       fu_data_n[i].rs1       = CVA6Cfg.CheriPresent ? issue_instr_i[i].rs1 : '0;
       fu_data_n[i].rs2       = CVA6Cfg.CheriPresent ? issue_instr_i[i].rs2 : '0;
       fu_data_n[i].use_ddc   = CVA6Cfg.CheriPresent ? issue_instr_i[i].use_ddc : '0;
+
+      if (CVA6Cfg.CheriPresent) begin
+        if      (eret_i) pcc_n = epc_i;
+        else if (set_pc_commit_i) pcc_n = pcc_commit_i;
+        else if (ex_valid_i) pcc_n = trap_vector_base_i;
+        else if (pcc_jump_change_valid_q && backend_empty_i) pcc_n = pcc_jump_change_q;
+        else pcc_n = pcc_q;
+
+        if (eret_i || set_pc_commit_i || ex_valid_i) pcc_jump_change_valid_n = 1'b0;
+        else if (resolved_branch_i.valid && (resolved_branch_i.target_address[CVA6Cfg.REGLEN-1:CVA6Cfg.XLEN] != pcc_q[CVA6Cfg.REGLEN-1:CVA6Cfg.XLEN])) begin
+          pcc_jump_change_valid_n = 1'b1;
+        end
+        else if (backend_empty_i) pcc_jump_change_valid_n = 1'b0;
+        else pcc_jump_change_valid_n = pcc_jump_change_valid_q;
+
+        if (resolved_branch_i.valid) pcc_jump_change_n = resolved_branch_i.target_address;
+      end
       if (CVA6Cfg.RVH) begin
         tinst_n[i] = issue_instr_i[i].ex.tinst;
       end
@@ -1073,6 +1170,10 @@ module issue_read_operands
         tinst_q <= '0;
       end
       pc_o                     <= '0;
+      if (CVA6Cfg.CheriPresent) begin
+        pcc_q <= cva6_cheri_pkg::PCC_ROOT_CAP;
+        pcc_jump_change_valid_q <= '0;
+      end
       is_zcmt_o                <= '0;
       is_compressed_instr_o    <= 1'b0;
       branch_predict_o         <= {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
@@ -1086,16 +1187,21 @@ module issue_read_operands
       if (CVA6Cfg.RVH) begin
         tinst_q <= tinst_n;
       end
+      if (CVA6Cfg.CheriPresent) begin
+        pcc_q <= pcc_n;
+        pcc_jump_change_valid_q <= pcc_jump_change_valid_n;
+        pcc_jump_change_q <= pcc_jump_change_n;
+      end
       if (CVA6Cfg.SuperscalarEn) begin
         if (issue_instr_i[1].fu == CTRL_FLOW) begin
-          pc_o                  <= issue_instr_i[1].pc;
+          pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc_q, issue_instr_i[1].pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q));
           is_compressed_instr_o <= issue_instr_i[1].is_compressed;
           branch_predict_o      <= issue_instr_i[1].bp;
           if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[1].dii_id;
         end
       end
       if (issue_instr_i[0].fu == CTRL_FLOW) begin
-        pc_o                  <= issue_instr_i[0].pc;
+        pc_o                  <= cva6_cheri_pkg::set_cap_reg_address(pcc_q, issue_instr_i[0].pc, cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q));
         is_compressed_instr_o <= issue_instr_i[0].is_compressed;
         branch_predict_o      <= issue_instr_i[0].bp;
         if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[0].dii_id;
