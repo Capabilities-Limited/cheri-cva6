@@ -1,4 +1,5 @@
 // Copyright 2018 ETH Zurich and University of Bologna.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -66,6 +67,10 @@ module scoreboard #(
     output logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_instr_valid_o,
     // Issue stage acknowledge - ISSUE_READ_OPERANDS
     input  logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_ack_i,
+    // An exception has been detected in issue_read_operands - ISSUE_READ_OPERANDS
+    input  exception_t        [CVA6Cfg.NrIssuePorts-1:0]       issue_pcc_ex_i,
+    // The next instruction to be issued is also the next to be committed - ISSUE_READ_OPERANDS
+    output logic                                               backend_empty_o,
     // Forwarding - ISSUE_READ_OPERANDS
     output forwarding_t                                        fwd_o,
 
@@ -132,6 +137,8 @@ module scoreboard #(
 
   assign sb_full_o = issue_full[0];
 
+  assign backend_empty_o = issue_pointer_q == commit_pointer_q[0];
+
   // output commit instruction directly
   always_comb begin : commit_ports
     for (int unsigned i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
@@ -179,6 +186,9 @@ module scoreboard #(
             sbe: decoded_instr_i[i]
         };
       end
+      if (CVA6Cfg.CheriPresent && issue_pcc_ex_i[i].valid) begin
+        mem_n[issue_pointer[i]].sbe.ex = issue_pcc_ex_i[i];
+      end
     end
 
     // ------------
@@ -216,10 +226,12 @@ module scoreboard #(
           else mem_n[trans_id_i[i]].sbe.rd = 5'b0;
         end
         // write the exception back if it is valid
-        if (ex_i[i].valid) mem_n[trans_id_i[i]].sbe.ex = ex_i[i];
-        // write the fflags back from the FPU (exception valid is never set), leave tval intact
-        else if(CVA6Cfg.FpPresent && (mem_q[trans_id_i[i]].sbe.fu == ariane_pkg::FPU || mem_q[trans_id_i[i]].sbe.fu == ariane_pkg::FPU_VEC)) begin
-          mem_n[trans_id_i[i]].sbe.ex.cause = ex_i[i].cause;
+        if (!mem_n[trans_id_i[i]].sbe.ex.valid) begin
+          if (ex_i[i].valid) mem_n[trans_id_i[i]].sbe.ex = ex_i[i];
+          // write the fflags back from the FPU (exception valid is never set), leave tval intact
+          else if(CVA6Cfg.FpPresent && (mem_q[trans_id_i[i]].sbe.fu == ariane_pkg::FPU || mem_q[trans_id_i[i]].sbe.fu == ariane_pkg::FPU_VEC)) begin
+            mem_n[trans_id_i[i]].sbe.ex.cause = ex_i[i].cause;
+          end
         end
       end
     end
