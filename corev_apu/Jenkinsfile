@@ -11,7 +11,7 @@ pipeline {
     stages {
         stage('Prepare') {
             steps {
-                sh 'git clean -xdf'
+                sh 'git clean -xdff'
                 sh 'git checkout .'
                 copyArtifacts filter: 'riscv-gnu-toolchain.tar.gz', fingerprintArtifacts: true, projectName: '../riscv-gnu-toolchain/label_exp=focal', selector: lastSuccessful()
                 sh 'rm -rf ${RISCV} && mkdir -p ${RISCV}'
