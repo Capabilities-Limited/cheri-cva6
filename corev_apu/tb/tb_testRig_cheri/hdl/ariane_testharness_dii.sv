@@ -298,8 +298,8 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   `AXI_ASSIGN_FROM_RESP(master[ariane_soc::GPIO], gpio_resp)
   axi_err_slv #(
     .AxiIdWidth ( ariane_axi_soc::IdWidthSlave ),
-    .req_t      ( ariane_axi_soc::req_slv_t    ),
-    .resp_t     ( ariane_axi_soc::resp_slv_t   )
+    .axi_req_t  ( ariane_axi_soc::req_slv_t    ),
+    .axi_resp_t ( ariane_axi_soc::resp_slv_t   )
   ) i_gpio_err_slv (
     .clk_i      ( clk_i      ),
     .rst_ni     ( ndmreset_n ),
@@ -541,6 +541,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     UniqueIds: 1'b0,
     AxiAddrWidth: unsigned'(AXI_ADDRESS_WIDTH),
     AxiDataWidth: unsigned'(AXI_DATA_WIDTH),
+    PipelineStages: 1,
     NoAddrRules: unsigned'(ariane_soc::NB_PERIPHERALS)
   };
 
