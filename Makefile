@@ -155,8 +155,6 @@ else
 $(warning XCELIUM_HOME not set which is necessary for compiling DPIs when using XCELIUM)
 endif
 
-hpdcache_src := $(shell bender -d $(root-dir)/vendor/capltd/axi_cheri_tagcontroller/ script verilator --package hpdcache)
-
 # this list contains the standalone components
 src :=  core/include/$(target)_config_pkg.sv                                         \
         $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)                   \
@@ -229,7 +227,6 @@ src :=  core/include/$(target)_config_pkg.sv                                    
         vendor/capltd/axi_cheri_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_lock_box_bloom.sv\
         vendor/capltd/axi_cheri_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_miss_counters.sv\
         vendor/capltd/axi_cheri_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_tag_pattern_gen.sv\
-        $(hpdcache_src) \
         vendor/capltd/axi_cheri_tagcontroller/src/hpdcache_wrapper.sv\
         vendor/capltd/axi_cheri_tagcontroller/src/axi_tagctrl_data_way.sv\
         vendor/capltd/axi_cheri_tagcontroller/src/axi_tagctrl_ways.sv\

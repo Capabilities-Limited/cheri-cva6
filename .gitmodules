@@ -56,3 +56,22 @@
 	path = vendor/capltd/axi_cheri_tagcontroller
 	url = https://github.com/Capabilities-Limited/axi_cheri_tagcontroller.git
 	branch = wip-hpdcache
+[submodule "vendor/pulp-platform/apb"]
+	path = vendor/pulp-platform/apb
+	url = https://github.com/pulp-platform/apb.git
+[submodule "vendor/pulp-platform/register_interface"]
+	path = vendor/pulp-platform/register_interface
+	url = https://github.com/pulp-platform/register_interface.git
+[submodule "vendor/capltd/cv-hpdcache"]
+	path = vendor/capltd/cv-hpdcache
+	url = https://github.com/Capabilities-Limited/cv-hpdcache.git
+	branch = wip-hpdcache-as-tagcache
+[submodule "vendor/pulp-platform/tech_cells_generic"]
+	path = vendor/pulp-platform/tech_cells_generic
+	url = https://github.com/pulp-platform/tech_cells_generic.git
+[submodule "vendor/pulp-platform/common_cells"]
+	path = vendor/pulp-platform/common_cells
+	url = https://github.com/pulp-platform/common_cells.git
+[submodule "vendor/pulp-platform/axi"]
+	path = vendor/pulp-platform/axi
+	url = https://github.com/pulp-platform/axi.git
