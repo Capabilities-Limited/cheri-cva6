@@ -480,9 +480,8 @@ module issue_read_operands
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     // Update PCC with correct int mode
     always_comb begin : pcc_int_mode
-      pcc [0] = issue_instr_valid_i[0] ? cva6_cheri_pkg::set_cap_reg_flags(pcc_q, issue_instr_i[0].int_mode) : pcc_q;
-      for (int unsigned i = 1; i < CVA6Cfg.NrIssuePorts; i++) begin
-        pcc[i] = issue_instr_valid_i[i] ? cva6_cheri_pkg::set_cap_reg_flags(pcc_q, issue_instr_i[i].int_mode) : pcc[i-1];
+      for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
+        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_q, issue_instr_i[i].int_mode);
       end
     end
 
