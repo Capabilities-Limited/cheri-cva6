@@ -429,14 +429,12 @@ module load_store_unit
   );
 
   if (CVA6Cfg.RVFI_DII) begin
-    always_comb begin
-      automatic logic [63:0] check_address = (en_ld_st_translation_i || en_ld_st_g_translation_i) ?
-        {{64-CVA6Cfg.PLEN{1'b0}},mmu_paddr} :
-        {{64-CVA6Cfg.VLEN{1'b0}},mmu_vaddr};
+    always_comb begin : rvfi_range_check
+      automatic logic [63:0] check_address = lsu_paddr;
       automatic logic rvfi_addr_allowed = config_pkg::range_check(64'h8000_0000, 64'h000800000, check_address);
       automatic exception_t rvfi_exception = '0;
       rvfi_exception.cause = st_translation_req ? riscv::ST_ACCESS_FAULT : riscv::LD_ACCESS_FAULT;
-      rvfi_exception.valid = 1'b1;
+      rvfi_exception.valid = pmp_translation_valid;
       rvfi_exception.tval = check_address;
       if (CVA6Cfg.TvalEn) rvfi_exception.tval = check_address;
       lsu_exception = rvfi_addr_allowed ? mmu_exception : rvfi_exception;
