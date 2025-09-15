@@ -167,10 +167,12 @@ module branch_unit #(
   // use ALU exception signal for storing instruction fetch exceptions if
   // the target address is not aligned to a 2 byte boundary
   //
-  logic jump_taken;
   always_comb begin : exception_handling
+    automatic logic jump_taken;
     automatic logic cheri_fault;
     automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
+    jump_taken = !(ariane_pkg::op_is_branch(fu_data_i.operation)) ||
+        ((ariane_pkg::op_is_branch(fu_data_i.operation)) && branch_comp_res_i);
     cheri_fault = 1'b0;
     cheri_tval2.fault_type = cva6_cheri_pkg::CAP_JUMP_BRANCH_FAULT;
     // Do a jump if it is either unconditional jump (JAL | JALR) or `taken` conditional jump
@@ -186,8 +188,6 @@ module branch_unit #(
     // Only throw instruction address misaligned exception if this is indeed a `taken` conditional branch or
     // an unconditional jump
     if (!CVA6Cfg.RVC) begin
-      jump_taken = !(ariane_pkg::op_is_branch(fu_data_i.operation)) ||
-          ((ariane_pkg::op_is_branch(fu_data_i.operation)) && branch_comp_res_i);
       if (branch_valid_i && (target_address[0] || target_address[1]) && jump_taken) begin
         branch_exception_o.valid = 1'b1;
         branch_exception_o.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{target_address[CVA6Cfg.VLEN-1]}}, target_address};
