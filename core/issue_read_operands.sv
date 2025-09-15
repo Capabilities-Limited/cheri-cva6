@@ -226,21 +226,21 @@ module issue_read_operands
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0]                                rd_fpr;
 
   //fwd logic
-  logic [CVA6Cfg.NR_SB_ENTRIES-1:0][             CVA6Cfg.XLEN-1:0] fwd_res;
+  logic [CVA6Cfg.NR_SB_ENTRIES-1:0][           CVA6Cfg.REGLEN-1:0] fwd_res;
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0]                                fwd_res_valid;
 
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0]                                rs1_is_not_csr;
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0]                                rs2_is_not_csr;
 
-  logic [ CVA6Cfg.NrIssuePorts-1:0][             CVA6Cfg.XLEN-1:0] rs3;
+  logic [ CVA6Cfg.NrIssuePorts-1:0][           CVA6Cfg.REGLEN-1:0] rs3;
 
   logic [ CVA6Cfg.NrIssuePorts-1:0]                                rs1_valid;
   logic [ CVA6Cfg.NrIssuePorts-1:0]                                rs2_valid;
   logic [ CVA6Cfg.NrIssuePorts-1:0]                                rs3_valid;
 
-  logic [ CVA6Cfg.NrIssuePorts-1:0][             CVA6Cfg.XLEN-1:0] rs1_res;
-  logic [ CVA6Cfg.NrIssuePorts-1:0][             CVA6Cfg.XLEN-1:0] rs2_res;
-  logic [ CVA6Cfg.NrIssuePorts-1:0][             CVA6Cfg.XLEN-1:0] rs3_res;
+  logic [ CVA6Cfg.NrIssuePorts-1:0][           CVA6Cfg.REGLEN-1:0] rs1_res;
+  logic [ CVA6Cfg.NrIssuePorts-1:0][           CVA6Cfg.REGLEN-1:0] rs2_res;
+  logic [ CVA6Cfg.NrIssuePorts-1:0][           CVA6Cfg.REGLEN-1:0] rs3_res;
 
   logic [ CVA6Cfg.NrIssuePorts-1:0][31:0]                          tinst_n, tinst_q;  // transformed instruction
 
