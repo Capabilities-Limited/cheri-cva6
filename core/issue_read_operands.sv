@@ -913,6 +913,9 @@ module issue_read_operands
           AES: begin
             aes_valid_n[i] = 1'b1;
           end
+          CLU: begin
+            clu_valid_n[i] = 1'b1;
+          end
           default: begin
             if (issue_instr_i[i].fu == FPU && CVA6Cfg.FpPresent) begin
               fpu_valid_n[i] = 1'b1;
