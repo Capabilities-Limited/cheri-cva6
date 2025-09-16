@@ -1198,10 +1198,8 @@ module csr_regfile
     mscratch_d   = mscratch_q;
     if (CVA6Cfg.CheriPresent) mtid_d = mtid_q;
     if (CVA6Cfg.TvalEn) mtval_d = mtval_q;
-    if (CVA6Cfg.RVH) begin
-      mtinst_d = mtinst_q;
-      mtval2_d = mtval2_q;
-    end
+    if (CVA6Cfg.RVH) mtinst_d = mtinst_q;
+    if (CVA6Cfg.CheriPresent | CVA6Cfg.RVH) mtval2_d = mtval2_q;
     mfiom_d    = mfiom_q;
     dcache_d   = dcache_q;
     icache_d   = icache_q;
@@ -1232,11 +1230,13 @@ module csr_regfile
       stvec_d      = stvec_q;
       scounteren_d = scounteren_q;
       sscratch_d   = sscratch_q;
-      if (CVA6Cfg.CheriPresent) stid_d = stid_q;
       stval_d      = stval_q;
-      stval2_d     = stval2_q;
       satp_d       = satp_q;
       sfiom_d      = sfiom_q;
+      if (CVA6Cfg.CheriPresent) begin
+        stid_d = stid_q;
+        stval2_d = stval2_q;
+      end
     end
 
     en_ld_st_translation_d = en_ld_st_translation_q;
