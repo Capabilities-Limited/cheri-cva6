@@ -30,8 +30,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     input  logic                     rst_ni,        // Asynchronous reset active low
     input  logic                     v_i ,
     input  fu_data_t                 fu_data_i,
-    input  cap_pcc_t                 pcc_i,          // Current PCC
-    input  cap_reg_t                 ddc_i,          // Current DDC
     input  logic                     clu_valid_i,
     input  addrw_t                   alu_result_i,
     output cap_reg_t                 clu_result_o   // Return resulting cap
@@ -59,15 +57,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     logic operand_b_hperms_malformed;
     logic operand_b_bounds_malformed;
 
-    // operand pcc decode meta data
-    cap_reg_t      pcc;
-    cap_meta_data_t op_pc_meta_info;
-
     // Common operations signals
     // Set address operations signals
     addrw_t address;
-    cap_reg_t op_set_addr;
-    cap_meta_data_t op_meta_set_addr;
     cap_reg_t res_set_addr;
 
     // Tag-clearing check signals
@@ -77,7 +69,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     // Output signals
     cap_reg_t clu_result;
 
-    assign pcc = cap_pcc_to_cap_reg(pcc_i);
     // -----------
     // CHERI ALU main logic circuit
     // -----------
@@ -91,8 +82,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         check_operand_a_violations = {1'b0, 1'b0, 1'b0};
 
         // Set address operation reset signals
-        op_set_addr                = operand_a;
-        op_meta_set_addr           = op_a_meta_info;
         address                    = '{default:0};
 
         // Output reset values
@@ -108,8 +97,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // AUIPCC
             ariane_pkg::AUIPCC: begin
                 address          = alu_result_i;
-                op_set_addr      = pcc;
-                op_meta_set_addr = op_pc_meta_info;
                 clu_result       = res_set_addr;
             end
             // CAndPerm
@@ -198,8 +185,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // TODO-cheri(ninolomata): use ALU to calculate address
             ariane_pkg::CADD: begin
                 check_operand_a_violations.seal = 1'b1;
-                op_set_addr  = operand_a;
-                op_meta_set_addr = op_a_meta_info;
                 address      = operand_a_address + operand_b_address;
                 clu_result = res_set_addr;
             end
@@ -216,8 +201,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
             // CSetAddr
             ariane_pkg::SCADDR: begin
                 check_operand_a_violations.seal = 1'b1;
-                op_set_addr  = operand_a;
-                op_meta_set_addr = op_a_meta_info;
                 address      = operand_b.addr;
                 clu_result = res_set_addr;
             end
@@ -288,8 +271,6 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
         //operand_b_offset = get_cap_reg_offset(operand_b, op_b_meta_info);
         operand_b_is_sealed = (operand_b.otype != UNSEALED_CAP);
         operand_b_hperms_malformed = (operand_b.hperms != legalize_arch_perms(operand_b.hperms)) | (!operand_b.hperms.permit_execute & operand_b.flags.int_mode);
-        // Decode pc metadata fields
-        op_pc_meta_info = get_cap_reg_meta_data(pcc);
     end
 
     // ----------------
@@ -298,9 +279,9 @@ module cheri_unit import ariane_pkg::*; import cva6_cheri_pkg::*;#(
     // 2. Set offset operation
     // ----------------
     always_comb begin
-        res_set_addr = set_cap_reg_address(op_set_addr,
+        res_set_addr = set_cap_reg_address(operand_a,
                                            address,
-                                           op_meta_set_addr
+                                           op_a_meta_info
                                         );
     end
 
