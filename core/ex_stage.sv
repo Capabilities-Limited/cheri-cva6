@@ -698,8 +698,6 @@ module ex_stage
         .rst_ni,
         .v_i,
         .fu_data_i        ( clu_data       ),
-        .pcc_i            ( pc_i          ),
-        .ddc_i            ( ddc_i         ),
         .clu_valid_i      ( clu_valid_i    ),
         .alu_result_i     ( alu_result     ),
         .clu_result_o     ( clu_result     )
