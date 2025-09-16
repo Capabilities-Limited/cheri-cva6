@@ -853,7 +853,7 @@ module issue_read_operands
       // use the PC as operand a
       if (issue_instr_i[i].use_pc) begin
         if (CVA6Cfg.CheriPresent) begin
-          fu_data_n[i].operand_a = cva6_cheri_pkg::cap_pcc_to_cap_reg(issue_instr_i[i].pc);
+          fu_data_n[i].operand_a = cva6_cheri_pkg::set_cap_reg_addr(pcc[i], issue_instr_i[i].pc);
         end else begin
           fu_data_n[i].operand_a = {
             {CVA6Cfg.XLEN - CVA6Cfg.VLEN{issue_instr_i[i].pc[CVA6Cfg.VLEN-1]}}, issue_instr_i[i].pc
