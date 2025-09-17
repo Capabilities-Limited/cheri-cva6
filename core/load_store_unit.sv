@@ -227,6 +227,7 @@ module load_store_unit
   logic translation_req_is_cap, cva6_translation_req_is_cap;
   logic [CVA6Cfg.VLEN-1:0] mmu_vaddr, cva6_mmu_vaddr, acc_mmu_vaddr;
   logic [CVA6Cfg.PLEN-1:0] mmu_paddr, cva6_mmu_paddr, acc_mmu_paddr, lsu_paddr;
+  logic [CVA6Cfg.VLEN-1:0] tval_vaddr;
   logic cva6_mmu_strip_tag;
   logic [31:0] mmu_tinst;
   logic        mmu_hs_ld_st_inst;
@@ -353,6 +354,15 @@ module load_store_unit
         .pmpcfg_i,
         .pmpaddr_i
     );
+    if (CVA6Cfg.RVFI_DII) begin
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (~rst_ni) begin
+          tval_vaddr <= '0;
+        end else begin
+          if (translation_req) tval_vaddr <= mmu_vaddr;
+        end
+      end
+    end
   end else begin : gen_no_mmu
     // icache request without MMU, virtual and physical address are identical
     assign pmp_icache_areq_i.fetch_valid = icache_areq_i.fetch_req;
@@ -369,6 +379,7 @@ module load_store_unit
         lsu_paddr <= '0;
         mmu_exception <= '0;
         pmp_translation_valid <= 1'b0;
+        if (CVA6Cfg.RVFI_DII) tval_vaddr <= '0;
       end else begin
         if (CVA6Cfg.VLEN >= CVA6Cfg.PLEN) begin : gen_virtual_physical_address_lsu
           lsu_paddr <= mmu_vaddr[CVA6Cfg.PLEN-1:0];
@@ -377,6 +388,7 @@ module load_store_unit
         end
         mmu_exception <= misaligned_exception;
         pmp_translation_valid <= translation_req;
+        if (CVA6Cfg.RVFI_DII) tval_vaddr <= mmu_vaddr;
       end
     end
 
@@ -435,8 +447,7 @@ module load_store_unit
       automatic exception_t rvfi_exception = '0;
       rvfi_exception.cause = st_valid ? riscv::ST_ACCESS_FAULT : riscv::LD_ACCESS_FAULT;
       rvfi_exception.valid = pmp_translation_valid;
-      rvfi_exception.tval = check_address;
-      if (CVA6Cfg.TvalEn) rvfi_exception.tval = check_address;
+      if (CVA6Cfg.TvalEn) rvfi_exception.tval = tval_vaddr;
       lsu_exception = (rvfi_addr_allowed || mmu_exception.valid) ? mmu_exception : rvfi_exception;
     end
   end else begin
