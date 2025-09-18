@@ -811,7 +811,6 @@ module cva6_mmu
     end else begin
       lsu_vaddr_q     <= lsu_vaddr_n;
       lsu_req_q       <= lsu_req_n;
-      misaligned_ex_q <= misaligned_ex_n;
       dtlb_pte_q      <= dtlb_pte_n;
       dtlb_hit_q      <= dtlb_hit_n;
       lsu_is_store_q  <= lsu_is_store_n;
