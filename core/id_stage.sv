@@ -98,8 +98,6 @@ module id_stage #(
     input dcache_req_o_t dcache_req_ports_i,
     // Data cache request input - CACHE
     output dcache_req_i_t dcache_req_ports_o,
-    // CHERI program counter capability; only used for metadata - ISSUE_STAGE
-    input cva6_cheri_pkg::cap_pcc_t pcc_i,
     // PCC is being redirected from commit - COMMIT_STAGE
     input logic commit_redirect_i,
     // Current int_mode flag in last-written PCC - ISSUE_STAGE
