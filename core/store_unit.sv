@@ -93,38 +93,33 @@ module store_unit
   function automatic [CVA6Cfg.CLEN-1:0] data_align(logic [3:0] addr, logic [CVA6Cfg.CLEN-1:0] data);
     // Set addr[2] to 1'b0 when 32bits
     logic [ 3:0] addr_tmp = {(addr[3] && CVA6Cfg.IS_XLEN64 && CVA6Cfg.CheriPresent), (addr[2] && CVA6Cfg.IS_XLEN64), addr[1:0]};
-    logic [CVA6Cfg.CLEN-1:0] data_tmp = {CVA6Cfg.CLEN{1'b0}};
+    logic [CVA6Cfg.CLEN-1:0] data_tmp = {CVA6Cfg.CLEN{1'bx}};
     case (addr_tmp)
       4'b0000: data_tmp[CVA6Cfg.XLEN-1:0] = {data[CVA6Cfg.XLEN-1:0]};
-      4'b0001:
-      data_tmp[CVA6Cfg.XLEN-1:0] = {data[CVA6Cfg.XLEN-9:0], data[CVA6Cfg.XLEN-1:CVA6Cfg.XLEN-8]};
-      4'b0010:
-      data_tmp[CVA6Cfg.XLEN-1:0] = {data[CVA6Cfg.XLEN-17:0], data[CVA6Cfg.XLEN-1:CVA6Cfg.XLEN-16]};
-      4'b0011:
-      data_tmp[CVA6Cfg.XLEN-1:0] = {data[CVA6Cfg.XLEN-25:0], data[CVA6Cfg.XLEN-1:CVA6Cfg.XLEN-24]};
+      4'b0001: data_tmp[15:8] = data[7:0];
+      4'b0010: data_tmp[31:16] = data[15:0];
+      4'b0011: data_tmp[31:24] = data[7:0];
       default: begin
-        if (CVA6Cfg.CheriPresent) begin
-          case(addr_tmp)
-            4'b1000: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[CVA6Cfg.XLEN-1:0]};
-            4'b1001:
-            data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[CVA6Cfg.XLEN-9:0], data[CVA6Cfg.XLEN-1:CVA6Cfg.XLEN-8]};
-            4'b1010:
-            data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[CVA6Cfg.XLEN-17:0], data[CVA6Cfg.XLEN-1:CVA6Cfg.XLEN-16]};
-            4'b1011:
-            data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[CVA6Cfg.XLEN-25:0], data[CVA6Cfg.XLEN-1:CVA6Cfg.XLEN-24]};
-            4'b1100: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[31:0], data[63:32]};
-            4'b1101: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[23:0], data[63:24]};
-            4'b1110: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[15:0], data[63:16]};
-            4'b1111: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[7:0], data[63:8]};
-          endcase
-        end
         if (CVA6Cfg.IS_XLEN64) begin
           case (addr_tmp)
-            4'b0100:  data_tmp[CVA6Cfg.XLEN-1:0] = {data[31:0], data[63:32]};
-            4'b0101:  data_tmp[CVA6Cfg.XLEN-1:0] = {data[23:0], data[63:24]};
-            4'b0110:  data_tmp[CVA6Cfg.XLEN-1:0] = {data[15:0], data[63:16]};
-            4'b0111:  data_tmp[CVA6Cfg.XLEN-1:0] = {data[7:0], data[63:8]};
-            default: data_tmp[CVA6Cfg.XLEN-1:0] = {data[63:0]};
+            4'b0100:  data_tmp[63:32] = data[31:0];
+            4'b0101:  data_tmp[47:40] = data[7:0];
+            4'b0110:  data_tmp[63:48] = data[15:0];
+            4'b0111:  data_tmp[63:54] = data[7:0];
+            default: ;
+          endcase
+        end
+        if (CVA6Cfg.CheriPresent) begin
+          case(addr_tmp)
+            4'b1000: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = data[CVA6Cfg.XLEN-1:0];
+            4'b1001: data_tmp[79:72] = data[7:0];
+            4'b1010: data_tmp[95:80] = data[15:0];
+            4'b1011: data_tmp[95:88] = data[7:0];
+            4'b1100: data_tmp[127:96] = data[31:0];
+            4'b1101: data_tmp[111:104] = data[7:0];
+            4'b1110: data_tmp[127:112] = data[15:0];
+            4'b1111: data_tmp[127:120] = data[7:0];
+            default: ;
           endcase
         end
       end
