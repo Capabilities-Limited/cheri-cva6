@@ -143,8 +143,8 @@ module cva6_rvfi
   assign rs1 = instr.rs1;
   assign rs2 = instr.rs2;
 
-  for (genvar i = 0; i <= CVA6Cfg.NrCommitPorts; i++) begin
-    assign commit_pointer = instr.commit_pointer;
+  for (genvar i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
+    assign commit_pointer[i] = instr.commit_pointer[i];
     assign commit_instr_pc[i] = instr.commit_instr_pc[i];
     assign commit_instr_next_pc[i] = instr.commit_instr_next_pc[i];
     assign commit_instr_op[i] = instr.commit_instr_op[i];
