@@ -72,7 +72,6 @@ module cva6
       logic                    kill_s2;  // kill the last request
       logic                    spec;     // request is speculative
       logic [CVA6Cfg.VLEN-1:0] vaddr;    // 1st cycle: 12 bit index is taken for lookup
-      exception_t                          ex;     // we've encountered an exception
     },
     localparam type icache_drsp_t = struct packed {
       logic                                ready;  // icache is ready
@@ -647,7 +646,6 @@ module cva6
   logic flush_csr_ctrl;
   logic flush_unissued_instr_ctrl_id;
   logic flush_ctrl_if;
-  logic [CVA6Cfg.DIIIDLEN-1:0] flush_ctrl_dii_id_if;
   logic flush_ctrl_id;
   logic flush_ctrl_ex;
   logic flush_ctrl_bp;
@@ -718,7 +716,6 @@ module cva6
       .flush_i            (flush_ctrl_if),                  // not entirely correct
       .halt_i             (halt_ctrl),
       .halt_frontend_i    (halt_frontend),
-      .v_i                (v),
       .set_pc_commit_i    (set_pc_ctrl_pcgen),
       .pc_commit_i        (pc_commit[CVA6Cfg.VLEN-1:0]),
       .dii_id_commit_i    (dii_id_commit),
@@ -795,7 +792,6 @@ module cva6
       // DCACHE interfaces
       .dcache_req_ports_i(dcache_req_ports_cache_id),
       .dcache_req_ports_o(dcache_req_ports_id_cache),
-      .pcc_i             (pc_commit),
       .commit_redirect_i (ex_commit.valid|eret|set_pc_ctrl_pcgen),
       .int_mode_issue_i  (int_mode_issue_id),
       .int_mode_resolved_branch_i (cva6_cheri_pkg::get_cap_reg_flags(resolved_branch.target_address)),

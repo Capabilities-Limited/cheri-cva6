@@ -46,7 +46,6 @@ module rvfi_dii_generator
     logic busy;
     logic flushing;
     logic [CVA6Cfg.VLEN-1:0] vaddr_buff;
-    exception_t ex_buff;
 
     logic found_last_id_q, found_last_id_d;
     logic [CVA6Cfg.DIIIDLEN-1:0] test_last_id_q;
@@ -79,7 +78,7 @@ module rvfi_dii_generator
         end else begin
             dreq_o.valid = 1'b0;
         end
-        dreq_o.ex = ex_buff;
+        dreq_o.ex = '0;
         dreq_o.vaddr = vaddr_buff;
         dreq_o.data = fetch_buff_d;
         dreq_o.user = '0;
@@ -111,7 +110,6 @@ module rvfi_dii_generator
                 if (dreq_i.req) begin
                     busy <= 1;
                     vaddr_buff <= dreq_i.vaddr;
-                    ex_buff <= dreq_i.ex;
                     if (flushing) begin
                         dii_id_q <= dreq_i.dii_id;
                     end

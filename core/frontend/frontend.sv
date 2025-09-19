@@ -39,8 +39,6 @@ module frontend
     input logic halt_i,
     // Halt frontend - CONTROLLER (in the case of fence_i to avoid fetching an old instruction)
     input logic halt_frontend_i,
-    // TO BE COMPLETED - TO BE COMPLETED
-    input logic v_i,
     // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
     input logic set_pc_commit_i,
     // COMMIT PC - COMMIT
