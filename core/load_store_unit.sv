@@ -354,15 +354,7 @@ module load_store_unit
         .pmpcfg_i,
         .pmpaddr_i
     );
-    if (CVA6Cfg.RVFI_DII) begin
-      always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (~rst_ni) begin
-          tval_vaddr <= '0;
-        end else begin
-          if (translation_req) tval_vaddr <= mmu_vaddr;
-        end
-      end
-    end
+    assign tval_vaddr = mmu_exception.tval;
   end else begin : gen_no_mmu
     // icache request without MMU, virtual and physical address are identical
     assign pmp_icache_areq_i.fetch_valid = icache_areq_i.fetch_req;
