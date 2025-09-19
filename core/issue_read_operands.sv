@@ -914,9 +914,6 @@ module issue_read_operands
           AES: begin
             aes_valid_n[i] = 1'b1;
           end
-          CLU: begin
-            clu_valid_n[i] = 1'b1;
-          end
           default: begin
             if (issue_instr_i[i].fu == FPU && CVA6Cfg.FpPresent) begin
               fpu_valid_n[i] = 1'b1;
@@ -927,7 +924,7 @@ module issue_read_operands
               fpu_fmt_n      = orig_instr[i].rvftype.vfmt;  // vfmt bits from instruction
               fpu_rm_n       = {2'b0, orig_instr[i].rvftype.repl};  // repl bit from instruction
             end else if (issue_instr_i[i].fu == CLU && CVA6Cfg.CheriPresent) begin
-              clu_valid_q    <= 1'b1;
+              clu_valid_n[i] = 1'b1;
             end
           end
         endcase
@@ -961,7 +958,7 @@ module issue_read_operands
       alu2_valid_q   <= '0;
       csr_valid_q    <= '0;
       branch_valid_q <= '0;
-      clu_valid_q   <= '0;
+      clu_valid_q    <= '0;
     end else begin
       alu_valid_q    <= alu_valid_n;
       aes_valid_q    <= aes_valid_n;
