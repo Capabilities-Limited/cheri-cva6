@@ -49,8 +49,7 @@ module cva6_mmu
     // LSU interface
     // this is a more minimalistic interface because the actual addressing logic is handled
     // in the LSU as we distinguish load and stores, what we do here is simple address translation
-    input exception_t cheri_ex_i,
-    input exception_t misaligned_ex_i,
+    input exception_t pre_mmu_ex_i,
     input logic lsu_req_i,  // request address translation
     input logic [CVA6Cfg.VLEN-1:0] lsu_vaddr_i,  // virtual address in
     input logic [31:0] lsu_tinst_i,  // transformed instruction in
@@ -181,7 +180,7 @@ module cva6_mmu
   // Assignments
 
   assign itlb_lu_access = icache_areq_i.fetch_req;
-  assign dtlb_lu_access = lsu_req_i & !misaligned_ex_i.valid;
+  assign dtlb_lu_access = lsu_req_i & !pre_mmu_ex_i.valid;
   assign itlb_lu_asid   = v_i ? vs_asid_i : asid_i;
   assign dtlb_lu_asid   = (ld_st_v_i || flush_tlb_vvma_i) ? vs_asid_i : asid_i;
 
@@ -516,8 +515,7 @@ module cva6_mmu
   logic lsu_is_cap_n, lsu_is_cap_q;
   logic dtlb_hit_n, dtlb_hit_q;
   logic [CVA6Cfg.PtLevels-2:0] dtlb_is_page_n, dtlb_is_page_q;
-  exception_t misaligned_ex_n, misaligned_ex_q;
-  exception_t cheri_ex_n, cheri_ex_q;
+  exception_t pre_mmu_ex_n, pre_mmu_ex_q;
 
   // check if we need to do translation or if we are always ready (e.g.: we are not translating anything)
   assign lsu_dtlb_hit_o = (en_ld_st_translation_i || en_ld_st_g_translation_i) ? dtlb_lu_hit : 1'b1;
@@ -532,17 +530,11 @@ module cva6_mmu
     lsu_is_store_n = lsu_is_store_i;
     if (CVA6Cfg.CheriPresent) lsu_is_cap_n = lsu_is_cap_i;
     dtlb_is_page_n = dtlb_is_page;
-    misaligned_ex_n = misaligned_ex_i;
+    pre_mmu_ex_n = pre_mmu_ex_i;
 
     lsu_valid_o = lsu_req_q;
 
-    if (CVA6Cfg.CheriPresent) begin
-      cheri_ex_n       = cheri_ex_i;
-      cheri_ex_n.valid = cheri_ex_i.valid & lsu_req_i;
-      lsu_exception_o  = cheri_ex_q.valid ? cheri_ex_q : misaligned_ex_q;
-    end else begin
-      lsu_exception_o  = misaligned_ex_q;
-    end
+    lsu_exception_o  = pre_mmu_ex_q;
 
     if (CVA6Cfg.TvalEn)
       lsu_exception_o.tval = {
@@ -562,8 +554,8 @@ module cva6_mmu
       end
     end
 
-    // mute misaligned exceptions if there is no request otherwise they will throw accidental exceptions
-    misaligned_ex_n.valid = misaligned_ex_i.valid & lsu_req_i;
+    // mute misaligned and CHERI exceptions if there is no request otherwise they will throw accidental exceptions
+    pre_mmu_ex_n.valid = pre_mmu_ex_i.valid & lsu_req_i;
 
     // we work with SV39 or SV32, so if VM is enabled, check that all bits [CVA6Cfg.VLEN-1:CVA6Cfg.SV-1] are equal to bit [CVA6Cfg.SV]
     canonical_addr_check = (lsu_req_i && en_ld_st_translation_i &&
@@ -587,8 +579,8 @@ module cva6_mmu
     lsu_paddr_o = (CVA6Cfg.PLEN)'(lsu_vaddr_q[((CVA6Cfg.PLEN > CVA6Cfg.VLEN) ? CVA6Cfg.VLEN -1: CVA6Cfg.PLEN -1 ):0]);
     lsu_dtlb_ppn_o        = (CVA6Cfg.PPNW)'(lsu_vaddr_n[((CVA6Cfg.PLEN > CVA6Cfg.VLEN) ? CVA6Cfg.VLEN -1: CVA6Cfg.PLEN -1 ):12]);
 
-    // translation is enabled and no misaligned exception occurred
-    if ((en_ld_st_translation_i || en_ld_st_g_translation_i) && !(misaligned_ex_q.valid || (CVA6Cfg.CheriPresent && cheri_ex_q.valid))) begin
+    // translation is enabled and no prior exception occurred
+    if ((en_ld_st_translation_i || en_ld_st_g_translation_i) && !pre_mmu_ex_q.valid) begin
       lsu_valid_o = 1'b0;
 
       lsu_dtlb_ppn_o = (en_ld_st_g_translation_i && CVA6Cfg.RVH) ? dtlb_g_content.ppn : dtlb_content.ppn;
@@ -771,11 +763,7 @@ module cva6_mmu
       dtlb_is_page_q  <= '0;
       lsu_tinst_q     <= '0;
       hs_ld_st_inst_q <= '0;
-      misaligned_ex_q <= '0;
-      if (CVA6Cfg.CheriPresent) begin
-        cheri_ex_q    <= '0;
-        lsu_is_cap_q <= '0;
-      end
+      pre_mmu_ex_q <= '0;
     end else begin
       lsu_vaddr_q     <= lsu_vaddr_n;
       lsu_req_q       <= lsu_req_n;
@@ -783,11 +771,7 @@ module cva6_mmu
       dtlb_hit_q      <= dtlb_hit_n;
       lsu_is_store_q  <= lsu_is_store_n;
       dtlb_is_page_q  <= dtlb_is_page_n;
-      misaligned_ex_q <= misaligned_ex_n;
-      if (CVA6Cfg.CheriPresent) begin
-        cheri_ex_q    <= cheri_ex_n;
-        lsu_is_cap_q  <= lsu_is_cap_n;
-      end
+      pre_mmu_ex_q    <= pre_mmu_ex_n;
       if (CVA6Cfg.RVH) begin
         lsu_tinst_q     <= lsu_tinst_n;
         hs_ld_st_inst_q <= hs_ld_st_inst_n;
