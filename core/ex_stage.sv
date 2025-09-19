@@ -295,9 +295,6 @@ module ex_stage
   // Conditioning this on the result of the exception is likely to have timing problems.
   assign flu_exception_o = branch_exception;
 
-  cva6_cheri_pkg::cap_pcc_t pcc;
-  assign pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);
-
   logic [CVA6Cfg.NrIssuePorts-1:0] one_cycle_select;
   assign one_cycle_select = alu_valid_i | branch_valid_i | csr_valid_i | aes_valid_i | clu_valid_i;
 
@@ -589,7 +586,6 @@ module ex_stage
       .no_st_pending_o,
       .fu_data_i             (lsu_data),
       .ddc_i,
-      .cap_mode_i(!pcc.flags.int_mode),
       .lsu_ready_o           (lsu_ready),
       .lsu_valid_i           (|lsu_valid_i),
       .load_trans_id_o,
