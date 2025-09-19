@@ -297,8 +297,7 @@ module load_store_unit
         .icache_areq_i(icache_areq_i),
         .icache_areq_o(pmp_icache_areq_i),
         // misaligned bypass
-        .misaligned_ex_i(misaligned_exception),
-        .cheri_ex_i(cheri_exception),
+        .pre_mmu_ex_i(cheri_exception.valid ? cheri_exception : misaligned_exception),
         .lsu_req_i(translation_req),
         .lsu_vaddr_i(mmu_vaddr),
         .lsu_tinst_i(mmu_tinst),
@@ -373,7 +372,7 @@ module load_store_unit
         end else begin
           lsu_paddr <= CVA6Cfg.PLEN'(mmu_vaddr);
         end
-        mmu_exception <= misaligned_exception;
+        mmu_exception <= cheri_exception.valid ? cheri_exception : misaligned_exception;
         pmp_translation_valid <= translation_req;
         if (CVA6Cfg.RVFI_DII) tval_vaddr <= mmu_vaddr;
       end
@@ -476,7 +475,7 @@ module load_store_unit
       // MMU output
       cva6_translation_valid           = translation_valid;
       cva6_mmu_paddr                   = mmu_paddr;
-      cva6_mmu_exception               = CVA6Cfg.CheriPresent && cheri_exception.valid ? cheri_exception : lsu_exception;
+      cva6_mmu_exception               = lsu_exception;
       cva6_dtlb_hit                    = dtlb_hit;
       cva6_dtlb_ppn                    = dtlb_ppn;
       acc_mmu_resp_o.acc_mmu_valid     = '0;
@@ -544,7 +543,7 @@ module load_store_unit
     // MMU output
     assign cva6_translation_valid = translation_valid;
     assign cva6_mmu_paddr         = mmu_paddr;
-    assign cva6_mmu_exception     = CVA6Cfg.CheriPresent && cheri_exception.valid ? cheri_exception : lsu_exception;
+    assign cva6_mmu_exception     = lsu_exception;
     assign cva6_dtlb_hit          = dtlb_hit;
     assign cva6_dtlb_ppn          = dtlb_ppn;
     // No accelerator
