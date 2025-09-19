@@ -1935,8 +1935,8 @@ module cva6
       .decoded_instr_valid_i (issue_entry_valid_id_issue),
       .decoded_instr_ack_i   (issue_instr_issue_id),
 
-      .rs1_i(rvfi_rs1[CVA6Cfg.XLEN-1:0]),
-      .rs2_i(rvfi_rs2[CVA6Cfg.XLEN-1:0]),
+      .rs1_i(rvfi_rs1),
+      .rs2_i(rvfi_rs2),
 
       .commit_instr_i(commit_instr_id_commit),
       .commit_drop_i (commit_drop_id_commit),
