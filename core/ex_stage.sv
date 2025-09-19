@@ -471,10 +471,10 @@ module ex_stage
   logic fpu_valid;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] fpu_trans_id;
   logic [CVA6Cfg.XLEN-1:0] fpu_result;
+  logic [CVA6Cfg.XLEN-1:0] fpu_result_muxed;
 
   generate
     if (CVA6Cfg.FpPresent) begin : fpu_gen
-      automatic logic [CVA6Cfg.FLen-1:0] fpu_result;
       fu_data_t fpu_data;
       always_comb begin
         fpu_data = fpu_valid_i[0] ? fu_data_i[0] : '0;
@@ -506,7 +506,6 @@ module ex_stage
           .fpu_exception_o,
           .fpu_early_valid_o
       );
-      assign fpu_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, fpu_result);
     end else begin : no_fpu_gen
       assign fpu_ready_o       = '0;
       assign fpu_trans_id      = '0;
@@ -522,23 +521,28 @@ module ex_stage
   if (CVA6Cfg.SuperscalarEn) begin
     if (CVA6Cfg.FpPresent) begin
       assign fpu_valid_o    = fpu_valid || |alu2_valid_i;
-      assign fpu_result_o   = fpu_valid ? fpu_result   : alu_result[1];
+      assign fpu_result_muxed = fpu_valid ? fpu_result : alu_result[1];
       assign fpu_trans_id_o = fpu_valid ? fpu_trans_id : alu_data[1].trans_id;
     end else begin
       assign fpu_valid_o    = |alu2_valid_i;
-      assign fpu_result_o   = alu_result[1];
+      assign fpu_result_muxed = alu_result[1];
       assign fpu_trans_id_o = alu_data[1].trans_id;
     end
   end else begin
     if (CVA6Cfg.FpPresent) begin
       assign fpu_valid_o    = fpu_valid;
-      assign fpu_result_o   = fpu_result;
+      assign fpu_result_muxed = fpu_result;
       assign fpu_trans_id_o = fpu_trans_id;
     end else begin
       assign fpu_valid_o    = '0;
-      assign fpu_result_o   = '0;
+      assign fpu_result_muxed = '0;
       assign fpu_trans_id_o = '0;
     end
+  end
+  if (CVA6Cfg.CheriPresent) begin
+    assign fpu_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, fpu_result_muxed);
+  end else begin
+    assign fpu_result_o = fpu_result_muxed;
   end
 
   // ----------------
