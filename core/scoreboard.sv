@@ -175,6 +175,7 @@ module scoreboard #(
 
     // if we got an acknowledge from the issue stage, put this scoreboard entry in the queue
     for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
+      automatic exception_t prior_ex;
       if (decoded_instr_valid_i[i] && decoded_instr_ack_o[i] && !flush_unissued_instr_i) begin
         // the decoded instruction we put in there is valid (1st bit)
         // increase the issue counter and advance issue pointer
@@ -186,7 +187,8 @@ module scoreboard #(
             sbe: decoded_instr_i[i]
         };
       end
-      if (CVA6Cfg.CheriPresent && issue_pcc_ex_i[i].valid) begin
+      prior_ex = mem_n[issue_pointer[i]].sbe.ex;
+      if (CVA6Cfg.CheriPresent && issue_pcc_ex_i[i].valid && !(CVA6Cfg.DebugEn && prior_ex.valid && prior_ex.cause == riscv::DEBUG_REQUEST)) begin
         mem_n[issue_pointer[i]].sbe.ex = issue_pcc_ex_i[i];
       end
     end
