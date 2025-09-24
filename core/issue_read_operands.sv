@@ -41,6 +41,8 @@ module issue_read_operands
     input logic flush_i,
     // Stall inserted by Acc dispatcher - ACC_DISPATCHER
     input logic stall_i,
+    // Debug mode state - CSR
+    input logic debug_mode_i,
     // Entry about the instruction to issue - SCOREBOARD
     input scoreboard_entry_t [CVA6Cfg.NrIssuePorts-1:0] issue_instr_i,
     input scoreboard_entry_t [CVA6Cfg.NrIssuePorts-1:0] issue_instr_i_prev,
@@ -538,7 +540,7 @@ module issue_read_operands
           issue_pcc_ex_o.valid = 1'b1;
         end
       end
-      if (!issue_instr_valid_i) issue_pcc_ex_o.valid = 1'b0;
+      if (!issue_instr_valid_i || debug_mode_i) issue_pcc_ex_o.valid = 1'b0;
     end
   end
 

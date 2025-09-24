@@ -42,6 +42,8 @@ module issue_stage
     input logic flush_i,
     // Stall inserted by Acc dispatcher - ACC_DISPATCHER
     input logic stall_i,
+    // Debug mode state - CSR
+    input logic debug_mode_i,
     // Handshake's data with decode stage - ID_STAGE
     input scoreboard_entry_t [CVA6Cfg.NrIssuePorts-1:0] decoded_instr_i,
     input scoreboard_entry_t [CVA6Cfg.NrIssuePorts-1:0] decoded_instr_i_prev,
@@ -288,6 +290,7 @@ module issue_stage
       .rst_ni,
       .flush_i                 (flush_unissued_instr_i),
       .stall_i,
+      .debug_mode_i,
       .issue_instr_i           (issue_instr_sb_iro),
       .issue_instr_i_prev      (decoded_instr_i_prev),
       .orig_instr_i            (orig_instr_sb_iro),
