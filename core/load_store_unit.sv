@@ -35,6 +35,8 @@ module load_store_unit
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input logic flush_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
+    input logic debug_mode_i,
+    // TO_BE_COMPLETED - TO_BE_COMPLETED
     input logic stall_st_pending_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     output logic no_st_pending_o,
@@ -753,7 +755,7 @@ module load_store_unit
             default:    size = 1;
         endcase
 
-        if (lsu_ctrl.valid) begin
+        if (lsu_ctrl.valid && !debug_mode_i) begin
             if(((check_cap_address < check_cap_base) || ((lsu_ctrl.vaddr +  size) > check_cap_top)) && !check_cap_bounds_root) begin
                 cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
                 cheri_exception.valid = 1'b1;
