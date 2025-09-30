@@ -37,6 +37,8 @@ module issue_stage
     input logic flush_i,
     // Stall inserted by Acc dispatcher - ACC_DISPATCHER
     input logic stall_i,
+    // Debug mode state - CSR
+    input logic debug_mode_i,
     // Handshake's data with decode stage - ID_STAGE
     input scoreboard_entry_t [SUPERSCALAR:0] decoded_instr_i,
     // instruction value - ID_STAGE

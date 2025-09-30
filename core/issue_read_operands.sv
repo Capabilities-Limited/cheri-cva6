@@ -35,6 +35,8 @@ module issue_read_operands
     input logic flush_i,
     // Stall inserted by Acc dispatcher - ACC_DISPATCHER
     input logic stall_i,
+    // Debug mode state - CSR
+    input logic debug_mode_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input scoreboard_entry_t issue_instr_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
@@ -272,7 +274,7 @@ if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
         issue_pcc_ex_o.tval2 = cheri_tval2;
         issue_pcc_ex_o.valid = 1'b1;
     end
-    if (!issue_instr_valid_i) issue_pcc_ex_o.valid = 1'b0;
+    if (!issue_instr_valid_i || debug_mode_i) issue_pcc_ex_o.valid = 1'b0;
   end
 end
 
