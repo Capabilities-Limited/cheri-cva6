@@ -1,5 +1,6 @@
 // Copyright (c) 2023 Thales.
 // Copyright (c) 2024, PlanV Technology
+// Copyright 2025 Capabilities Limited.
 // SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
