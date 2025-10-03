@@ -175,8 +175,11 @@ module scoreboard #(
 
     // if we got an acknowledge from the issue stage, put this scoreboard entry in the queue
     for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-      automatic exception_t prior_ex;
       if (decoded_instr_valid_i[i] && decoded_instr_ack_o[i] && !flush_unissued_instr_i) begin
+        automatic scoreboard_entry_t new_sbe = decoded_instr_i[i];
+        if (CVA6Cfg.CheriPresent && issue_pcc_ex_i[i].valid && !(CVA6Cfg.DebugEn && new_sbe.ex.valid && new_sbe.ex.cause == riscv::DEBUG_REQUEST)) begin
+          new_sbe.ex = issue_pcc_ex_i[i];
+        end
         // the decoded instruction we put in there is valid (1st bit)
         // increase the issue counter and advance issue pointer
         num_issue += 'd1;
@@ -184,12 +187,8 @@ module scoreboard #(
             issued: 1'b1,
             cancelled: 1'b0,
             is_rd_fpr_flag: CVA6Cfg.FpPresent && ariane_pkg::is_rd_fpr(decoded_instr_i[i].op),
-            sbe: decoded_instr_i[i]
+            sbe: new_sbe
         };
-      end
-      prior_ex = mem_n[issue_pointer[i]].sbe.ex;
-      if (CVA6Cfg.CheriPresent && issue_pcc_ex_i[i].valid && !(CVA6Cfg.DebugEn && prior_ex.valid && prior_ex.cause == riscv::DEBUG_REQUEST)) begin
-        mem_n[issue_pointer[i]].sbe.ex = issue_pcc_ex_i[i];
       end
     end
 
