@@ -324,6 +324,9 @@ module commit_stage
           we_gpr_o[0] = amo_resp_i.ack;
         end
       end
+      if (halt_i || halt_for_single_step_i) begin
+        flush_commit_o = 1'b1;
+      end
     end
 
     if (CVA6Cfg.NrCommitPorts > 1) begin
@@ -430,7 +433,6 @@ module commit_stage
     // - We completed a single step
     if (halt_i || halt_for_single_step_i) begin
       exception_o.valid = 1'b0;
-      flush_commit_o = 1'b1;
     end
 
     if (CVA6Cfg.SDTRIG && !CVA6Cfg.DebugEn && break_from_trigger_i) begin
