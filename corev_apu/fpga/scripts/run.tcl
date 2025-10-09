@@ -102,7 +102,7 @@ add_files -fileset constrs_1 -norecurse constraints/$project.xdc
 
 synth_design -rtl -name rtl_1
 
-set_property STEPS.SYNTH_DESIGN.ARGS.RETIMING true [get_runs synth_1]
+set_property STEPS.SYNTH_DESIGN.ARGS.RETIMING false [get_runs synth_1]
 
 launch_runs synth_1
 wait_on_run synth_1
