@@ -170,7 +170,7 @@ module branch_unit #(
   always_comb begin : exception_handling
     automatic logic jump_taken;
     automatic logic cheri_fault;
-    automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
+    automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2 = '0;
     jump_taken = !(ariane_pkg::op_is_branch(fu_data_i.operation)) ||
         ((ariane_pkg::op_is_branch(fu_data_i.operation)) && branch_comp_res_i);
     cheri_fault = 1'b0;
