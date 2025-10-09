@@ -50,8 +50,8 @@ ifndef RISCV
 $(error RISCV not set - please point your RISCV variable to your RISCV installation)
 endif
 
-target     ?= cv64a6_imafdch_sv39_rvfi_dii
-ifeq ($(target), cv64a6_imafdch_sv39_rvfi_dii)
+target     ?= cv64a6_imafdchzcheri_sv39_rvfi_dii
+ifneq (,$(findstring cv64,$(target)))
 	XLEN ?= 64
 else
 	XLEN ?= 32
