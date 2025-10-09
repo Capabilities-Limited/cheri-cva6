@@ -47,19 +47,19 @@ package cva6_config_pkg;
   localparam CVA6ConfigDcacheSetAssoc = 8;
   localparam CVA6ConfigDcacheLineWidth = 256;
 
-  localparam CVA6ConfigDcacheFlushOnFence = 1'b0;
+  localparam CVA6ConfigDcacheFlushOnFence = 1'b1;
   localparam CVA6ConfigDcacheInvalidateOnFlush = 1'b0;
 
-  localparam CVA6ConfigDcacheIdWidth = 1;
-  localparam CVA6ConfigMemTidWidth = 2;
+  localparam CVA6ConfigDcacheIdWidth = 3;
+  localparam CVA6ConfigMemTidWidth = CVA6ConfigAxiIdWidth;
 
-  localparam CVA6ConfigWtDcacheWbufDepth = 8;
+  localparam CVA6ConfigWtDcacheWbufDepth = 7;
 
   localparam CVA6ConfigNrScoreboardEntries = 8;
 
   localparam CVA6ConfigNrLoadPipeRegs = 1;
   localparam CVA6ConfigNrStorePipeRegs = 0;
-  localparam CVA6ConfigNrLoadBufEntries = 2;
+  localparam CVA6ConfigNrLoadBufEntries = 8;
 
   localparam CVA6ConfigRASDepth = 2;
   localparam CVA6ConfigBTBEntries = 32;
@@ -72,7 +72,7 @@ package cva6_config_pkg;
   localparam CVA6ConfigPerfCounterEn = 1;
 
   //localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::WT;
-  localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::HPDCACHE;
+  localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::HPDCACHE_WB;
 
   localparam CVA6ConfigMmuPresent = 1;
 
@@ -147,7 +147,7 @@ package cva6_config_pkg;
       CachedRegionLength: 1024'({64'h40000000}),
       MaxOutstandingStores: unsigned'(7),
       DebugEn: bit'(1),
-      AxiBurstWriteEn: bit'(1),
+      AxiBurstWriteEn: bit'(0),
       IcacheByteSize: unsigned'(CVA6ConfigIcacheByteSize),
       IcacheSetAssoc: unsigned'(CVA6ConfigIcacheSetAssoc),
       IcacheLineWidth: unsigned'(CVA6ConfigIcacheLineWidth),
