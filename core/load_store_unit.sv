@@ -224,7 +224,7 @@ module load_store_unit
   logic                    st_hlvx_inst;
   logic translation_req, cva6_translation_req, acc_translation_req;
   logic translation_valid, cva6_translation_valid;
-  logic translation_req_is_cap, cva6_translation_req_is_cap;
+  logic cva6_translation_req_is_cap;
   logic [CVA6Cfg.VLEN-1:0] mmu_vaddr, cva6_mmu_vaddr, acc_mmu_vaddr;
   logic [CVA6Cfg.PLEN-1:0] mmu_paddr, cva6_mmu_paddr, acc_mmu_paddr, lsu_paddr;
   logic [CVA6Cfg.VLEN-1:0] tval_vaddr;
@@ -307,7 +307,7 @@ module load_store_unit
         .lsu_vaddr_i(mmu_vaddr),
         .lsu_tinst_i(mmu_tinst),
         .lsu_is_store_i(st_translation_req),
-        .lsu_is_cap_i(translation_req_is_cap),
+        .lsu_is_cap_i(cva6_translation_req_is_cap),
         .csr_hs_ld_st_inst_o(csr_hs_ld_st_inst_o),
         .lsu_dtlb_hit_o(dtlb_hit),  // send in the same cycle as the request
         .lsu_dtlb_ppn_o(dtlb_ppn),  // send in the same cycle as the request
