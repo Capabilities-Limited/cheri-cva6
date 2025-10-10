@@ -54,11 +54,16 @@ source scripts/add_sources.tcl
 
 set_property top ${project}_xilinx [current_fileset]
 
-if {$::env(VIVADO_EVAL) eq "area"} {
+if {[info exists ::env(VIVADO_EVAL)]} {
+    set vivado_eval $::env(VIVADO_EVAL)
+} else {
+    set vivado_eval "bitstream"
+}
+if {$vivado_eval eq "area"} {
     set opt_strat "ExploreArea"
     set place_strat "Explore"
     set route_strat "RuntimeOptimized"
-} elseif {$::env(VIVADO_EVAL) eq "timing"} {
+} elseif {$vivado_eval eq "timing"} {
     set opt_strat "RuntimeOptimized"
     set place_strat "RuntimeOptimized"
     set route_strat "AggressiveExplore"
