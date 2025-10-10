@@ -764,6 +764,7 @@ module cva6_mmu
       lsu_tinst_q     <= '0;
       hs_ld_st_inst_q <= '0;
       pre_mmu_ex_q <= '0;
+      lsu_is_cap_q    <= '0;
     end else begin
       lsu_vaddr_q     <= lsu_vaddr_n;
       lsu_req_q       <= lsu_req_n;
@@ -778,6 +779,7 @@ module cva6_mmu
         dtlb_gpte_q     <= dtlb_gpte_n;
         lsu_gpaddr_q    <= lsu_gpaddr_n;
       end
+      if (CVA6Cfg.CheriPresent) lsu_is_cap_q <= lsu_is_cap_n;
     end
   end
 endmodule
