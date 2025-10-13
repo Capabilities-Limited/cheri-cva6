@@ -227,6 +227,7 @@ module cva6_hpdcache_subsystem
     userCfg.memAddrWidth = CVA6Cfg.AxiAddrWidth;
     userCfg.memIdWidth = CVA6Cfg.MEM_TID_WIDTH;
     userCfg.memDataWidth = CVA6Cfg.AxiDataWidth;
+    userCfg.lowLatency = 1'b1;
     userCfg.wtEn =
         (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT) ||
         (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT_WB);
