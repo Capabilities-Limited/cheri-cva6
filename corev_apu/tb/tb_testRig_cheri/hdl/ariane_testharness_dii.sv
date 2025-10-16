@@ -30,8 +30,8 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   //
   parameter int unsigned AXI_USER_WIDTH    = CVA6Cfg.AxiUserWidth,
   parameter int unsigned AXI_USER_EN       = CVA6Cfg.AXI_USER_EN,
-  parameter int unsigned AXI_ADDRESS_WIDTH = 64,
-  parameter int unsigned AXI_DATA_WIDTH    = 64,
+  parameter int unsigned AXI_ADDRESS_WIDTH = CVA6Cfg.AxiAddrWidth,
+  parameter int unsigned AXI_DATA_WIDTH    = CVA6Cfg.AxiDataWidth,
   parameter int unsigned NUM_WORDS         = 2**21,         // memory size
   parameter bit          StallRandomOutput = 1'b0,
   parameter bit          StallRandomInput  = 1'b0
