@@ -193,7 +193,7 @@ module cva6_hpdcache_subsystem
     hpdcache_pkg::hpdcache_user_cfg_t userCfg;
     userCfg.nRequesters = HPDCACHE_NREQUESTERS;
     userCfg.paWidth = CVA6Cfg.PLEN;
-    userCfg.wordWidth = CVA6Cfg.XLEN;
+    userCfg.wordWidth = CVA6Cfg.CLEN;
     userCfg.sets = CVA6Cfg.DCACHE_NUM_WORDS;
     userCfg.ways = CVA6Cfg.DCACHE_SET_ASSOC;
     userCfg.clWords = CVA6Cfg.DCACHE_LINE_WIDTH / userCfg.wordWidth;
