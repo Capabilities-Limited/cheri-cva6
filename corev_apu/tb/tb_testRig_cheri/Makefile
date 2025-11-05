@@ -30,7 +30,7 @@ top_level      ?= ariane_tb
 # Maximum amount of cycles for a successful simulation run
 max_cycles     ?= 10000000
 # verilator version
-verilator      ?= $(root-dir)/tools/verilator-v5.038/bin/verilator
+verilator      ?= $(root-dir)/tools/verilator-v5.015/bin/verilator
 # traget option
 target-options ?=
 # additional definess
