@@ -71,10 +71,10 @@ ariane_pkg := \
               corev_apu/tb/axi_intf.sv                                                  \
               corev_apu/register_interface/src/reg_intf.sv                              \
               corev_apu/tb/ariane_soc_pkg.sv                                            \
-			  vendor/zero-day/axi_tagcontroller/src/common_cells/src/cb_filter_pkg.sv   \
-			  vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_pkg.sv          \
-			  vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_reg_pkg.sv      \
-			  vendor/zero-day/axi_tagcontroller/include/axi_tagctrl_pkg.sv              \
+              vendor/zero-day/axi_tagcontroller/src/common_cells/src/cb_filter_pkg.sv   \
+              vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_pkg.sv          \
+              vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_reg_pkg.sv      \
+              vendor/zero-day/axi_tagcontroller/include/axi_tagctrl_pkg.sv              \
               corev_apu/riscv-dbg/src/dm_pkg.sv                                         \
               corev_apu/tb/ariane_axi_soc_pkg.sv
 ariane_pkg := $(addprefix $(root-dir), $(ariane_pkg))
@@ -111,13 +111,13 @@ src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                        
         $(root-dir)/corev_apu/riscv-dbg/src/dm_top.sv                                                            \
         $(root-dir)/corev_apu/riscv-dbg/debug_rom/debug_rom.sv                                                   \
         $(root-dir)/corev_apu/register_interface/src/apb_to_reg.sv                                               \
-		$(root-dir)/corev_apu/register_interface/vendor/lowrisc_opentitan/src/prim_subreg.sv                     \
-		$(root-dir)/corev_apu/register_interface/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv                 \
+        $(root-dir)/corev_apu/register_interface/vendor/lowrisc_opentitan/src/prim_subreg.sv                     \
+        $(root-dir)/corev_apu/register_interface/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv                 \
         $(root-dir)/vendor/pulp-platform/axi/src/axi_multicut.sv                                                 \
         $(root-dir)/vendor/pulp-platform/common_cells/src/rstgen_bypass.sv                                       \
         $(root-dir)/vendor/pulp-platform/common_cells/src/rstgen.sv                                              \
         $(root-dir)/vendor/pulp-platform/common_cells/src/addr_decode.sv                                         \
-	    $(root-dir)/vendor/pulp-platform/common_cells/src/stream_register.sv                                     \
+        $(root-dir)/vendor/pulp-platform/common_cells/src/stream_register.sv                                     \
         $(root-dir)/vendor/pulp-platform/axi/src/axi_cut.sv                                                      \
         $(root-dir)/vendor/pulp-platform/axi/src/axi_join.sv                                                     \
         $(root-dir)/vendor/pulp-platform/axi/src/axi_delayer.sv                                                  \
@@ -128,7 +128,7 @@ src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                        
         $(root-dir)/vendor/pulp-platform/axi/src/axi_mux.sv                                                      \
         $(root-dir)/vendor/pulp-platform/axi/src/axi_demux.sv                                                    \
         $(root-dir)/vendor/pulp-platform/axi/src/axi_xbar.sv                                                     \
-		$(root-dir)/vendor/pulp-platform/axi/src/axi_isolate.sv                                                  \
+        $(root-dir)/vendor/pulp-platform/axi/src/axi_isolate.sv                                                  \
         $(root-dir)/vendor/pulp-platform/common_cells/src/cdc_2phase.sv                                          \
         $(root-dir)/vendor/pulp-platform/common_cells/src/spill_register_flushable.sv                            \
         $(root-dir)/vendor/pulp-platform/common_cells/src/spill_register.sv                                      \
@@ -136,8 +136,8 @@ src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                        
         $(root-dir)/vendor/pulp-platform/common_cells/src/deprecated/fifo_v2.sv                                  \
         $(root-dir)/vendor/pulp-platform/common_cells/src/stream_delay.sv                                        \
         $(root-dir)/vendor/pulp-platform/common_cells/src/lfsr_16bit.sv                                          \
-		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/common_cells/src/cb_filter.sv                          \
-		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/common_cells/src/sub_per_hash.sv                       \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/common_cells/src/cb_filter.sv                          \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/common_cells/src/sub_per_hash.sv                       \
         $(root-dir)/vendor/pulp-platform/tech_cells_generic/src/deprecated/cluster_clk_cells.sv                  \
         $(root-dir)/vendor/pulp-platform/tech_cells_generic/src/deprecated/pulp_clk_cells.sv                     \
         $(root-dir)/vendor/pulp-platform/tech_cells_generic/src/rtl/tc_clk.sv                                    \
@@ -148,31 +148,31 @@ src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                        
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_reg_top.sv                         \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_write_unit.sv                      \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/eviction_refill/axi_llc_ax_master.sv       \
-        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/eviction_refill/axi_llc_r_master.sv        \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/eviction_refill/axi_llc_r_master.sv                    \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/eviction_refill/axi_llc_w_master.sv        \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_evict_box.sv       \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_lock_box_bloom.sv  \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_miss_counters.sv   \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_tag_pattern_gen.sv \
-     	$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_data_way.sv                                \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_data_way.sv                                \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_ways.sv                                    \
-		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_chan_splitter.sv                   \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_evict_unit.sv                      \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_refill_unit.sv                     \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_ways.sv                            \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc_tag_store.sv                                   \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagc_read_unit.sv                                  \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagc_write_unit.sv                                 \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_ax.sv                                      \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_config.sv                                  \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_r.sv                                       \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_w.sv                                       \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_config.sv                          \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_hit_miss.sv                        \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_top.sv                                     \
-  		$(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_reg_wrap.sv                                \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_chan_splitter.sv                   \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_evict_unit.sv                      \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_refill_unit.sv                     \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_ways.sv                            \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc_tag_store.sv                                   \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagc_read_unit.sv                                  \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagc_write_unit.sv                                 \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_ax.sv                                      \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_config.sv                                  \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_r.sv                                       \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_w.sv                                       \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_config.sv                          \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_hit_miss.sv                        \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_top.sv                                     \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_reg_wrap.sv                                \
         $(root-dir)/corev_apu/tb/ariane_testharness.sv                                                           \
-		$(root-dir)/corev_apu/tb/cva6_cheri_tag_mem.sv                                                           \
+        $(root-dir)/corev_apu/tb/cva6_cheri_tag_mem.sv                                                           \
         $(root-dir)/corev_apu/tb/ariane_peripherals.sv                                                           \
         $(root-dir)/corev_apu/tb/rvfi_tracer.sv                                                                  \
         $(root-dir)/corev_apu/tb/common/uart.sv                                                                  \
@@ -192,8 +192,8 @@ tbs := $(addprefix $(root-dir), $(tbs))
 
 # Search here for include files (e.g.: non-standalone components)
 incdir := $(root-dir)/vendor/pulp-platform/common_cells/include/ $(CVA6_REPO_DIR)/vendor/pulp-platform/axi/include/ \
-		  $(root-dir)/vendor/zero-day/axi_tagcontroller/include/                                                    \
-		  $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/include/                                        \
+          $(root-dir)/vendor/zero-day/axi_tagcontroller/include/                                                    \
+          $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/include/                                        \
           $(root-dir)/corev_apu/register_interface/include/ $(CVA6_REPO_DIR)/corev_apu/tb/common/                   \
           $(root-dir)/vendor/pulp-platform/axi/include/                                                             \
           $(root-dir)/verif/core-v-verif/lib/uvm_agents/uvma_rvfi/                                                  \
@@ -212,7 +212,7 @@ verilate_command := $(verilator) --autoflush --no-timing $(root-dir)/verilator_c
                     -f $(root-dir)/core/Flist.cva6                                                               \
                     $(root-dir)/core/cva6_rvfi.sv                                                                \
                     $(filter-out %.vhd, $(ariane_pkg))                                                           \
-					$(filter-out core/fpu_wrap.sv, $(filter-out %.vhd, $(filter-out %_config_pkg.sv, $(src))))   \
+                    $(filter-out core/fpu_wrap.sv, $(filter-out %.vhd, $(filter-out %_config_pkg.sv, $(src))))   \
                     +define+RVFI_TRACE=1+DII=1+VM_TRACE=$(DEBUG)                                                 \
                     $(root-dir)/corev_apu/tb/common/mock_uart.sv                                                 \
                     +incdir+$(root-dir)/corev_apu/axi_node                                                       \
@@ -233,7 +233,7 @@ verilate_command := $(verilator) --autoflush --no-timing $(root-dir)/verilator_c
                     -CFLAGS "$(CFLAGS)$(if $(PROFILE), -g -pg,) $(if $(DROMAJO), -DDROMAJO=1,) -DVL_DEBUG"       \
                     -Wall --cc  --vpi                                                                            \
                     $(list_incdir) --top-module ariane_testharness_dii                                           \
-					--threads-dpi none 																			 \
+                    --threads-dpi none                                                                           \
                     --Mdir $(ver-library) -O3                                                                    \
                     --exe ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/cva6_dii_toplevel.cpp ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils/rvfi_dii_utils.c \
                         ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils/SocketPacketUtils/socket_packet_utils.c
