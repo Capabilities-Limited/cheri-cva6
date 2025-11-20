@@ -136,23 +136,23 @@ module frontend
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] rvi_imm;
   // RVC branching
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0] rvc_branch, rvc_jump, rvc_jr, rvc_return, rvc_jalr, rvc_call;
-  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] rvc_imm;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][    CVA6Cfg.VLEN-1:0] rvc_imm;
   // re-aligned instruction and address (coming from cache - combinationally)
-  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][            31:0] instr;
-  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] addr;
-  logic        [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.DIIIDLEN-1:0] dii_id;
-  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0]                   instruction_valid;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][                31:0] instr;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][    CVA6Cfg.VLEN-1:0] addr;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.DIIIDLEN-1:0] dii_id;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0]                       instruction_valid;
   // BHT, BTB and RAS prediction
-  bht_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                   bht_prediction;
-  btb_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                   btb_prediction;
-  bht_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                   bht_prediction_shifted;
-  btb_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                   btb_prediction_shifted;
-  ras_t                                                            ras_predict;
-  logic            [           CVA6Cfg.VLEN-1:0]                   vpc_btb;
-  logic            [           CVA6Cfg.VLEN-1:0]                   vpc_bht;
+  bht_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                       bht_prediction;
+  btb_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                       btb_prediction;
+  bht_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                       bht_prediction_shifted;
+  btb_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                       btb_prediction_shifted;
+  ras_t                                                                ras_predict;
+  logic            [           CVA6Cfg.VLEN-1:0]                       vpc_btb;
+  logic            [           CVA6Cfg.VLEN-1:0]                       vpc_bht;
 
   // branch-predict update
-  logic                                                            is_mispredict;
+  logic                                                                is_mispredict;
   logic ras_push, ras_pop;
   logic [           CVA6Cfg.VLEN-1:0] ras_update;
 
@@ -382,8 +382,8 @@ module frontend
       fetch_address = boot_addr_i;
 `ifdef DII
       if (CVA6Cfg.RVFI_DII) begin
-        ndii_id_d     = test_dii_start();
-        fetch_dii_id  = test_dii_start();
+        ndii_id_d    = test_dii_start();
+        fetch_dii_id = test_dii_start();
       end
 `endif
     end else begin
@@ -391,7 +391,7 @@ module frontend
       // keep stable by default
       npc_d         = npc_q;
       if (CVA6Cfg.RVFI_DII) begin
-        fetch_dii_id  = ndii_id_q;
+        fetch_dii_id = ndii_id_q;
         ndii_id_d = ndii_id_q;
       end
     end
@@ -456,14 +456,14 @@ module frontend
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      npc_rst_load_q    <= 1'b1;
-      npc_q             <= '0;
-      if (CVA6Cfg.RVFI_DII) ndii_id_q         <= '0;
-      speculative_q     <= '0;
-      icache_data_q     <= '0;
-      icache_valid_q    <= 1'b0;
-      icache_vaddr_q    <= 'b0;
-      if (CVA6Cfg.RVFI_DII) icache_dii_id_q   <= 'b0;
+      npc_rst_load_q <= 1'b1;
+      npc_q          <= '0;
+      if (CVA6Cfg.RVFI_DII) ndii_id_q <= '0;
+      speculative_q  <= '0;
+      icache_data_q  <= '0;
+      icache_valid_q <= 1'b0;
+      icache_vaddr_q <= 'b0;
+      if (CVA6Cfg.RVFI_DII) icache_dii_id_q <= 'b0;
       icache_gpaddr_q   <= 'b0;
       icache_tinst_q    <= 'b0;
       icache_gva_q      <= 1'b0;

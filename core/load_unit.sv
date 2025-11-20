@@ -66,7 +66,7 @@ module load_unit
     // Physical address - MMU
     input logic [CVA6Cfg.PLEN-1:0] paddr_i,
     // Strip capability tag on load - MMU
-    input  logic strip_tag_i,
+    input logic strip_tag_i,
     // Excepted which appears before load - MMU
     input exception_t ex_i,
     // Data TLB hit - MMU
@@ -104,9 +104,9 @@ module load_unit
   // in order to decouple the response interface from the request interface,
   // we need a a buffer which can hold all inflight memory load requests
   typedef struct packed {
-    logic [CVA6Cfg.TRANS_ID_BITS-1:0]    trans_id;        // scoreboard identifier
-    logic [CVA6Cfg.CLEN_ALIGN_BYTES-1:0] address_offset;  // least significant bits of the address
-    fu_op                                operation;       // type of load
+    logic [CVA6Cfg.TRANS_ID_BITS-1:0]    trans_id;          // scoreboard identifier
+    logic [CVA6Cfg.CLEN_ALIGN_BYTES-1:0] address_offset;    // least significant bits of the address
+    fu_op                                operation;         // type of load
     logic                                clr_tag;
     logic                                clr_elevate;
     logic                                clr_cap_level;
@@ -202,7 +202,7 @@ module load_unit
     end
   end
 
-  if (CVA6Cfg.CheriPresent) begin: gen_cheri_ex
+  if (CVA6Cfg.CheriPresent) begin : gen_cheri_ex
     always_ff @(posedge clk_i or negedge rst_ni) begin : cheri_ff
       if (!rst_ni) begin
         cheri_ex_q <= '0;
@@ -225,7 +225,13 @@ module load_unit
   assign req_port_o.data_wdata = '0;
   // compose the load buffer write data, control is handled in the FSM
   assign ldbuf_wdata = {
-    lsu_ctrl_i.trans_id, lsu_ctrl_i.vaddr[CVA6Cfg.CLEN_ALIGN_BYTES-1:0], lsu_ctrl_i.operation, lsu_ctrl_i.clr_tag, lsu_ctrl_i.clr_elevate, lsu_ctrl_i.clr_cap_level, lsu_ctrl_i.clr_load_mutable
+    lsu_ctrl_i.trans_id,
+    lsu_ctrl_i.vaddr[CVA6Cfg.CLEN_ALIGN_BYTES-1:0],
+    lsu_ctrl_i.operation,
+    lsu_ctrl_i.clr_tag,
+    lsu_ctrl_i.clr_elevate,
+    lsu_ctrl_i.clr_cap_level,
+    lsu_ctrl_i.clr_load_mutable
   };
   // output address
   // we can now output the lower 12 bit as the index to the cache
@@ -241,24 +247,24 @@ module load_unit
   // directly forward exception fields (valid bit is set below)
   always_comb begin : ex_o_select
     ex_o.cause = ex_i.cause;
-    ex_o.tval = ex_i.tval;
+    ex_o.tval  = ex_i.tval;
     ex_o.tval2 = '0;
     ex_o.tinst = '0;
-    ex_o.gva = 1'b0;
+    ex_o.gva   = 1'b0;
     if (CVA6Cfg.RVH) begin
       ex_o.tval2 = ex_i.tval2;
       ex_o.tinst = ex_i.tinst;
-      ex_o.gva =   ex_i.gva;
+      ex_o.gva   = ex_i.gva;
     end
     if (CVA6Cfg.CheriPresent) begin
       ex_o.tval2 = ex_i.tval2;
       if (ldbuf_rdata.operation == ariane_pkg::LC && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid) begin
         ex_o.cause = cheri_ex_q[ldbuf_rindex].cause;
-        ex_o.tval =  cheri_ex_q[ldbuf_rindex].tval;
+        ex_o.tval  = cheri_ex_q[ldbuf_rindex].tval;
         ex_o.tval2 = cheri_ex_q[ldbuf_rindex].tval2;
         if (CVA6Cfg.RVH) begin
           ex_o.tinst = cheri_ex_q[ldbuf_rindex].tinst;
-          ex_o.gva =   cheri_ex_q[ldbuf_rindex].gva;
+          ex_o.gva   = cheri_ex_q[ldbuf_rindex].gva;
         end
       end
     end
@@ -301,7 +307,7 @@ module load_unit
     // In IDLE and SEND_TAG states, this unit can accept a new load request
     // when the load buffer is not full or if there is a response and the
     // load buffer is in fall-through mode
-    accept_req           = (valid_i && (!ldbuf_full || (LDBUF_FALLTHROUGH && ldbuf_r)));
+    accept_req = (valid_i && (!ldbuf_full || (LDBUF_FALLTHROUGH && ldbuf_r)));
 
     case (state_q)
       IDLE: begin
@@ -528,7 +534,7 @@ module load_unit
   // ---------------
   // Sign Extend
   // ---------------
-  logic [CVA6Cfg.CLEN:0] data;
+  logic [  CVA6Cfg.CLEN:0] data;
   logic [CVA6Cfg.CLEN-1:0] shifted_data_wide;
   logic [CVA6Cfg.XLEN-1:0] shifted_data;
 
@@ -536,7 +542,7 @@ module load_unit
   assign shifted_data_wide = req_port_i.data_rdata >> {ldbuf_rdata.address_offset, 3'b000};
   assign shifted_data = shifted_data_wide[CVA6Cfg.XLEN-1:0]; // If not using cap, we need at most XLEN bits.
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_load_data
-    assign data = {req_port_i.data_ruser,req_port_i.data_rdata};
+    assign data = {req_port_i.data_ruser, req_port_i.data_rdata};
   end
 
   /*  // result mux (leaner code, but more logic stages.
@@ -578,33 +584,55 @@ module load_unit
 
   // result mux
   always_comb begin
-    result_o    = (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : '{default:0};
+    result_o = (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : '{default: 0};
     unique case (ldbuf_rdata.operation)
       ariane_pkg::LW, ariane_pkg::LWU, ariane_pkg::HLV_W, ariane_pkg::HLV_WU, ariane_pkg::HLVX_WU:
-      result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, {{CVA6Cfg.XLEN - 32{rdata_sign_bit}}, shifted_data[31:0]});
+      result_o = cva6_cheri_pkg::set_cap_reg_addr(
+          cva6_cheri_pkg::REG_NULL_CAP, {{CVA6Cfg.XLEN - 32{rdata_sign_bit}}, shifted_data[31:0]});
       ariane_pkg::LH, ariane_pkg::LHU, ariane_pkg::HLV_H, ariane_pkg::HLV_HU, ariane_pkg::HLVX_HU:
-      result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, {{CVA6Cfg.XLEN - 32 + 16{rdata_sign_bit}}, shifted_data[15:0]});
+      result_o = cva6_cheri_pkg::set_cap_reg_addr(
+          cva6_cheri_pkg::REG_NULL_CAP,
+              {{CVA6Cfg.XLEN - 32 + 16{rdata_sign_bit}}, shifted_data[15:0]});
       ariane_pkg::LB, ariane_pkg::LBU, ariane_pkg::HLV_B, ariane_pkg::HLV_BU:
-      result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, {{CVA6Cfg.XLEN - 32 + 24{rdata_sign_bit}}, shifted_data[7:0]});
+      result_o = cva6_cheri_pkg::set_cap_reg_addr(
+          cva6_cheri_pkg::REG_NULL_CAP,
+              {{CVA6Cfg.XLEN - 32 + 24{rdata_sign_bit}}, shifted_data[7:0]});
       default: begin
         // FLW, FLH and FLB have been defined here in default case to improve Code Coverage
         if (CVA6Cfg.FpPresent) begin
           unique case (ldbuf_rdata.operation)
             ariane_pkg::FLW: begin
-              result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, {{CVA6Cfg.XLEN - 32{rdata_sign_bit}}, shifted_data[31:0]});
+              result_o = cva6_cheri_pkg::set_cap_reg_addr(
+                cva6_cheri_pkg::REG_NULL_CAP,
+                {
+                  {CVA6Cfg.XLEN - 32{rdata_sign_bit}}, shifted_data[31:0]
+                }
+              );
             end
             ariane_pkg::FLH: begin
-              result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, {{CVA6Cfg.XLEN - 32 + 16{rdata_sign_bit}}, shifted_data[15:0]});
+              result_o = cva6_cheri_pkg::set_cap_reg_addr(
+                cva6_cheri_pkg::REG_NULL_CAP,
+                {
+                  {CVA6Cfg.XLEN - 32 + 16{rdata_sign_bit}}, shifted_data[15:0]
+                }
+              );
             end
             ariane_pkg::FLB: begin
-              result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, {{CVA6Cfg.XLEN - 32 + 24{rdata_sign_bit}}, shifted_data[7:0]});
+              result_o = cva6_cheri_pkg::set_cap_reg_addr(
+                cva6_cheri_pkg::REG_NULL_CAP,
+                {
+                  {CVA6Cfg.XLEN - 32 + 24{rdata_sign_bit}}, shifted_data[7:0]
+                }
+              );
             end
             default: begin
-              result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, shifted_data[CVA6Cfg.XLEN-1:0]);
+              result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP,
+                                                          shifted_data[CVA6Cfg.XLEN-1:0]);
             end
           endcase
         end else begin
-          result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, shifted_data[CVA6Cfg.XLEN-1:0]);
+          result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP,
+                                                      shifted_data[CVA6Cfg.XLEN-1:0]);
         end
 
         if (CVA6Cfg.CheriPresent) begin

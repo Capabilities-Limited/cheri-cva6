@@ -47,8 +47,8 @@ module ariane_regfile #(
   localparam NUM_WORDS = 2 ** ADDR_WIDTH;
 
   logic [            NUM_WORDS-1:0][DATA_WIDTH-1:0] mem;
-  logic [CVA6Cfg.NrCommitPorts-1:0][NUM_WORDS-1:0]         sel;
-  logic [CVA6Cfg.NrCommitPorts-1:0][NUM_WORDS-1:0] we_dec;
+  logic [CVA6Cfg.NrCommitPorts-1:0][ NUM_WORDS-1:0] sel;
+  logic [CVA6Cfg.NrCommitPorts-1:0][ NUM_WORDS-1:0] we_dec;
 
   always_comb begin : we_decoder
     for (int unsigned j = 0; j < CVA6Cfg.NrCommitPorts; j++) begin

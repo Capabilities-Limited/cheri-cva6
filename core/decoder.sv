@@ -199,16 +199,16 @@ module decoder
     instruction_o.is_zcmt                  = is_zcmt_i;
     if (CVA6Cfg.RVFI_DII) instruction_o.dii_id = dii_id_i;
     if (CVA6Cfg.CheriPresent) begin
-      instruction_o.use_ddc = 1'b0;
+      instruction_o.use_ddc  = 1'b0;
       instruction_o.int_mode = int_mode_i;
     end
-    int_mode_o                             = int_mode_i;
-    tinst                                  = '0;
-    ecall                                  = 1'b0;
-    ret                                    = 1'b0;
-    ebreak                                 = 1'b0;
-    check_fprm                             = 1'b0;
-    tinst                                  = 32'h0;
+    int_mode_o = int_mode_i;
+    tinst      = '0;
+    ecall      = 1'b0;
+    ret        = 1'b0;
+    ebreak     = 1'b0;
+    check_fprm = 1'b0;
+    tinst      = 32'h0;
 
     if (~ex_i.valid) begin
       case (instr.rtype.opcode)
@@ -488,19 +488,19 @@ module decoder
             default: begin
               if (CVA6Cfg.CheriPresent) begin
                 //if (instr.itype.rs1 != 0) begin
-                  case (instr.stype.funct3)
-                    3'b100: begin
-                      instruction_o.fu  = LOAD;
-                      imm_select = IIMM;
-                      instruction_o.rs1[4:0] = instr.itype.rs1;
-                      instruction_o.rd[4:0]  = instr.itype.rd;
-                      instruction_o.use_ddc  = int_mode_i;
-                      instruction_o.op  = ariane_pkg::LC;
-                      tinst = {17'b0, instr.itype.funct3, instr.itype.rd, instr.itype.opcode};
-                      tinst[1] = is_compressed_i ? 1'b0 : 'b1;
-                    end
-                    default: illegal_instr = 1'b1;
-                  endcase
+                case (instr.stype.funct3)
+                  3'b100: begin
+                    instruction_o.fu = LOAD;
+                    imm_select = IIMM;
+                    instruction_o.rs1[4:0] = instr.itype.rs1;
+                    instruction_o.rd[4:0] = instr.itype.rd;
+                    instruction_o.use_ddc = int_mode_i;
+                    instruction_o.op = ariane_pkg::LC;
+                    tinst = {17'b0, instr.itype.funct3, instr.itype.rd, instr.itype.opcode};
+                    tinst[1] = is_compressed_i ? 1'b0 : 'b1;
+                  end
+                  default: illegal_instr = 1'b1;
+                endcase
                 //end else illegal_instr = 1'b1;
               end else begin
                 illegal_instr = 1'b1;
@@ -1031,8 +1031,10 @@ module decoder
                 //CBLD       CBLD=0000110    CBLD=101
                 //SCBNDS   SCBNDS=0000111  SCBNDS=000
                 //SCBNDSR SCBNDSR=0000111 SCBNDSR=001
-                {7'b000_0110, 3'b000} : begin
-                  case(instr.rtype.rs2)
+                {
+                  7'b000_0110, 3'b000
+                } : begin
+                  case (instr.rtype.rs2)
                     // ------------------------------------
                     // Pointer-Arithmetic Instructions
                     // ------------------------------------
@@ -1057,24 +1059,26 @@ module decoder
                 //GCHI     GCHI=0001000   GCHI=00100   GCHI=000
                 //CRAM     CRAM=0001000   CRAM=00111   CRAM=000
                 //SENTRY SENTRY=0001000 SENTRY=01000 SENTRY=000
-                {7'b000_1000, 3'b000} : begin
-                  case(instr.rtype.rs2)
+                {
+                  7'b000_1000, 3'b000
+                } : begin
+                  case (instr.rtype.rs2)
                     // ----------------------------------
                     // Capability-Inspection Instructions
                     // ----------------------------------
-                    5'b00000:   instruction_o.op = ariane_pkg::GCTAG;
-                    5'b00001:   instruction_o.op = ariane_pkg::GCPERM;
-                    5'b00010:   instruction_o.op = ariane_pkg::GCTYPE;
-                    5'b00011:   instruction_o.op = ariane_pkg::GCMODE;
-                    5'b00101:   instruction_o.op = ariane_pkg::GCBASE;
-                    5'b00110:   instruction_o.op = ariane_pkg::GCLEN;
-                    5'b00100:   instruction_o.op = ariane_pkg::GCHI;
+                    5'b00000: instruction_o.op = ariane_pkg::GCTAG;
+                    5'b00001: instruction_o.op = ariane_pkg::GCPERM;
+                    5'b00010: instruction_o.op = ariane_pkg::GCTYPE;
+                    5'b00011: instruction_o.op = ariane_pkg::GCMODE;
+                    5'b00101: instruction_o.op = ariane_pkg::GCBASE;
+                    5'b00110: instruction_o.op = ariane_pkg::GCLEN;
+                    5'b00100: instruction_o.op = ariane_pkg::GCHI;
                     5'b00111: begin
                       instruction_o.op = ariane_pkg::CRAM;
                       instruction_o.rs1[4:0] = 5'b0; // Use C0 as the capability operand for SetBounds function.
                       instruction_o.rs2[4:0] = instr.rtype.rs1;
                     end
-                    5'b01000:   instruction_o.op = ariane_pkg::SENTRY;
+                    5'b01000: instruction_o.op = ariane_pkg::SENTRY;
                     default: begin
                       illegal_instr_cheri = 1'b1;
                     end
@@ -1083,18 +1087,22 @@ module decoder
                 //  SCEQ=0000110   SCEQ=100
                 //  SCSS=0000110   SCSS=110
                 //SCMODE=0000110 SCMODE=111
-                {7'b000_0110, 3'b100}: instruction_o.op = ariane_pkg::SCEQ;
-                {7'b000_0110, 3'b110}: instruction_o.op = ariane_pkg::SCSS;
-                {7'b000_0110, 3'b111}: instruction_o.op = ariane_pkg::SCMODE;
+                {7'b000_0110, 3'b100} : instruction_o.op = ariane_pkg::SCEQ;
+                {7'b000_0110, 3'b110} : instruction_o.op = ariane_pkg::SCSS;
+                {7'b000_0110, 3'b111} : instruction_o.op = ariane_pkg::SCMODE;
                 //MODESW.CAP MSW.CAP=0001001 MSW=00000 MSW=00000 MSW=001 MSW=00000
                 //MODESW.INT MSW.INT=0001010 MSW=00000 MSW=00000 MSW=001 MSW=00000
-                {7'b000_1001, 3'b001}: begin
+                {
+                  7'b000_1001, 3'b001
+                } : begin
                   if (instr.rtype.rs1 == 0 && instr.rtype.rs2 == 0 && instr.rtype.rd == 0) begin
                     instruction_o.op = ariane_pkg::MODESW_CAP;
                     int_mode_o = 1'b0;
                   end else illegal_instr_cheri = 1'b1;
                 end
-                {7'b000_1010, 3'b001}: begin
+                {
+                  7'b000_1010, 3'b001
+                } : begin
                   if (instr.rtype.rs1 == 0 && instr.rtype.rs2 == 0 && instr.rtype.rd == 0) begin
                     instruction_o.op = ariane_pkg::MODESW_INT;
                     int_mode_o = 1'b1;
@@ -1104,7 +1112,7 @@ module decoder
                   illegal_instr_cheri = 1'b1;
                 end
               endcase
-              if (!illegal_instr_cheri) instruction_o.fu  = CLU;
+              if (!illegal_instr_cheri) instruction_o.fu = CLU;
             end
             //VCS coverage on
             unique case ({
@@ -1113,11 +1121,13 @@ module decoder
               3'b000: illegal_instr = illegal_instr_non_bm;
               3'b001: illegal_instr = illegal_instr_non_bm & illegal_instr_cheri;
               3'b010: illegal_instr = illegal_instr_non_bm & illegal_instr_zic;
-              3'b011: illegal_instr = illegal_instr_non_bm & illegal_instr_zic & illegal_instr_cheri;
+              3'b011:
+              illegal_instr = illegal_instr_non_bm & illegal_instr_zic & illegal_instr_cheri;
               3'b100: illegal_instr = illegal_instr_non_bm & illegal_instr_bm;
               3'b101: illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_cheri;
               3'b110: illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_zic;
-              3'b111: illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_zic & illegal_instr_cheri;
+              3'b111:
+              illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_zic & illegal_instr_cheri;
               default: ;  // TODO: Check that default case is not synthesized.
             endcase
           end
@@ -1294,13 +1304,14 @@ module decoder
               3'b101: begin
                 if (instr.instr[31:26] == 6'b000_001) begin
                   instruction_o.op = ariane_pkg::SCBNDS;  // Set Bounds
-                  imm_select = SCIMM; // Scaled immediate; special for SCBNDSI
-                  if (instr.instr[25] != 1'b0 && instr.instr[24:20] <= 5'b1) illegal_instr_cheri = 1'b1;
+                  imm_select = SCIMM;  // Scaled immediate; special for SCBNDSI
+                  if (instr.instr[25] != 1'b0 && instr.instr[24:20] <= 5'b1)
+                    illegal_instr_cheri = 1'b1;
                 end else illegal_instr_cheri = 1'b1;
               end
               default: illegal_instr_cheri = 1'b1;
             endcase
-            if (!illegal_instr_cheri) instruction_o.fu  = CLU;
+            if (!illegal_instr_cheri) instruction_o.fu = CLU;
           end
           illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_cheri;
         end
@@ -1354,7 +1365,7 @@ module decoder
                 3'b010: instruction_o.op = ariane_pkg::CADD;
                 default illegal_instr_cheri = 1'b1;
               endcase
-              if (!illegal_instr_cheri) instruction_o.fu  = CLU;
+              if (!illegal_instr_cheri) instruction_o.fu = CLU;
             end
             illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_cheri;
           end else illegal_instr = 1'b1;
@@ -1380,7 +1391,8 @@ module decoder
             3'b011:
             if (CVA6Cfg.XLEN == 64) instruction_o.op = ariane_pkg::SD;
             else illegal_instr = 1'b1;
-            3'b100: if (CVA6Cfg.CheriPresent) instruction_o.op  = ariane_pkg::SC;
+            3'b100:
+            if (CVA6Cfg.CheriPresent) instruction_o.op = ariane_pkg::SC;
             else illegal_instr = 1'b1;
             default: illegal_instr = 1'b1;
           endcase
@@ -1703,10 +1715,10 @@ module decoder
         // ----------------------------------
         riscv::OpcodeAmo: begin
           // we are going to use the load unit for AMOs
-          instruction_o.fu = STORE;
+          instruction_o.fu  = STORE;
           instruction_o.rs1 = instr.atype.rs1;
           instruction_o.rs2 = instr.atype.rs2;
-          instruction_o.rd = instr.atype.rd;
+          instruction_o.rd  = instr.atype.rd;
           if (CVA6Cfg.CheriPresent) begin
             instruction_o.use_ddc = int_mode_i;
           end else begin
@@ -1722,8 +1734,7 @@ module decoder
               5'h3: instruction_o.op = ariane_pkg::AMO_SCB;
               default: illegal_instr = 1'b1;
             endcase
-          end
-          else if (CVA6Cfg.RVA && instr.stype.funct3 == 3'h1 && CVA6Cfg.CheriPresent) begin
+          end else if (CVA6Cfg.RVA && instr.stype.funct3 == 3'h1 && CVA6Cfg.CheriPresent) begin
             unique case (instr.instr[31:27])
               5'h2: begin
                 instruction_o.op = ariane_pkg::AMO_LRH;
@@ -1733,8 +1744,7 @@ module decoder
               default: illegal_instr = 1'b1;
             endcase
             // words
-          end
-          else if (CVA6Cfg.RVA && instr.stype.funct3 == 3'h2) begin
+          end else if (CVA6Cfg.RVA && instr.stype.funct3 == 3'h2) begin
             unique case (instr.instr[31:27])
               5'h0: instruction_o.op = ariane_pkg::AMO_ADDW;
               5'h1: instruction_o.op = ariane_pkg::AMO_SWAPW;
@@ -1821,13 +1831,13 @@ module decoder
         end
         // Jump and link register
         riscv::OpcodeJalr: begin
-          instruction_o.fu        = CTRL_FLOW;
-          instruction_o.op        = ariane_pkg::JALR;
-          instruction_o.rs1       = instr.itype.rs1;
+          instruction_o.fu  = CTRL_FLOW;
+          instruction_o.op  = ariane_pkg::JALR;
+          instruction_o.rs1 = instr.itype.rs1;
           if (CVA6Cfg.CheriPresent) begin
-            instruction_o.op      = int_mode_i ? ariane_pkg::JALR : ariane_pkg::CJALR;
+            instruction_o.op = int_mode_i ? ariane_pkg::JALR : ariane_pkg::CJALR;
           end else begin
-            instruction_o.op      = ariane_pkg::JALR;
+            instruction_o.op = ariane_pkg::JALR;
           end
           imm_select              = IIMM;
           instruction_o.rd        = instr.itype.rd;
@@ -1837,11 +1847,11 @@ module decoder
         end
         // Jump and link
         riscv::OpcodeJal: begin
-          instruction_o.fu        = CTRL_FLOW;
+          instruction_o.fu = CTRL_FLOW;
           if (CVA6Cfg.CheriPresent) begin
-            instruction_o.op      = int_mode_i ? ariane_pkg::JAL : ariane_pkg::CJAL;
+            instruction_o.op = int_mode_i ? ariane_pkg::JAL : ariane_pkg::CJAL;
           end else begin
-            instruction_o.op      = ariane_pkg::JAL;
+            instruction_o.op = ariane_pkg::JAL;
           end
           imm_select              = JIMM;
           instruction_o.rd        = instr.utype.rd;
@@ -1853,9 +1863,9 @@ module decoder
           imm_select           = UIMM;
           instruction_o.use_pc = 1'b1;
           instruction_o.rd     = instr.utype.rd;
-          if(CVA6Cfg.CheriPresent && !int_mode_i) begin
-            instruction_o.fu      = CLU;
-            instruction_o.op      = ariane_pkg::AUIPCC;
+          if (CVA6Cfg.CheriPresent && !int_mode_i) begin
+            instruction_o.fu = CLU;
+            instruction_o.op = ariane_pkg::AUIPCC;
           end
         end
 
@@ -1934,24 +1944,24 @@ module decoder
       : {CVA6Cfg.XLEN{1'b0}};
 
     // TODO-cheri: make cheri optional
-    instruction_o.result = '{default:0};
+    instruction_o.result = '{default: 0};
     // NOIMM, IIMM, SIMM, SBIMM, UIMM, JIMM, RS3
     // select immediate
     case (imm_select)
       IIMM: begin
-        instruction_o.result[CVA6Cfg.XLEN-1:0]  = imm_i_type;
+        instruction_o.result[CVA6Cfg.XLEN-1:0] = imm_i_type;
         instruction_o.use_imm = 1'b1;
       end
       SIMM: begin
-        instruction_o.result[CVA6Cfg.XLEN-1:0]  = imm_s_type;
+        instruction_o.result[CVA6Cfg.XLEN-1:0] = imm_s_type;
         instruction_o.use_imm = 1'b1;
       end
       SBIMM: begin
-        instruction_o.result[CVA6Cfg.XLEN-1:0]  = imm_sb_type;
+        instruction_o.result[CVA6Cfg.XLEN-1:0] = imm_sb_type;
         instruction_o.use_imm = 1'b1;
       end
       UIMM: begin
-        instruction_o.result[CVA6Cfg.XLEN-1:0]  = imm_u_type;
+        instruction_o.result[CVA6Cfg.XLEN-1:0] = imm_u_type;
         instruction_o.use_imm = 1'b1;
       end
       JIMM: begin
@@ -1974,7 +1984,7 @@ module decoder
           instruction_o.result[CVA6Cfg.XLEN-1:0] = imm_si_type;
           instruction_o.use_imm = 1'b1;
         end else begin
-          instruction_o.result[CVA6Cfg.XLEN-1:0]  = {CVA6Cfg.XLEN{1'b0}};
+          instruction_o.result[CVA6Cfg.XLEN-1:0] = {CVA6Cfg.XLEN{1'b0}};
           instruction_o.use_imm = 1'b0;
         end
       end
@@ -1986,7 +1996,7 @@ module decoder
 
     if (CVA6Cfg.EnableAccelerator) begin
       if (is_accel) begin
-        instruction_o.result[CVA6Cfg.XLEN-1:0]  = acc_instruction.result;
+        instruction_o.result[CVA6Cfg.XLEN-1:0] = acc_instruction.result;
         instruction_o.use_imm = acc_instruction.use_imm;
       end
     end

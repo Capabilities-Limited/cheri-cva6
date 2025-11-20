@@ -66,8 +66,7 @@ module alu
   // bit reverse operand_a for left shifts and bit counting
   generate
     genvar k;
-    for (k = 0; k < CVA6Cfg.XLEN; k++)
-      assign operand_a_rev[k] = operand_a[CVA6Cfg.XLEN-1-k];
+    for (k = 0; k < CVA6Cfg.XLEN; k++) assign operand_a_rev[k] = operand_a[CVA6Cfg.XLEN-1-k];
 
     for (k = 0; k < 32; k++) assign operand_a_rev32[k] = operand_a[31-k];
   endgenerate
@@ -243,17 +242,9 @@ module alu
 
   if (CVA6Cfg.RVB) begin : gen_orcbw_rev8w_results
     assign orcbw = {
-      {8{|operand_a[31:24]}},
-      {8{|operand_a[23:16]}},
-      {8{|operand_a[15:8]}},
-      {8{|operand_a[7:0]}}
+      {8{|operand_a[31:24]}}, {8{|operand_a[23:16]}}, {8{|operand_a[15:8]}}, {8{|operand_a[7:0]}}
     };
-    assign rev8w = {
-      {operand_a[7:0]},
-      {operand_a[15:8]},
-      {operand_a[23:16]},
-      {operand_a[31:24]}
-    };
+    assign rev8w = {{operand_a[7:0]}, {operand_a[15:8]}, {operand_a[23:16]}, {operand_a[31:24]}};
     if (CVA6Cfg.IS_XLEN64) begin : gen_64b
       assign orcbw_result = {
         {8{|operand_a[63:56]}},
@@ -263,11 +254,7 @@ module alu
         orcbw
       };
       assign rev8w_result = {
-        rev8w,
-        {operand_a[39:32]},
-        {operand_a[47:40]},
-        {operand_a[55:48]},
-        {operand_a[63:56]}
+        rev8w, {operand_a[39:32]}, {operand_a[47:40]}, {operand_a[55:48]}, {operand_a[63:56]}
       };
     end else begin : gen_32b
       assign orcbw_result = orcbw;
@@ -395,7 +382,7 @@ module alu
         CZERO_EQZ:
         result_o = (|operand_b) ? operand_a : '0;  // move zero to rd if rs2 is equal to zero else rs1
         CZERO_NEZ:
-        result_o = (|operand_b) ? '0 : operand_a; // move zero to rd if rs2 is nonzero else rs1
+        result_o = (|operand_b) ? '0 : operand_a;  // move zero to rd if rs2 is nonzero else rs1
         default: ;  // default case to suppress unique warning
       endcase
     end
@@ -403,7 +390,7 @@ module alu
     if (CVA6Cfg.CheriPresent) begin
       unique case (fu_data_i.operation)
         // AUIPCC capability mode
-        AUIPCC: result_o = adder_result;
+        AUIPCC:  result_o = adder_result;
         default: ;  // default case to suppress unique warning
       endcase
     end
@@ -420,9 +407,7 @@ module alu
         default: ;
       endcase
       if (fu_data_i.operation == PACK_W && CVA6Cfg.IS_XLEN64)
-        result_o = {
-          {32{operand_b[15]}}, {operand_b[15:0]}, {operand_a[15:0]}
-        };
+        result_o = {{32{operand_b[15]}}, {operand_b[15:0]}, {operand_a[15:0]}};
       if (fu_data_i.operation == UNZIP && CVA6Cfg.IS_XLEN32) result_o = unzip_gen;
       if (fu_data_i.operation == ZIP && CVA6Cfg.IS_XLEN32) result_o = zip_gen;
     end

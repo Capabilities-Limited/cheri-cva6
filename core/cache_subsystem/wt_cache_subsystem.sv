@@ -25,7 +25,7 @@ module wt_cache_subsystem
   import wt_cache_pkg::*;
 #(
     parameter config_pkg::cva6_cfg_t CVA6Cfg        = config_pkg::cva6_cfg_empty,
-    parameter type                   exception_t  = logic,
+    parameter type                   exception_t    = logic,
     parameter type                   icache_areq_t  = logic,
     parameter type                   icache_arsp_t  = logic,
     parameter type                   icache_dreq_t  = logic,
@@ -113,17 +113,17 @@ module wt_cache_subsystem
   logic dcache_adapter_data_req, adapter_dcache_data_ack, adapter_dcache_rtrn_vld;
   dcache_req_t  dcache_adapter;
   dcache_rtrn_t adapter_dcache;
-  if (CVA6Cfg.RVFI_DII) begin :gen_rvfi_dii_generator
+  if (CVA6Cfg.RVFI_DII) begin : gen_rvfi_dii_generator
     rvfi_dii_generator #(
-      .CVA6Cfg(CVA6Cfg),
-      .icache_dreq_t(icache_dreq_t),
-      .icache_drsp_t(icache_drsp_t),
-      .exception_t (exception_t)
+        .CVA6Cfg(CVA6Cfg),
+        .icache_dreq_t(icache_dreq_t),
+        .icache_drsp_t(icache_drsp_t),
+        .exception_t(exception_t)
     ) i_cva6_rvfi_dii_generator (
-      .clk_i         (clk_i),
-      .rst_ni        (rst_ni),
-      .dreq_i        (icache_dreq_i),
-      .dreq_o        (icache_dreq_o)
+        .clk_i (clk_i),
+        .rst_ni(rst_ni),
+        .dreq_i(icache_dreq_i),
+        .dreq_o(icache_dreq_o)
     );
     assign icache_areq_o = '0;
     assign icache_adapter_data_req = '0;

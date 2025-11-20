@@ -26,7 +26,7 @@ module amo_buffer #(
     input ariane_pkg::amo_t amo_op_i,  // AMO Operation
     input  logic [CVA6Cfg.PLEN-1:0]      paddr_i,            // physical address of store which needs to be placed in the queue
     input logic [CVA6Cfg.CLEN-1:0] data_i,  // data which is placed in the queue
-    input logic [CVA6Cfg.CheriCapTagWidth-1:0]  cap_tag_i, // CHERI: capability tag
+    input logic [CVA6Cfg.CheriCapTagWidth-1:0] cap_tag_i,  // CHERI: capability tag
     input logic [CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0] data_size_i,  // type of request we are making (e.g.: bytes to write)
     // D$
     output ariane_pkg::amo_req_t amo_req_o,  // request to cache subsystem
@@ -39,10 +39,10 @@ module amo_buffer #(
   logic amo_valid;
 
   typedef struct packed {
-    ariane_pkg::amo_t        op;
-    logic [CVA6Cfg.PLEN-1:0] paddr;
-    logic [CVA6Cfg.CLEN-1:0] data;
-    logic [CVA6Cfg.CheriCapTagWidth-1:0] cap_vld;
+    ariane_pkg::amo_t                          op;
+    logic [CVA6Cfg.PLEN-1:0]                   paddr;
+    logic [CVA6Cfg.CLEN-1:0]                   data;
+    logic [CVA6Cfg.CheriCapTagWidth-1:0]       cap_vld;
     logic [CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0] size;
   } amo_op_t;
 
@@ -52,7 +52,7 @@ module amo_buffer #(
   assign amo_req_o.req = no_st_pending_i & amo_valid_commit_i & amo_valid;
   assign amo_req_o.amo_op = amo_data_out.op;
   assign amo_req_o.size = amo_data_out.size;
-  assign amo_req_o.operand_a[CVA6Cfg.XLEN-1:0]= {{64-CVA6Cfg.PLEN{1'b0}}, amo_data_out.paddr};
+  assign amo_req_o.operand_a[CVA6Cfg.XLEN-1:0] = {{64 - CVA6Cfg.PLEN{1'b0}}, amo_data_out.paddr};
   assign amo_req_o.operand_b = amo_data_out.data;
   assign amo_req_o.cap_vld = amo_data_out.cap_vld;
 

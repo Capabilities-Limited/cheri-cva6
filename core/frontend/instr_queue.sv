@@ -237,7 +237,8 @@ module instr_queue
         assign instr_data_in[i].ex_tinst = '0;
         assign instr_data_in[i].ex_gva = 1'b0;
       end
-      if (CVA6Cfg.RVFI_DII) assign instr_data_in[i].dii_id = dii_id[CVA6Cfg.INSTR_PER_FETCH+i-idx_is_q];
+      if (CVA6Cfg.RVFI_DII)
+        assign instr_data_in[i].dii_id = dii_id[CVA6Cfg.INSTR_PER_FETCH+i-idx_is_q];
       /* verilator lint_on WIDTH */
     end
   end else begin : gen_multiple_instr_per_fetch_without_C
@@ -303,7 +304,8 @@ module instr_queue
     // if we successfully pushed some instructions we can output the next instruction
     // which we didn't manage to push
     assign replay_addr_o = (address_overflow) ? addr_i[0] : addr_i[shamt];
-    if (CVA6Cfg.RVFI_DII) assign replay_dii_id_o = (address_overflow) ? dii_id_i[0] : dii_id_i[shamt];
+    if (CVA6Cfg.RVFI_DII)
+      assign replay_dii_id_o = (address_overflow) ? dii_id_i[0] : dii_id_i[shamt];
   end else begin : gen_replay_addr_o_without_C
     assign replay_addr_o = addr_i[0];
     if (CVA6Cfg.RVFI_DII) assign replay_dii_id_o = dii_id_i[0];
@@ -410,7 +412,7 @@ module instr_queue
       idx_is_d = '0;
       fetch_entry_o[0].instruction = instr_data_out[0].instr;
       if (CVA6Cfg.RVFI_DII) fetch_entry_o[0].dii_id = instr_data_out[0].dii_id;
-      fetch_entry_o[0].address = pc_q;
+      fetch_entry_o[0].address  = pc_q;
 
       fetch_entry_o[0].ex.valid = instr_data_out[0].ex != ariane_pkg::FE_NONE;
       if (instr_data_out[0].ex == ariane_pkg::FE_INSTR_ACCESS_FAULT) begin
