@@ -57,19 +57,19 @@ module compressed_decoder #(
           riscv::OpcodeC0Addi4spn: begin
             // c.cincoffsetimm4cspn cd, csp, offset -> cincoffsetimm cd', cs2, imm
             if (CVA6Cfg.CheriPresent && !int_mode_i) begin
-                instr_o = {
-                  2'b0,
-                  instr_i[10:7],
-                  instr_i[12:11],
-                  instr_i[5],
-                  instr_i[6],
-                  2'b00,
-                  5'h02,
-                  3'b010,
-                  2'b01,
-                  instr_i[4:2],
-                  riscv::OpcodeOpImm32
-                };
+              instr_o = {
+                2'b0,
+                instr_i[10:7],
+                instr_i[12:11],
+                instr_i[5],
+                instr_i[6],
+                2'b00,
+                5'h02,
+                3'b010,
+                2'b01,
+                instr_i[4:2],
+                riscv::OpcodeOpImm32
+              };
             end else begin
               // c.addi4spn -> addi rd', x2, imm
               instr_o = {
@@ -91,19 +91,19 @@ module compressed_decoder #(
 
           riscv::OpcodeC0Fld: begin
             if (CVA6Cfg.CheriPresent && !int_mode_i) begin
-                instr_o = {
-                  3'b000,
-                  instr_i[10],
-                  instr_i[6:5],
-                  instr_i[12:11],
-                  4'b0000,
-                  2'b01,
-                  instr_i[9:7],
-                  3'b100,
-                  2'b01,
-                  instr_i[4:2],
-                  riscv::OpcodeMiscMem
-                };
+              instr_o = {
+                3'b000,
+                instr_i[10],
+                instr_i[6:5],
+                instr_i[12:11],
+                4'b0000,
+                2'b01,
+                instr_i[9:7],
+                3'b100,
+                2'b01,
+                instr_i[4:2],
+                riscv::OpcodeMiscMem
+              };
             end else if (CVA6Cfg.FpPresent) begin
               // c.fld -> fld rd', imm(rs1')
               // CLD: | funct3 | imm[5:3] | rs1' | imm[7:6] | rd' | C0 |
@@ -448,7 +448,7 @@ module compressed_decoder #(
             // c.lui -> lui rd, imm
             instr_o = {{15{instr_i[12]}}, instr_i[6:2], instr_i[11:7], riscv::OpcodeLui};
             // c.cincoffsetimm16csp -> cincoffsetimm cs2, cs2, nzimm
-             if (instr_i[11:7] == 5'h02) begin
+            if (instr_i[11:7] == 5'h02) begin
               if (CVA6Cfg.CheriPresent && !int_mode_i) begin
                 instr_o = {
                   {3{instr_i[12]}},
@@ -463,19 +463,19 @@ module compressed_decoder #(
                   riscv::OpcodeOpImm32
                 };
               end else begin
-               // c.addi16sp -> addi x2, x2, nzimm
-               instr_o = {
-                 {3{instr_i[12]}},
-                 instr_i[4:3],
-                 instr_i[5],
-                 instr_i[2],
-                 instr_i[6],
-                 4'b0,
-                 5'h02,
-                 3'b000,
-                 5'h02,
-                 riscv::OpcodeOpImm
-               };
+                // c.addi16sp -> addi x2, x2, nzimm
+                instr_o = {
+                  {3{instr_i[12]}},
+                  instr_i[4:3],
+                  instr_i[5],
+                  instr_i[2],
+                  instr_i[6],
+                  4'b0,
+                  5'h02,
+                  3'b000,
+                  5'h02,
+                  riscv::OpcodeOpImm
+                };
               end
             end
 

@@ -111,8 +111,8 @@ module cva6_mmu
   // memory management, pte for cva6
   localparam type pte_cva6_t = struct packed {
     logic [2:0] res_hi;
-    logic cw; // capability write
-    logic crg; // capability read generation
+    logic cw;  // capability write
+    logic crg;  // capability read generation
     logic [4:0] reserved;
     logic [CVA6Cfg.PPNW-1:0] ppn;  // PPN length for
     logic [1:0] rsw;
@@ -325,8 +325,8 @@ module cva6_mmu
       .ld_st_v_i,
       .hlvx_inst_i           (hlvx_inst_i),
 
-      .lsu_is_store_i        (lsu_is_store_i),
-      .lsu_is_cap_i          (lsu_is_cap_i),
+      .lsu_is_store_i(lsu_is_store_i),
+      .lsu_is_cap_i  (lsu_is_cap_i),
       // PTW memory interface
       .req_port_i    (req_port_i),
       .req_port_o    (req_port_o),
@@ -371,8 +371,10 @@ module cva6_mmu
   //-----------------------
   localparam int PPNWMin = (CVA6Cfg.PPNW - 1 > 29) ? 29 : CVA6Cfg.PPNW - 1;
   // Workaround to trap on invalid address outside of DRAM
-  logic  rvfii_instr_addr_allowed;
-  assign rvfii_instr_addr_allowed = config_pkg::range_check(64'h8000_0000, 64'h000800000, {{64 - CVA6Cfg.PLEN{1'b0}}, icache_areq_o.fetch_paddr});
+  logic rvfii_instr_addr_allowed;
+  assign rvfii_instr_addr_allowed = config_pkg::range_check(
+      64'h8000_0000, 64'h000800000, {{64 - CVA6Cfg.PLEN{1'b0}}, icache_areq_o.fetch_paddr}
+  );
 
   // The instruction interface is a simple request response interface
   always_comb begin : instr_interface
@@ -534,7 +536,7 @@ module cva6_mmu
 
     lsu_valid_o = lsu_req_q;
 
-    lsu_exception_o  = pre_mmu_ex_q;
+    lsu_exception_o = pre_mmu_ex_q;
 
     if (CVA6Cfg.TvalEn)
       lsu_exception_o.tval = {
@@ -543,7 +545,7 @@ module cva6_mmu
 
     // Cheri pte checks
     lsu_strip_tag_o = 1'b0;
-    cheri_cap_err = 1'b0;
+    cheri_cap_err   = 1'b0;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
       if (!lsu_is_store_q && dtlb_pte_q.u && dtlb_pte_q.cw && (dtlb_pte_q.crg != cap_ucrg_i)) begin
@@ -638,7 +640,7 @@ module cva6_mmu
             end
             if (CVA6Cfg.CheriPresent) begin
               if (cheri_cap_err) lsu_exception_o.tval2 = daccess_err ? 'd2 : 'd1;
-              else               lsu_exception_o.tval2 = '0;
+              else lsu_exception_o.tval2 = '0;
             end
           end
           // this is a load
@@ -662,7 +664,7 @@ module cva6_mmu
             end
             if (CVA6Cfg.CheriPresent) begin
               if (cheri_cap_err) lsu_exception_o.tval2 = daccess_err ? 'd2 : 'd1;
-              else               lsu_exception_o.tval2 = '0;
+              else lsu_exception_o.tval2 = '0;
             end
           end
         end
@@ -700,7 +702,7 @@ module cva6_mmu
                 lsu_exception_o.gva   = ld_st_v_i;
               end
               if (CVA6Cfg.CheriPresent) begin
-                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN-2{1'b0}}, ptw_cheri_error};
+                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN - 2{1'b0}}, ptw_cheri_error};
               end
             end
           end else begin
@@ -721,7 +723,7 @@ module cva6_mmu
                 lsu_exception_o.gva   = ld_st_v_i;
               end
               if (CVA6Cfg.CheriPresent) begin
-                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN-2{1'b0}}, ptw_cheri_error};
+                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN - 2{1'b0}}, ptw_cheri_error};
               end
             end
           end
@@ -763,16 +765,16 @@ module cva6_mmu
       dtlb_is_page_q  <= '0;
       lsu_tinst_q     <= '0;
       hs_ld_st_inst_q <= '0;
-      pre_mmu_ex_q <= '0;
+      pre_mmu_ex_q    <= '0;
       lsu_is_cap_q    <= '0;
     end else begin
-      lsu_vaddr_q     <= lsu_vaddr_n;
-      lsu_req_q       <= lsu_req_n;
-      dtlb_pte_q      <= dtlb_pte_n;
-      dtlb_hit_q      <= dtlb_hit_n;
-      lsu_is_store_q  <= lsu_is_store_n;
-      dtlb_is_page_q  <= dtlb_is_page_n;
-      pre_mmu_ex_q    <= pre_mmu_ex_n;
+      lsu_vaddr_q    <= lsu_vaddr_n;
+      lsu_req_q      <= lsu_req_n;
+      dtlb_pte_q     <= dtlb_pte_n;
+      dtlb_hit_q     <= dtlb_hit_n;
+      lsu_is_store_q <= lsu_is_store_n;
+      dtlb_is_page_q <= dtlb_is_page_n;
+      pre_mmu_ex_q   <= pre_mmu_ex_n;
       if (CVA6Cfg.RVH) begin
         lsu_tinst_q     <= lsu_tinst_n;
         hs_ld_st_inst_q <= hs_ld_st_inst_n;

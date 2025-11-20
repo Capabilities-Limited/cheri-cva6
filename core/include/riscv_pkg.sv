@@ -51,7 +51,7 @@ package riscv;
 
   typedef struct packed {
     logic sd;  // signal dirty state - read-only
-    logic wpri7;   // writes preserved reads ignored
+    logic wpri7;  // writes preserved reads ignored
     logic ucrg;  // load barrier user mode capability read generation
     logic [60:34] wpri6;  // writes preserved reads ignored
     xlen_e uxl;  // variable user mode xlen - hardwired to zero
@@ -93,7 +93,7 @@ package riscv;
 
   typedef struct packed {
     logic sd;  // signal dirty state - read-only
-    logic wpri5; // writes preserved reads ignored
+    logic wpri5;  // writes preserved reads ignored
     logic ucrg;
     logic [60:40] wpri4;  // writes preserved reads ignored
     logic mpv;  // machine previous virtualization mode
@@ -335,44 +335,44 @@ package riscv;
   } pte_sv32_t;
 
   // memory management, pte for sv39 CHERI
-    // capability store bits behavior table
-    // ----------------------------------------------------------------------
-    // | CW | CD | Behavior                                                 |
-    // |----|----|-----------------------------------------------------------
-    // | 0  | X  | Trap on capability stores (exception code 0x1B)          |
-    // | 1  | 0  | Capability stores atomically raise CD or fault (as above)|
-    // | 1  | 1  | Capability stores permitted                              |
-    // ----------------------------------------------------------------------
-    // capability load bits behavior table
-    // ----------------------------------------------------------------------
-    // | CR | CRM | CRG | Behavior                                          |
-    // |----|-----|----------------------------------------------------------
-    // | 0  | 0   |  0  | Capability loads strip tags on loaded result      |
-    // | 0  | 1   |  0  | Capability loads fault (exception code 0x1A)      |
-    // | 0  | X   |  1  | Reserved for future use                           |
-    // | 1  | 0   |  0  | Capability loads are unaltered                    |
-    // | 1  | 0   |  1  | Reserved for future use                           |
-    // | 1  | 1   |  X  | Reserved for generational load barriers           |
-    // ----------------------------------------------------------------------
-    
-    typedef struct packed {
-        logic cw;
-        logic cr;
-        logic cd;
-        logic crm;
-        logic crg;
-        logic [4:0]  reserved;
-        logic [44-1:0] ppn; // PPN length for
-        logic [1:0]  rsw;
-        logic d;
-        logic a;
-        logic g;
-        logic u;
-        logic x;
-        logic w;
-        logic r;
-        logic v;
-    } pte_sv39_cheri_t;
+  // capability store bits behavior table
+  // ----------------------------------------------------------------------
+  // | CW | CD | Behavior                                                 |
+  // |----|----|-----------------------------------------------------------
+  // | 0  | X  | Trap on capability stores (exception code 0x1B)          |
+  // | 1  | 0  | Capability stores atomically raise CD or fault (as above)|
+  // | 1  | 1  | Capability stores permitted                              |
+  // ----------------------------------------------------------------------
+  // capability load bits behavior table
+  // ----------------------------------------------------------------------
+  // | CR | CRM | CRG | Behavior                                          |
+  // |----|-----|----------------------------------------------------------
+  // | 0  | 0   |  0  | Capability loads strip tags on loaded result      |
+  // | 0  | 1   |  0  | Capability loads fault (exception code 0x1A)      |
+  // | 0  | X   |  1  | Reserved for future use                           |
+  // | 1  | 0   |  0  | Capability loads are unaltered                    |
+  // | 1  | 0   |  1  | Reserved for future use                           |
+  // | 1  | 1   |  X  | Reserved for generational load barriers           |
+  // ----------------------------------------------------------------------
+
+  typedef struct packed {
+    logic cw;
+    logic cr;
+    logic cd;
+    logic crm;
+    logic crg;
+    logic [4:0] reserved;
+    logic [44-1:0] ppn;  // PPN length for
+    logic [1:0] rsw;
+    logic d;
+    logic a;
+    logic g;
+    logic u;
+    logic x;
+    logic w;
+    logic r;
+    logic v;
+  } pte_sv39_cheri_t;
 
   // ----------------------
   // Exception Cause Codes

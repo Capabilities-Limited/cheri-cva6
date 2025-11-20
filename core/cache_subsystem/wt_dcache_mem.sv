@@ -125,7 +125,7 @@ module wt_dcache_mem
   logic [$clog2(NumPorts)-1:0] vld_sel_d, vld_sel_q;
 
   logic [CVA6Cfg.WtDcacheWbufDepth-1:0] wbuffer_hit_oh;
-  logic [ (CVA6Cfg.CLEN/8)-1:0] wbuffer_be;
+  logic [(CVA6Cfg.CLEN/8)-1:0] wbuffer_be;
   logic [CVA6Cfg.CLEN-1:0] wbuffer_rdata, rdata;
   logic [CVA6Cfg.DCACHE_USER_WIDTH-1:0] wbuffer_ruser, ruser;
   logic [CVA6Cfg.PLEN-1:0] wbuffer_cmp_addr;
@@ -190,7 +190,7 @@ module wt_dcache_mem
       .idx_o  (vld_sel_d)
   );
 
-  assign rd_acked = rd_req & ~wr_cl_vld_i /* & ~(|wbuffer_hit_oh) */;
+  assign rd_acked = rd_req & ~wr_cl_vld_i  /* & ~(|wbuffer_hit_oh) */;
 
   always_comb begin : p_bank_req
     vld_we   = wr_cl_vld_i;
