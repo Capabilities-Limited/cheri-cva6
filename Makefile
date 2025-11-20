@@ -125,10 +125,10 @@ ariane_pkg := \
               corev_apu/tb/axi_intf.sv                               \
               corev_apu/register_interface/src/reg_intf.sv           \
               corev_apu/tb/ariane_soc_pkg.sv                         \
-			  vendor/zero-day/axi_tagcontroller/src/common_cells/src/cb_filter_pkg.sv                     \
-			  vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_pkg.sv                  \
-			  vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_reg_pkg.sv \
-			  vendor/zero-day/axi_tagcontroller/include/axi_tagctrl_pkg.sv                  \
+              vendor/zero-day/axi_tagcontroller/src/common_cells/src/cb_filter_pkg.sv \
+              vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_pkg.sv \
+              vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_reg_pkg.sv \
+              vendor/zero-day/axi_tagcontroller/include/axi_tagctrl_pkg.sv \
               corev_apu/riscv-dbg/src/dm_pkg.sv                      \
               corev_apu/tb/ariane_axi_soc_pkg.sv
 ariane_pkg := $(addprefix $(root-dir), $(ariane_pkg))
@@ -183,8 +183,8 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         corev_apu/rv_plic/rtl/plic_top.sv                                            \
         corev_apu/riscv-dbg/debug_rom/debug_rom.sv                                   \
         corev_apu/register_interface/src/apb_to_reg.sv                               \
-		corev_apu/register_interface/vendor/lowrisc_opentitan/src/prim_subreg.sv     \
-		corev_apu/register_interface/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv \
+        corev_apu/register_interface/vendor/lowrisc_opentitan/src/prim_subreg.sv     \
+        corev_apu/register_interface/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv \
         vendor/pulp-platform/axi/src/axi_multicut.sv                                 \
         vendor/pulp-platform/common_cells/src/rstgen_bypass.sv                       \
         vendor/pulp-platform/common_cells/src/rstgen.sv                              \
@@ -200,7 +200,7 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/pulp-platform/axi/src/axi_mux.sv                                      \
         vendor/pulp-platform/axi/src/axi_demux.sv                                    \
         vendor/pulp-platform/axi/src/axi_xbar.sv                                     \
-		vendor/pulp-platform/axi/src/axi_isolate.sv                                  \
+        vendor/pulp-platform/axi/src/axi_isolate.sv                                  \
         vendor/pulp-platform/common_cells/src/cdc_2phase.sv                          \
         vendor/pulp-platform/common_cells/src/spill_register_flushable.sv            \
         vendor/pulp-platform/common_cells/src/spill_register.sv                      \
@@ -208,46 +208,46 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/pulp-platform/common_cells/src/deprecated/fifo_v2.sv                  \
         vendor/pulp-platform/common_cells/src/stream_delay.sv                        \
         vendor/pulp-platform/common_cells/src/lfsr_16bit.sv                          \
-		vendor/zero-day/axi_tagcontroller/src/common_cells/src/cb_filter.sv                          \
-		vendor/zero-day/axi_tagcontroller/src/common_cells/src/sub_per_hash.sv                          \
+        vendor/zero-day/axi_tagcontroller/src/common_cells/src/cb_filter.sv          \
+        vendor/zero-day/axi_tagcontroller/src/common_cells/src/sub_per_hash.sv       \
         vendor/pulp-platform/tech_cells_generic/src/deprecated/cluster_clk_cells.sv  \
         vendor/pulp-platform/tech_cells_generic/src/deprecated/pulp_clk_cells.sv     \
         vendor/pulp-platform/tech_cells_generic/src/rtl/tc_clk.sv                    \
         corev_apu/instr_tracing/ITI/include/iti_pkg.sv                               \
         corev_apu/instr_tracing/rv_tracer-main/include/te_pkg.sv                     \
         corev_apu/instr_tracing/rv_encapsulator-main/src/include/encap_pkg.sv        \
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_burst_cutter.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_data_way.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_merge_unit.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_read_unit.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_reg_top.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_write_unit.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/eviction_refill/axi_llc_ax_master.sv\
-        vendor/zero-day/axi_tagcontroller/src/eviction_refill/axi_llc_r_master.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/eviction_refill/axi_llc_w_master.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_evict_box.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_lock_box_bloom.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_miss_counters.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_tag_pattern_gen.sv\
-     	vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_data_way.sv\
-        vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_ways.sv\
-		vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_chan_splitter.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_evict_unit.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_refill_unit.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_ways.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_llc_tag_store.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_tagc_read_unit.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_tagc_write_unit.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_ax.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_config.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_r.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_w.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_config.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_hit_miss.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_top.sv\
-  		vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_reg_wrap.sv\
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_burst_cutter.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_data_way.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_merge_unit.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_read_unit.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_reg_top.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_write_unit.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/eviction_refill/axi_llc_ax_master.sv \
+        vendor/zero-day/axi_tagcontroller/src/eviction_refill/axi_llc_r_master.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/eviction_refill/axi_llc_w_master.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_evict_box.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_lock_box_bloom.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_miss_counters.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/hit_miss_detect/axi_llc_tag_pattern_gen.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_data_way.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_ways.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_chan_splitter.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_evict_unit.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_refill_unit.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_ways.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc_tag_store.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagc_read_unit.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagc_write_unit.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_ax.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_config.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_r.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_w.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_config.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_hit_miss.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_top.sv \
+        vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_reg_wrap.sv \
         corev_apu/tb/ariane_testharness.sv                                           \
-		corev_apu/tb/cva6_cheri_tag_mem.sv                                           \
+        corev_apu/tb/cva6_cheri_tag_mem.sv                                           \
         corev_apu/tb/ariane_peripherals.sv                                           \
         corev_apu/tb/rvfi_tracer.sv                                                  \
         corev_apu/tb/common/uart.sv                                                  \
@@ -338,12 +338,12 @@ altera_filter := corev_apu/tb/ariane_testharness.sv \
 								corev_apu/riscv-dbg/src/dmi_jtag_tap.sv \
 								corev_apu/riscv-dbg/src/dmi_jtag.sv \
 								corev_apu/fpga/src/apb_uart/src/reg_uart_wrap.sv
-								
+
 altera_filter := $(addprefix $(root-dir), $(altera_filter))
 xil_debug_filter = $(addprefix $(root-dir), corev_apu/riscv-dbg/src/dm_obi_top.sv)
 xil_debug_filter += $(addprefix $(root-dir), corev_apu/riscv-dbg/src/dm_pkg.sv)
 xil_debug_filter += $(addprefix $(root-dir), corev_apu/riscv-dbg/src/dmi_vjtag_tap.sv)
-xil_debug_filter += $(addprefix $(root-dir), corev_apu/riscv-dbg/src/dmi_vjtag.sv)						
+xil_debug_filter += $(addprefix $(root-dir), corev_apu/riscv-dbg/src/dmi_vjtag.sv)
 src := $(filter-out $(xil_debug_filter), $(src))
 
 fpga_src += corev_apu/fpga/src/bootrom/bootrom_$(XLEN).sv
@@ -734,7 +734,7 @@ verilate_command := $(verilator) --no-timing verilator_config.vlt               
                     -Wno-style                                                                                   \
                     $(if ($(PRELOAD)!=""), -DPRELOAD=1,)                                                         \
                     $(if $(PROFILE),--stats --stats-vars --profile-cfuncs,)                                      \
-                    $(if $(DEBUG), --trace --trace-structs,)                                                             \
+                    $(if $(DEBUG), --trace --trace-structs,)                                                     \
                     $(if $(TRACE_COMPACT), --trace-fst $(VL_INC_DIR)/verilated_fst_c.cpp)                        \
                     $(if $(TRACE_FAST), --trace $(VL_INC_DIR)/verilated_vcd_c.cpp)                               \
                     -LDFLAGS "-L$(RISCV)/lib -L$(SPIKE_INSTALL_DIR)/lib -Wl,-rpath,$(RISCV)/lib -Wl,-rpath,$(SPIKE_INSTALL_DIR)/lib -lfesvr -lriscv -ldisasm -lyaml-cpp $(if $(PROFILE), -g -pg,) -lpthread $(if $(TRACE_COMPACT), -lz,)" \
