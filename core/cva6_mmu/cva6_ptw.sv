@@ -51,10 +51,10 @@ module cva6_ptw
     input logic hlvx_inst_i,  // is a HLVX load/store instruction
 
     input logic lsu_is_store_i,  // this translation was triggered by a store
-    input logic lsu_is_cap_i,  // this translation was triggered by a cap store
+    input logic lsu_is_cap_i,    // this translation was triggered by a cap store
 
     // PTW memory interface
-    input dcache_req_o_t req_port_i,
+    input  dcache_req_o_t req_port_i,
     output dcache_req_i_t req_port_o,
 
 
@@ -313,8 +313,8 @@ module cva6_ptw
     pptr                    = ptw_pptr_q;
 
     if (CVA6Cfg.CheriPresent) begin
-      ptw_cheri_error_o       = 2'b0;
-      cheri_error_d           = cheri_error_q;
+      ptw_cheri_error_o = 2'b0;
+      cheri_error_d     = cheri_error_q;
     end
 
     if (CVA6Cfg.RVH) begin
@@ -413,18 +413,18 @@ module cva6_ptw
           // check if the global mapping bit is set
           if (pte.g && (ptw_stage_q == S_STAGE || !CVA6Cfg.RVH)) global_mapping_n = 1'b1;
 
-          // -------------
-          // Invalid PTE
-          // -------------
+
           // If pte.v = 0, or if pte.r = 0 and pte.w = 1, or if pte.reserved !=0 in sv39 and sv39x4, stop and raise a page-fault exception.
           if (!pte.v || (!pte.r && pte.w) || ((|pte.reserved || |pte.res_hi) && CVA6Cfg.XLEN == 64)|| (!CVA6Cfg.CheriPresent && (pte.cw || pte.crg))) begin
+            // -------------
+            // Invalid PTE
+            // -------------
             state_d = PROPAGATE_ERROR;
             if (CVA6Cfg.CheriPresent) cheri_error_d = 2'b0;
-          end
-          // -----------
-          // Valid PTE
-          // -----------
-          else begin
+          end else begin
+            // -----------
+            // Valid PTE
+            // -----------
             automatic logic cheri_pte_fail = 1'b0;
             state_d = LATENCY;
             // it is a valid PTE if pte.r = 1 or pte.x = 1
@@ -479,7 +479,7 @@ module cva6_ptw
                 if ((!pte.x && (!CVA6Cfg.RVH || ptw_stage_q != G_INTERMED_STAGE)) || !pte.a
                     || (CVA6Cfg.RVH && ptw_stage_q == G_INTERMED_STAGE && !pte.r)) begin
                   state_d = PROPAGATE_ERROR;
-                  if (CVA6Cfg.CheriPresent) cheri_error_d = 2'b0; // No CHERI errors in the ITLB
+                  if (CVA6Cfg.CheriPresent) cheri_error_d = 2'b0;  // No CHERI errors in the ITLB
                   if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
                 end else if ((CVA6Cfg.RVH && ((ptw_stage_q == G_FINAL_STAGE) || !enable_g_translation_i)) || !CVA6Cfg.RVH)
                   shared_tlb_update_valid = 1'b1;
@@ -533,7 +533,9 @@ module cva6_ptw
               // Should already be the last level page table => Error
               automatic logic last_level = ptw_lvl_q[0] == CVA6Cfg.PtLevels - 1;
               // A, D, and U bits are reserved for non-leaf entries => Error
-              automatic logic reserved_set = pte.a || pte.d || pte.u || (CVA6Cfg.CheriPresent && (pte.cw || pte.crg));
+              automatic
+              logic
+              reserved_set = pte.a || pte.d || pte.u || (CVA6Cfg.CheriPresent && (pte.cw || pte.crg));
 
               if (last_level || reserved_set) begin
                 ptw_lvl_n[0] = ptw_lvl_q[0];
@@ -596,7 +598,9 @@ module cva6_ptw
           end
 
           // check if this access was actually allowed from a PMP perspective
-          if ((!allow_access && !CVA6Cfg.RVFI_DII) || (CVA6Cfg.RVFI_DII && !config_pkg::range_check(64'h8000_0000, 64'h000800000, ptw_pptr_q))) begin
+          if ((!allow_access && !CVA6Cfg.RVFI_DII) || (CVA6Cfg.RVFI_DII && !config_pkg::range_check(
+                  64'h8000_0000, 64'h000800000, ptw_pptr_q
+              ))) begin
             shared_tlb_update_valid = 1'b0;
             // we have to return the failed address in bad_addr
             ptw_pptr_n = ptw_pptr_q;
@@ -699,7 +703,7 @@ module cva6_ptw
         tlb_update_vmid_q <= tlb_update_vmid_n;
       end
       if (CVA6Cfg.CheriPresent) begin
-        cheri_error_q     <= cheri_error_d;
+        cheri_error_q <= cheri_error_d;
       end
     end
   end
