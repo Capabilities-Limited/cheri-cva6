@@ -107,7 +107,7 @@ package cva6_config_pkg;
       SharedTlbDepth: int'(64),
       NrLoadPipeRegs: int'(0),
       NrStorePipeRegs: int'(0),
-      DcacheIdWidth: int'(1)
+      DcacheIdWidth: int'(1),
       CheriCapTagWidth : int'(1),
       RVFI_DII : int'(0)
   };
