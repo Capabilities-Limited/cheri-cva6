@@ -73,19 +73,23 @@ module branch_unit #(
   cva6_cheri_pkg::addrwe_t min_instr_off;
   logic target_pcc_is_sealed;
   assign pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_t'(pc_i) : pc_i;
-  assign operand_a = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_to_cap_pcc(fu_data_i.operand_a) : fu_data_i.operand_a;
+  assign operand_a = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_to_cap_pcc(
+      fu_data_i.operand_a
+  ) : fu_data_i.operand_a;
   assign target_pcc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::cap_reg_t'(target_address) : target_address;
   assign target_pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(target_pcc);
   assign target_pcc_base = cva6_cheri_pkg::get_cap_reg_base(target_pcc, target_pcc_meta);
   assign target_pcc_top = cva6_cheri_pkg::get_cap_reg_top(target_pcc, target_pcc_meta);
   assign min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-1{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-2{1'b0}}, 3'h4});
   assign target_pcc_address = target_pcc.addr;
-  assign target_pcc_address_end = {1'b0,target_pcc_address} + min_instr_off;
+  assign target_pcc_address_end = {1'b0, target_pcc_address} + min_instr_off;
 
   // calculate next PC, depending on whether the instruction is compressed or not this may be different
   // TODO(zarubaf): We already calculate this a couple of times, maybe re-use?
   assign next_pc_off = ((is_compressed_instr_i) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
-  assign next_pc     = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_addr(pc_i, pc_i[CVA6Cfg.VLEN-1:0] + next_pc_off) : pc_i + next_pc_off;
+  assign next_pc = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::set_cap_reg_addr(
+      pc_i, pc_i[CVA6Cfg.VLEN-1:0] + next_pc_off
+  ) : pc_i + next_pc_off;
 
   // here we handle the various possibilities of mis-predicts
   always_comb begin : mispredict_handler
@@ -107,21 +111,28 @@ module branch_unit #(
     target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
     if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
     if (CVA6Cfg.CheriPresent) begin
-      target_address = cva6_cheri_pkg::set_cap_reg_address(jump_base_cap,
-                                                           target_address[CVA6Cfg.VLEN-1:0],
-                                                           cva6_cheri_pkg::get_cap_reg_meta_data(jump_base_cap));
+      target_address = cva6_cheri_pkg::set_cap_reg_address(
+        jump_base_cap,
+        target_address[CVA6Cfg.VLEN-1:0],
+        cva6_cheri_pkg::get_cap_reg_meta_data(
+          jump_base_cap)
+      );
     end
     // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
     if (CVA6Cfg.CheriPresent) begin
       if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
-        branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc), cva6_cheri_pkg::SENTRY_CAP);
+        branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(
+            cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc), cva6_cheri_pkg::SENTRY_CAP);
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
-          target_address = cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
+          target_address =
+              cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
           // If jumping into intmode, we must have been in capmode, so always mispredict
-          if (cva6_cheri_pkg::get_cap_reg_flags(target_address) == 1'b1) resolved_branch_o.is_mispredict = branch_valid_i;
+          if (cva6_cheri_pkg::get_cap_reg_flags(target_address) == 1'b1)
+            resolved_branch_o.is_mispredict = branch_valid_i;
         end
       end else begin
-        branch_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, next_pc[CVA6Cfg.VLEN-1:0]);
+        branch_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP,
+                                                           next_pc[CVA6Cfg.VLEN-1:0]);
       end
     end else begin
       // we need to put the branch target address into rd, this is the result of this unit
@@ -181,41 +192,45 @@ module branch_unit #(
     branch_exception_o.tval = '0;
     branch_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
     branch_exception_o.tinst = '0;
-    branch_exception_o.gva   = CVA6Cfg.RVH ? v_i : 1'b0;
+    branch_exception_o.gva = CVA6Cfg.RVH ? v_i : 1'b0;
 
-     // Decode target address (next PCC) fields
-    target_pcc_is_sealed  = (operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP);
+    // Decode target address (next PCC) fields
+    target_pcc_is_sealed = (operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP);
     // Only throw instruction address misaligned exception if this is indeed a `taken` conditional branch or
     // an unconditional jump
     if (!CVA6Cfg.RVC) begin
       if (branch_valid_i && (target_address[0] || target_address[1]) && jump_taken) begin
         branch_exception_o.valid = 1'b1;
-        branch_exception_o.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{target_address[CVA6Cfg.VLEN-1]}}, target_address};
+        branch_exception_o.tval = {
+          {CVA6Cfg.XLEN - CVA6Cfg.VLEN{target_address[CVA6Cfg.VLEN-1]}}, target_address
+        };
       end
     end
     if (CVA6Cfg.CheriPresent && branch_valid_i && jump_taken) begin
       // Check if target address is in bounds (or has become unrepresentable)
       if (target_pcc_address < target_pcc_base || target_pcc_address_end > target_pcc_top || !target_pcc.tag) begin
-        cheri_tval2.fault_cause  = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
+        cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
         cheri_fault = 1'b1;
       end
       if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
         if (!operand_a.hperms.permit_execute) begin
-          cheri_tval2.fault_cause  = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
           cheri_fault = 1'b1;
         end
-        if ((operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP) && (($signed(operand_a.otype) != cva6_cheri_pkg::SENTRY_CAP) || (|fu_data_i.imm[CVA6Cfg.VLEN-1:0]))) begin
-          cheri_tval2.fault_cause  = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+        if ((operand_a.otype != cva6_cheri_pkg::UNSEALED_CAP) && (($signed(
+                operand_a.otype
+            ) != cva6_cheri_pkg::SENTRY_CAP) || (|fu_data_i.imm[CVA6Cfg.VLEN-1:0]))) begin
+          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
           cheri_fault = 1'b1;
         end
         if (!operand_a.tag) begin
-          cheri_tval2.fault_cause  = cva6_cheri_pkg::CAP_TAG_VIOLATION;
+          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
           cheri_fault = 1'b1;
         end
       end
       if (cheri_fault) begin
         branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-        branch_exception_o.tval = '0;
+        branch_exception_o.tval  = '0;
         branch_exception_o.tval2 = {'0, cheri_tval2};
         branch_exception_o.valid = 1'b1;
       end

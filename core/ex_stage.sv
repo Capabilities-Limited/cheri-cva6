@@ -146,7 +146,7 @@ module ex_stage
     // ALU2 instruction is valid - ISSUE_STAGE
     input logic [CVA6Cfg.NrIssuePorts-1:0] alu2_valid_i,
     // CLU instruction is ready
-    input  logic clu_valid_i,
+    input logic clu_valid_i,
     // CVXIF instruction is valid - ISSUE_STAGE
     input logic [CVA6Cfg.NrIssuePorts-1:0] x_valid_i,
     // CVXIF is ready - ISSUE_STAGE
@@ -378,7 +378,7 @@ module ex_stage
   // result MUX
   always_comb begin
     // Branch result as default case
-    flu_result_o   = branch_result;
+    flu_result_o = branch_result;
     flu_trans_id_o = one_cycle_data.trans_id;
     result = cva6_cheri_pkg::REG_NULL_CAP;
     // ALU result
@@ -387,7 +387,7 @@ module ex_stage
         result = cva6_cheri_pkg::set_cap_reg_addr(result, alu_result);
         flu_result_o = result;
       end else begin
-        flu_result_o = {{(CVA6Cfg.REGLEN-CVA6Cfg.XLEN){1'b0}},alu_result};
+        flu_result_o = {{(CVA6Cfg.REGLEN - CVA6Cfg.XLEN) {1'b0}}, alu_result};
       end
       // CSR result
     end else if (|csr_valid_i) begin
@@ -397,7 +397,7 @@ module ex_stage
         result = cva6_cheri_pkg::set_cap_reg_addr(result, mult_result);
         flu_result_o = result;
       end else begin
-        flu_result_o = {{(CVA6Cfg.REGLEN-CVA6Cfg.XLEN){1'b0}},mult_result};
+        flu_result_o = {{(CVA6Cfg.REGLEN - CVA6Cfg.XLEN) {1'b0}}, mult_result};
       end
       flu_trans_id_o = mult_trans_id;
     end else if (|aes_valid_i) begin
@@ -543,7 +543,9 @@ module ex_stage
     end
   end
   if (CVA6Cfg.CheriPresent) begin
-    assign fpu_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, fpu_result_muxed);
+    assign fpu_result_o = cva6_cheri_pkg::set_cap_reg_addr(
+        cva6_cheri_pkg::REG_NULL_CAP, fpu_result_muxed
+    );
   end else begin
     assign fpu_result_o = fpu_result_muxed;
   end
@@ -695,20 +697,20 @@ module ex_stage
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_unit
     fu_data_t clu_data;
 
-    assign clu_data  = (clu_valid_i | branch_valid_i) ? fu_data_i  : '0;
+    assign clu_data = (clu_valid_i | branch_valid_i) ? fu_data_i : '0;
 
     cheri_unit #(
         .CVA6Cfg(CVA6Cfg),
         .exception_t(exception_t),
         .fu_data_t(fu_data_t)
-      )clu_i (
+    ) clu_i (
         .clk_i,
         .rst_ni,
         .v_i,
-        .fu_data_i        ( clu_data       ),
-        .clu_valid_i      ( clu_valid_i    ),
-        .alu_result_i     ( alu_result     ),
-        .clu_result_o     ( clu_result     )
+        .fu_data_i   (clu_data),
+        .clu_valid_i (clu_valid_i),
+        .alu_result_i(alu_result),
+        .clu_result_o(clu_result)
     );
   end
 

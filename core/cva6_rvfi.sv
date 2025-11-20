@@ -312,10 +312,18 @@ module cva6_rvfi
   always_ff @(posedge clk_i) begin
     for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
       automatic logic [31:0] commit_instr = mem_q[commit_pointer[i]].instr;
-      automatic logic exception = (i == 0) && commit_instr_valid[i] && ex_commit_valid && !commit_drop[i];
+      automatic
+      logic
+      exception = (i == 0) && commit_instr_valid[i] && ex_commit_valid && !commit_drop[i];
       automatic logic [4:0] rd_addr = commit_instr_rd[i][4:0];
-      automatic logic [4:0] rs2_addr = (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs2[i][4:0];
-      automatic logic valid = (commit_ack[i] && !ex_commit_valid && !commit_drop[i]) ||
+      automatic
+      logic [4:0]
+      rs2_addr = (is_amo_sc(
+          commit_instr_op[i]
+      ) && wdata[i] == 1) ? '0 : commit_instr_rs2[i][4:0];
+      automatic
+      logic
+      valid = (commit_ack[i] && !ex_commit_valid && !commit_drop[i]) ||
         (exception && (ex_commit_cause == riscv::ENV_CALL_MMODE ||
                   ex_commit_cause == riscv::ENV_CALL_SMODE ||
                   ex_commit_cause == riscv::ENV_CALL_UMODE ||
@@ -339,7 +347,9 @@ module cva6_rvfi
       rvfi_instr_o[i].cause <= ex_commit_cause;
       rvfi_instr_o[i].mode <= (CVA6Cfg.DebugEn && debug_mode) ? 2'b10 : priv_lvl;
       rvfi_instr_o[i].ixl <= CVA6Cfg.XLEN == 64 ? 2 : 1;
-      rvfi_instr_o[i].rs1_addr <= (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs1[i];
+      rvfi_instr_o[i].rs1_addr <= (is_amo_sc(
+          commit_instr_op[i]
+      ) && wdata[i] == 1) ? '0 : commit_instr_rs1[i];
       rvfi_instr_o[i].rs2_addr <= rs2_addr;
       rvfi_instr_o[i].rd_addr <= rd_addr;
       rvfi_instr_o[i].rd_wdata <= (rd_addr == 0) ? '0 : (CVA6Cfg.FpPresent && is_rd_fpr(
@@ -356,8 +366,13 @@ module cva6_rvfi
       rvfi_instr_o[i].mem_addr <= mem_q[commit_pointer[i]].lsu_addr;
       // So far, only write paddr is reported. TODO: read paddr
       rvfi_instr_o[i].mem_paddr <= mem_paddr;
-      rvfi_instr_o[i].mem_wmask <= /* (mem_q[commit_pointer[i]].lsu_wmask == 16'hFFFF) ? '0 : */ (is_amo_sc(commit_instr_op[i])  && wdata[i] == 1) ? '0 : mem_q[commit_pointer[i]].lsu_wmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
-      rvfi_instr_o[i].mem_wdata <= (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : mem_q[commit_pointer[i]].lsu_wdata;
+      rvfi_instr_o[i].mem_wmask <= /* (mem_q[commit_pointer[i]].lsu_wmask == 16'hFFFF) ? '0 : */ (is_amo_sc(
+          commit_instr_op[i]
+      ) && wdata[i] == 1) ? '0 :
+          mem_q[commit_pointer[i]].lsu_wmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
+      rvfi_instr_o[i].mem_wdata <= (is_amo_sc(
+          commit_instr_op[i]
+      ) && wdata[i] == 1) ? '0 : mem_q[commit_pointer[i]].lsu_wdata;
       rvfi_instr_o[i].mem_rmask <= /* (mem_q[commit_pointer[i]].lsu_wmask == 16'hFFFF) ? '0 :  */mem_q[commit_pointer[i]].lsu_rmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
       rvfi_instr_o[i].mem_rdata <= commit_instr_result[i];
       rvfi_instr_o[i].rs1_rdata <= mem_q[commit_pointer[i]].rs1_rdata;

@@ -71,7 +71,7 @@ module ras #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
-      for (int i = 0; i < DEPTH; i+=1) begin
+      for (int i = 0; i < DEPTH; i += 1) begin
         stack_q[i] <= 'b1;
       end
     end else begin

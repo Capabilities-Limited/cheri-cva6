@@ -114,10 +114,10 @@ module wt_dcache_wbuffer
     logic [(CVA6Cfg.CLEN/8)-1:0] be;
     be = '0;
     unique case (size)
-      3'b000:   be[offset] = '1;  // byte
-      3'b001:   be[offset+:2] = '1;  // hword
-      3'b010:   be[offset+:4] = '1;  // word
-      3'b011:   be[offset+:8] = '1;  // dword
+      3'b000:  be[offset] = '1;  // byte
+      3'b001:  be[offset+:2] = '1;  // hword
+      3'b010:  be[offset+:4] = '1;  // word
+      3'b011:  be[offset+:8] = '1;  // dword
       default: be = '1;  // ddword
     endcase  // size
     return be;
@@ -153,10 +153,10 @@ module wt_dcache_wbuffer
       input logic [2:0] size);
     logic [CVA6Cfg.CLEN-1:0] out;
     unique case (size)
-      3'b000:   for (int k = 0; k < 16; k++) out[k*8+:8] = data[offset*8+:8];  // byte
-      3'b001:   for (int k = 0; k < 8; k++) out[k*16+:16] = data[offset*8+:16];  // hword
-      3'b010:   for (int k = 0; k < 4; k++) out[k*32+:32] = data[offset*8+:32];  // word
-      3'b011:   for (int k = 0; k < 2; k++) out[k*64+:64] = data[offset*8+:64];  // word
+      3'b000:  for (int k = 0; k < 16; k++) out[k*8+:8] = data[offset*8+:8];  // byte
+      3'b001:  for (int k = 0; k < 8; k++) out[k*16+:16] = data[offset*8+:16];  // hword
+      3'b010:  for (int k = 0; k < 4; k++) out[k*32+:32] = data[offset*8+:32];  // word
+      3'b011:  for (int k = 0; k < 2; k++) out[k*64+:64] = data[offset*8+:64];  // word
       default: out = data;  // dword
     endcase  // size
     return out;
@@ -294,7 +294,7 @@ module wt_dcache_wbuffer
   // note: openpiton can only handle aligned offsets + size, and hence
   // we have to split unaligned data into multiple transfers (see toSize64)
   // e.g. if we have the following valid bytes: 0011_1001 -> TX0: 0000_0001, TX1: 0000_1000, TX2: 0011_0000
-  if (CVA6Cfg.CheriPresent && CVA6Cfg.IS_XLEN64) begin: gen_size_128b
+  if (CVA6Cfg.CheriPresent && CVA6Cfg.IS_XLEN64) begin : gen_size_128b
     assign miss_size_o = toSize128(bdirty[dirty_ptr]);
   end else if (CVA6Cfg.IS_XLEN64 || (CVA6Cfg.CheriPresent && !CVA6Cfg.IS_XLEN64)) begin : gen_size_64b
     assign miss_size_o = {1'b0, toSize64(bdirty[dirty_ptr])};
@@ -304,8 +304,8 @@ module wt_dcache_wbuffer
 
   // replicate transfers shorter than a dword
   assign miss_wdata_o = (CVA6Cfg.CheriPresent && CVA6Cfg.IS_XLEN64) ? repData128(
-      wbuffer_dirty_mux.data, bdirty_off, miss_size_o[2:0]) :
-      (CVA6Cfg.IS_XLEN64 || (CVA6Cfg.CheriPresent && !CVA6Cfg.IS_XLEN64)) ? repData64(
+      wbuffer_dirty_mux.data, bdirty_off, miss_size_o[2:0]
+  ) : (CVA6Cfg.IS_XLEN64 || (CVA6Cfg.CheriPresent && !CVA6Cfg.IS_XLEN64)) ? repData64(
       wbuffer_dirty_mux.data, bdirty_off, miss_size_o[1:0]
   ) : repData32(
       wbuffer_dirty_mux.data, bdirty_off, miss_size_o[1:0]
@@ -322,7 +322,7 @@ module wt_dcache_wbuffer
   end
 
   assign tx_be = (CVA6Cfg.CheriPresent && CVA6Cfg.IS_XLEN64) ? to_byte_enable16(
-    bdirty_off, miss_size_o[2:0]
+      bdirty_off, miss_size_o[2:0]
   ) : (CVA6Cfg.IS_XLEN64 || (CVA6Cfg.CheriPresent && !CVA6Cfg.IS_XLEN64)) ? to_byte_enable8(
       bdirty_off, miss_size_o[1:0]
   ) : to_byte_enable4(

@@ -125,12 +125,12 @@ module wt_dcache_ctrl
 
   always_comb begin : p_fsm
     // default assignment
-    state_d                = state_q;
-    save_tag               = 1'b0;
-    rd_req_o               = 1'b0;
-    miss_req_o             = 1'b0;
-    req_port_o.data_rvalid = 1'b0;
-    req_port_o.data_gnt    = 1'b0;
+    state_d                   = state_q;
+    save_tag                  = 1'b0;
+    rd_req_o                  = 1'b0;
+    miss_req_o                = 1'b0;
+    req_port_o.data_rvalid    = 1'b0;
+    req_port_o.data_gnt       = 1'b0;
     req_port_o.data_strip_tag = CVA6Cfg.CheriPresent ? strip_tag_q : '0;
 
     // interfaces
@@ -267,22 +267,22 @@ module wt_dcache_ctrl
       address_idx_q <= '0;
       address_off_q <= '0;
       id_q          <= '0;
-      if (CVA6Cfg.CheriPresent) strip_tag_q   <= '0;
-      vld_data_q    <= '0;
-      data_size_q   <= '0;
-      rd_req_q      <= '0;
-      rd_ack_q      <= '0;
+      if (CVA6Cfg.CheriPresent) strip_tag_q <= '0;
+      vld_data_q  <= '0;
+      data_size_q <= '0;
+      rd_req_q    <= '0;
+      rd_ack_q    <= '0;
     end else begin
       state_q       <= state_d;
       address_tag_q <= address_tag_d;
       address_idx_q <= address_idx_d;
       address_off_q <= address_off_d;
       id_q          <= id_d;
-      if (CVA6Cfg.CheriPresent) strip_tag_q   <= strip_tag_d;
-      vld_data_q    <= vld_data_d;
-      data_size_q   <= data_size_d;
-      rd_req_q      <= rd_req_d;
-      rd_ack_q      <= rd_ack_d;
+      if (CVA6Cfg.CheriPresent) strip_tag_q <= strip_tag_d;
+      vld_data_q  <= vld_data_d;
+      data_size_q <= data_size_d;
+      rd_req_q    <= rd_req_d;
+      rd_ack_q    <= rd_ack_d;
     end
   end
 
