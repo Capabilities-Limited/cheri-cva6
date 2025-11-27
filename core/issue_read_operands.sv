@@ -113,7 +113,7 @@ module issue_read_operands
     // CVXIF FU is valid - EX_STAGE
     output logic [CVA6Cfg.NrIssuePorts-1:0] cvxif_valid_o,
     // CLU result is valid - EX_STAGE
-    output logic clu_valid_o,
+    output logic [CVA6Cfg.NrIssuePorts-1:0] clu_valid_o,
     // CVXIF is FU ready - EX_STAGE
     input logic cvxif_ready_i,
     // CVXIF offloader instruction value - EX_STAGE
