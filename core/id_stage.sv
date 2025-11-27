@@ -159,15 +159,15 @@ module id_stage #(
   logic              [CVA6Cfg.NrIssuePorts-1:0][31:0] instruction_deco;
   logic              [CVA6Cfg.NrIssuePorts-1:0]       is_compressed_deco;
 
-  logic              [CVA6Cfg.NrIssuePorts-1:0]       int_mode_decode_o;
-  logic              [CVA6Cfg.NrIssuePorts-1:0]       int_mode_decode;
+  logic              [CVA6Cfg.NrIssuePorts-1:0]       int_mode_prev;
+  logic              [CVA6Cfg.NrIssuePorts-1:0]       int_mode_next;
   logic                                               int_mode_d;
   logic                                               int_mode_q;
   logic                                               commit_redirect_q;
 
-  assign int_mode_decode[0] = int_mode_q;
-  for (genvar i = 1; i <= CVA6Cfg.NrIssuePorts; i++) begin
-    assign int_mode_decode[i] = int_mode_decode_o[i-1];
+  assign int_mode_prev[0] = int_mode_q;
+  for (genvar i = 1; i < CVA6Cfg.NrIssuePorts; i++) begin
+    assign int_mode_prev[i] = int_mode_next[i-1];
   end
 
   if (CVA6Cfg.RVC) begin
@@ -179,7 +179,7 @@ module id_stage #(
           .CVA6Cfg(CVA6Cfg)
       ) compressed_decoder_i (
           .instr_i         (fetch_entry_i[i].instruction),
-          .int_mode_i      ((CVA6Cfg.CheriPresent) ? int_mode_decode[i] : 1'b0),
+          .int_mode_i      ((CVA6Cfg.CheriPresent) ? int_mode_prev[i] : 1'b0),
           .instr_o         (instruction_rvc[i]),
           .illegal_instr_o (is_illegal_rvc[i]),
           .is_compressed_o (is_compressed_rvc[i]),
@@ -335,7 +335,7 @@ module id_stage #(
         .irq_i,
         .pc_i                      (fetch_entry_i[i].address),
         .dii_id_i                  (fetch_entry_i[i].dii_id),
-        .int_mode_i                ((CVA6Cfg.CheriPresent) ? int_mode_decode[i] : 1'b0),
+        .int_mode_i                ((CVA6Cfg.CheriPresent) ? int_mode_prev[i] : 1'b0),
         .is_compressed_i           (is_compressed_deco[i]),
         .is_macro_instr_i          (is_macro_instr[i]),
         .is_zcmt_i                 (is_zcmt_instr[i]),
@@ -362,7 +362,7 @@ module id_stage #(
         .instruction_o             (decoded_instruction[i]),
         .orig_instr_o              (orig_instr[i]),
         .is_control_flow_instr_o   (is_control_flow_instr[i]),
-        .int_mode_o                (int_mode_decode_o[i])
+        .int_mode_o                (int_mode_next[i])
     );
   end
 
@@ -472,9 +472,9 @@ module id_stage #(
     if (commit_redirect_q) int_mode_d = int_mode_issue_i;
     else if (mispredict_redirect_i) int_mode_d = int_mode_resolved_branch_i;
     else begin
-      for (int i = 0; i <= CVA6Cfg.NrIssuePorts; i++) begin
-        if (fetch_entry_ready_o[i]) begin
-          int_mode_d = int_mode_decode_o[i];
+      for (int i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
+        if (fetch_entry_valid_i[i] && fetch_entry_ready_o[i]) begin
+          int_mode_d = int_mode_next[i];
         end
       end
     end

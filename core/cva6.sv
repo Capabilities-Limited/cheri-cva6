@@ -478,7 +478,7 @@ module cva6
   logic [CVA6Cfg.NrIssuePorts-1:0] lsu_valid_id_ex;
   logic lsu_ready_ex_id;
   // CLU
-  logic clu_valid_id_ex;
+  logic [CVA6Cfg.NrIssuePorts-1:0] clu_valid_id_ex;
 
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] load_trans_id_ex_id;
   logic [CVA6Cfg.REGLEN-1:0] load_result_ex_id;
