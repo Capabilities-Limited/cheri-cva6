@@ -55,7 +55,7 @@ module issue_read_operands
     // Int mode flag in PCC register - ID_STAGE
     output logic int_mode_o,
     // PCC exception - Execute
-    output exception_t issue_pcc_ex_o,
+    output exception_t [CVA6Cfg.NrIssuePorts-1:0] issue_pcc_ex_o,
     // Backend Empty - scoreboard
     input logic backend_empty_i,
     // Forwarding - SCOREBOARD
@@ -502,7 +502,7 @@ module issue_read_operands
       pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
       pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q, pcc_meta);
       pcc_bounds_root = cva6_cheri_pkg::are_cap_reg_bounds_root(pcc_q, pcc_meta);
-      issue_pcc_ex_o = 0;
+      issue_pcc_ex_o = '0;
       // Check PCC bounds every instruction
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
         automatic logic [CVA6Cfg.VLEN-1:0] next_pc_off;
@@ -513,37 +513,37 @@ module issue_read_operands
         next_pc_off = ((issue_instr_i[i].is_compressed) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
         {next_pc_carry, next_pc_addr} = {1'b0, issue_instr_i[i].pc} + {1'b0, next_pc_off};
         if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i[i].pc)) < pcc_base) || ({1'b0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top) || (next_pc_carry && !pcc_bounds_root)) begin
-          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
-          issue_pcc_ex_o.tval2 = cheri_tval2;
-          issue_pcc_ex_o.valid = 1'b1;
+          issue_pcc_ex_o[i].tval2 = cheri_tval2;
+          issue_pcc_ex_o[i].valid = 1'b1;
         end
         if (issue_instr_i[i].needs_asr && !pcc[i].hperms.access_sys_regs) begin
-          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-          issue_pcc_ex_o.tval2 = cheri_tval2;
-          issue_pcc_ex_o.valid = 1'b1;
+          issue_pcc_ex_o[i].tval2 = cheri_tval2;
+          issue_pcc_ex_o[i].valid = 1'b1;
         end
         if (!pcc[i].hperms.permit_execute) begin
-          issue_pcc_ex_o.cause    = cva6_cheri_pkg::CAP_EXCEPTION;
+          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-          issue_pcc_ex_o.tval2    = cheri_tval2;
-          issue_pcc_ex_o.valid    = 1'b1;
+          issue_pcc_ex_o[i].tval2 = cheri_tval2;
+          issue_pcc_ex_o[i].valid = 1'b1;
         end
         if ((pcc[i].otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc[i].tag) begin
-          issue_pcc_ex_o.cause    = cva6_cheri_pkg::CAP_EXCEPTION;
+          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
-          issue_pcc_ex_o.tval2    = cheri_tval2;
-          issue_pcc_ex_o.valid    = 1'b1;
+          issue_pcc_ex_o[i].tval2 = cheri_tval2;
+          issue_pcc_ex_o[i].valid = 1'b1;
         end
         if (!pcc[i].tag) begin
-          issue_pcc_ex_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-          issue_pcc_ex_o.tval2 = cheri_tval2;
-          issue_pcc_ex_o.valid = 1'b1;
+          issue_pcc_ex_o[i].tval2 = cheri_tval2;
+          issue_pcc_ex_o[i].valid = 1'b1;
         end
+        if (!issue_instr_valid_i[i] || debug_mode_i) issue_pcc_ex_o[i].valid = 1'b0;
       end
-      if (!issue_instr_valid_i || debug_mode_i) issue_pcc_ex_o.valid = 1'b0;
     end
   end
 
