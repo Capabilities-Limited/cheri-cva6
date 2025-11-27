@@ -106,7 +106,7 @@ module issue_stage
     // CSR is valid - EX_STAGE
     output logic [CVA6Cfg.NrIssuePorts-1:0] csr_valid_o,
     // CLU is valid - EX_STAGE
-    output logic clu_valid_o,
+    output logic [CVA6Cfg.NrIssuePorts-1:0] clu_valid_o,
     // CVXIF FU is valid - EX_STAGE
     output logic [CVA6Cfg.NrIssuePorts-1:0] xfu_valid_o,
     // CVXIF is FU ready - EX_STAGE
