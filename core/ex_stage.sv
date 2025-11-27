@@ -150,7 +150,7 @@ module ex_stage
     // ALU2 instruction is valid - ISSUE_STAGE
     input logic [CVA6Cfg.NrIssuePorts-1:0] alu2_valid_i,
     // CLU instruction is ready
-    input logic clu_valid_i,
+    input logic [CVA6Cfg.NrIssuePorts-1:0] clu_valid_i,
     // CVXIF instruction is valid - ISSUE_STAGE
     input logic [CVA6Cfg.NrIssuePorts-1:0] x_valid_i,
     // CVXIF is ready - ISSUE_STAGE
@@ -421,7 +421,7 @@ module ex_stage
       flu_trans_id_o = mult_trans_id;
     end else if (|aes_valid_i) begin
       flu_result_o = aes_result;
-    end else if (clu_valid_i) begin
+    end else if (|clu_valid_i) begin
       flu_result_o = clu_result;
     end
   end
@@ -688,10 +688,6 @@ module ex_stage
   // CHERI Logic Unit
   // ----------------
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_unit
-    fu_data_t clu_data;
-
-    assign clu_data = (clu_valid_i | branch_valid_i) ? fu_data_i : '0;
-
     cheri_unit #(
         .CVA6Cfg(CVA6Cfg),
         .exception_t(exception_t),
@@ -700,8 +696,8 @@ module ex_stage
         .clk_i,
         .rst_ni,
         .v_i,
-        .fu_data_i   (clu_data),
-        .clu_valid_i (clu_valid_i),
+        .fu_data_i   (one_cycle_data),
+        .clu_valid_i (|clu_valid_i),
         .alu_result_i(alu_result),
         .clu_result_o(clu_result)
     );
