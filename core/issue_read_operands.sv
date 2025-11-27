@@ -448,6 +448,7 @@ module issue_read_operands
           end else begin
             fus_busy[1].alu = 1'b1;
             fus_busy[1].ctrl_flow = 1'b1;
+            fus_busy[1].clu = 1'b1;
             fus_busy[1].csr = 1'b1;
           end
         end
@@ -473,7 +474,10 @@ module issue_read_operands
           end
         end
         CLU: begin
+          fus_busy[1].alu = 1'b1;
           fus_busy[1].clu = 1'b1;
+          fus_busy[1].ctrl_flow = 1'b1;
+          fus_busy[1].csr = 1'b1;
         end
         CVXIF: ;
         default: ;
