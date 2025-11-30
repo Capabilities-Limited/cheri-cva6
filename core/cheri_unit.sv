@@ -79,7 +79,6 @@ module cheri_unit
   cap_mem_t cap_mem_null;
   cap_reg_t tmp_cap, req_cap;
   addrwe_t tmp_length;
-  cap_reg_set_bounds_ret_t res_set_bounds;
   always_comb begin
     // exceptions signals reset
     check_operand_a_violations = {1'b0, 1'b0, 1'b0};
@@ -220,11 +219,12 @@ module cheri_unit
       // CSetBounds, CSetBoundsExact, CSetBoundsImm,
       // CRepresentableAlignmentMask
       ariane_pkg::SCBNDSR, ariane_pkg::SCBNDS, ariane_pkg::CRAM: begin
+        automatic cap_reg_set_bounds_ret_t res_set_bounds;
+        res_set_bounds =
+            set_cap_reg_bounds(operand_a, operand_a_address, {1'b0, operand_b_address});
         check_operand_a_violations.tag = 1'b1;
         check_operand_a_violations.seal = 1'b1;
         check_operand_a_violations.bounds = 1'b1;
-        res_set_bounds =
-            set_cap_reg_bounds(operand_a, operand_a_address, {1'b0, operand_b_address});
         if (fu_data_i.operation == ariane_pkg::CRAM) begin
           clu_result = set_cap_reg_addr(REG_NULL_CAP, res_set_bounds.mask);
         end else begin
