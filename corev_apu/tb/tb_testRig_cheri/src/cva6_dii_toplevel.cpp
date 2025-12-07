@@ -275,10 +275,12 @@ done_processing:
   // Preload memory.
 #if (VERILATOR_VERSION_INTEGER >= 5000000)
   // Verilator v5: Use rootp pointer and .data() accessor.
-#define MEM top->rootp->ariane_testharness_dii__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram.m_storage
+#define MEM0 top->rootp->ariane_testharness_dii__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram.m_storage
+#define MEM1 top->rootp->ariane_testharness_dii__DOT__i_sram__DOT__gen_cut__BRA__1__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram.m_storage
 #else
   // Verilator v4
-#define MEM top->ariane_testharness_dii__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram
+#define MEM0 top->ariane_testharness_dii__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram
+#define MEM1 top->ariane_testharness_dii__DOT__i_sram__DOT__gen_cut__BRA__1__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram
 #endif
   long long addr;
   long long len;
@@ -340,8 +342,9 @@ done_processing:
       traces_count %= DII_ID_COUNT;
       current_test_dii_start = traces_count;
       // Clear memory
-      for (int i = 0; i < (sizeof(MEM)/sizeof(MEM[0])); i++) {
-          MEM[i] = 0;
+      for (int i = 0; i < (sizeof(MEM0)/sizeof(MEM0[0])); i++) {
+          MEM0[i] = 0;
+          MEM1[i] = 0;
       }
     }
   }
@@ -409,7 +412,7 @@ rvfi_pkt_t readRVFI_0(Variane_testharness_dii *top) {
          .rvfi_rd_addr = top->rvfi_trap_o_0 ? 0 : top->rvfi_rd_addr_o_0 ,
          .rvfi_trap = top->rvfi_trap_o_0 ,
          .rvfi_halt = 0 ,
-         .rvfi_intr = top->rvfi_intr_o_0 
+         .rvfi_intr = top->rvfi_intr_o_0
      };
     return execpacket;
 }
@@ -433,7 +436,7 @@ rvfi_pkt_t readRVFI_1(Variane_testharness_dii *top) {
          .rvfi_rd_addr = top->rvfi_trap_o_1 ? 0 : top->rvfi_rd_addr_o_1 ,
          .rvfi_trap = top->rvfi_trap_o_1 ,
          .rvfi_halt = 0 ,
-         .rvfi_intr = top->rvfi_intr_o_1 
+         .rvfi_intr = top->rvfi_intr_o_1
      };
     return execpacket;
 }
