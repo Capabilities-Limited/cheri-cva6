@@ -6,6 +6,15 @@
 
 #include "uart.h"
 
+// 1 millisecond at 50MHz
+#define MILLISECOND_CYCLES   (50 * 1000)
+
+static inline uintptr_t get_cycle_count() {
+    uintptr_t cycle;
+    __asm__ volatile ("csrr %0, cycle" : "=r" (cycle));
+    return cycle;
+}
+
 void write_reg(uintptr_t addr, uint32_t value)
 {
     volatile uint32_t *loc_addr = (volatile uint32_t *)addr;
@@ -17,6 +26,25 @@ uint32_t read_reg(uintptr_t addr)
     return *(volatile uint32_t *)addr;
 }
 
+static inline void wait_for_reg_val(uintptr_t addr, uint32_t mask, uint32_t val)
+{
+    uint32_t status;
+    do
+    {
+        status = read_reg(addr);
+    } while ((status & mask) != val);
+}
+
+static inline void wait_for_tx_empty()
+{
+    wait_for_reg_val(SPI_STATUS_REG, SPI_STATUS_TX_EMPTY_MASK, SPI_STATUS_TX_EMPTY_MASK);
+}
+
+static inline void wait_for_rx_nonempty()
+{
+    wait_for_reg_val(SPI_STATUS_REG, SPI_STATUS_RX_EMPTY_MASK, 0);
+}
+
 void spi_init()
 {
     print_uart("init SPI\r\n");
@@ -24,11 +52,8 @@ void spi_init()
     // reset the axi quadspi core
     write_reg(SPI_RESET_REG, 0x0a);
 
-    for (int i = 0; i < 10; i++)
-    {
-        __asm__ volatile(
-            "nop");
-    }
+    uintptr_t start = get_cycle_count();
+    while(get_cycle_count() - start < MILLISECOND_CYCLES);
 
     write_reg(SPI_CONTROL_REG, 0x104);
 
@@ -57,21 +82,16 @@ uint8_t spi_txrx(uint8_t byte)
 
     write_reg(SPI_TRANSMIT_REG, byte);
 
-    for (int i = 0; i < 100; i++)
-    {
-        __asm__ volatile(
-            "nop");
-    }
+    wait_for_tx_empty();
 
     // enable spi control master flag
     write_reg(SPI_CONTROL_REG, 0x106);
 
-    while ((read_reg(SPI_STATUS_REG) & 0x1) == 0x1)
-        ;
+    wait_for_rx_nonempty();
 
     uint32_t result = read_reg(SPI_RECEIVE_REG);
 
-    if ((read_reg(SPI_STATUS_REG) & 0x1) != 0x1)
+    if ((read_reg(SPI_STATUS_REG) & SPI_STATUS_RX_EMPTY_MASK) == 0)
     {
         print_uart("rx fifo not empty?? ");
         print_uart_addr(read_reg(SPI_STATUS_REG));
@@ -89,8 +109,6 @@ uint8_t spi_txrx(uint8_t byte)
 
 int spi_write_bytes(uint8_t *bytes, uint32_t len, uint8_t *ret)
 {
-    uint32_t status;
-
     if (len > 256) // FIFO maxdepth 256
         return -1;
 
@@ -102,27 +120,15 @@ int spi_write_bytes(uint8_t *bytes, uint32_t len, uint8_t *ret)
         write_reg(SPI_TRANSMIT_REG, bytes[i] & 0xff);
     }
 
-    for (int i = 0; i < 50; i++)
-    {
-        __asm__ volatile(
-            "nop");
-    }
+    wait_for_tx_empty();
 
     // enable spi control master flag
     write_reg(SPI_CONTROL_REG, 0x106);
 
-    do
-    {
-        status = read_reg(SPI_STATUS_REG);
-    } while ((status & 0x1) == 0x1);
-
     for (int i = 0; i < len;)
     {
-        status = read_reg(SPI_STATUS_REG);
-        if ((status & 0x1) != 0x1) // receive fifo not empty
-        {
-            ret[i++] = read_reg(SPI_RECEIVE_REG);
-        }
+        wait_for_rx_nonempty();
+        ret[i++] = read_reg(SPI_RECEIVE_REG);
     }
 
     // disable slave select
