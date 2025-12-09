@@ -20,6 +20,10 @@
 #define SPI_INTERRUPT_STATUS_REG SPI_BASE + 0x20
 #define SPI_INTERRUPT_ENABLE_REG SPI_BASE + 0x28
 
+#define SPI_STATUS_TX_FULL_MASK (1 << 3)
+#define SPI_STATUS_TX_EMPTY_MASK (1 << 2)
+#define SPI_STATUS_RX_FULL_MASK (1 << 1)
+#define SPI_STATUS_RX_EMPTY_MASK (1 << 0)
 
 void spi_init();
 
