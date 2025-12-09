@@ -6,16 +6,9 @@
 #include "spi.h"
 #include "sd.h"
 #include "gpt.h"
+#include "time.h"
 
-// 1 second at 50MHz
-#define SECOND_CYCLES   (50 * 1000 * 1000)
-#define WAIT_SECONDS    (5)
-
-static inline uintptr_t get_cycle_count() {
-    uintptr_t cycle;
-    __asm__ volatile ("csrr %0, cycle" : "=r" (cycle));
-    return cycle;
-}
+#define WAIT_SECONDS 5
 
 int update(uint8_t *dest)
 {
@@ -46,7 +39,7 @@ int main()
 {
     int i, ret = 0;
     uint8_t uart_res = 0;
-    uintptr_t start;
+    unsigned long start;
 
     #ifndef PLAT_AGILEX
     init_uart(CLOCK_FREQUENCY, UART_BITRATE); //not needed in intel setup as UART IP is already configured via HW
@@ -58,7 +51,7 @@ int main()
     for(i = 0; i < WAIT_SECONDS && !ret; i++) {
         print_uart(".");
         start = get_cycle_count();
-        while(get_cycle_count() - start < SECOND_CYCLES) {
+        while(get_cycle_count() - start < CLOCK_FREQUENCY) {
             ret = read_serial(&uart_res);
             if(ret) {
                 break;
