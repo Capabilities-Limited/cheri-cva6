@@ -3,17 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "spi.h"
-
 #include "uart.h"
-
-// 1 millisecond at 50MHz
-#define MILLISECOND_CYCLES   (50 * 1000)
-
-static inline uintptr_t get_cycle_count() {
-    uintptr_t cycle;
-    __asm__ volatile ("csrr %0, cycle" : "=r" (cycle));
-    return cycle;
-}
+#include "time.h"
 
 void write_reg(uintptr_t addr, uint32_t value)
 {
@@ -52,8 +43,7 @@ void spi_init()
     // reset the axi quadspi core
     write_reg(SPI_RESET_REG, 0x0a);
 
-    uintptr_t start = get_cycle_count();
-    while(get_cycle_count() - start < MILLISECOND_CYCLES);
+    millisleep(1);
 
     write_reg(SPI_CONTROL_REG, 0x104);
 
