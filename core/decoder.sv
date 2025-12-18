@@ -1314,7 +1314,7 @@ module decoder
             endcase
             if (!illegal_instr_cheri) instruction_o.fu = CLU;
           end
-          illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_cheri;
+          illegal_instr = illegal_instr_non_bm & illegal_instr_bm & (!CVA6Cfg.CheriPresent || illegal_instr_cheri);
         end
 
         // --------------------------------
@@ -1368,7 +1368,7 @@ module decoder
               endcase
               if (!illegal_instr_cheri) instruction_o.fu = CLU;
             end
-            illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_cheri;
+            illegal_instr = illegal_instr_non_bm & illegal_instr_bm & (!CVA6Cfg.CheriPresent || illegal_instr_cheri);
           end else illegal_instr = 1'b1;
         end
         // --------------------------------
