@@ -649,12 +649,14 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   rvfi_instr_t [CVA6Cfg.NrCommitPorts-1:0]  rvfi_instr;
 
   cva6_cheri_pkg::cap_pcc_t boot_cap;
+  logic [CVA6Cfg.PCLEN-1:0] boot_addr;
   always_comb begin : gen_boot_cap
     boot_cap = cva6_cheri_pkg::PCC_ROOT_CAP;
     if (CVA6Cfg.RVFI_DII)
-      boot_cap.addr = ariane_soc::DRAMBase;
+      boot_addr = ariane_soc::DRAMBase;
     else
-      boot_cap.addr = ariane_soc::ROMBase;
+      boot_addr = ariane_soc::ROMBase;
+    boot_cap.addr = boot_addr;
   end
 
   ariane #(
@@ -667,7 +669,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   ) i_ariane (
     .clk_i                ( clk_i               ),
     .rst_ni               ( ndmreset_n          ),
-    .boot_addr_i          ( (CVA6Cfg.CheriPresent) ? boot_cap : ariane_soc::ROMBase ), // start fetching from ROM
+    .boot_addr_i          ( (CVA6Cfg.CheriPresent) ? boot_cap : boot_addr ), // start fetching from ROM
     .hart_id_i            ( {56'h0, hart_id}    ),
     .irq_i                ( irqs                ),
     .ipi_i                ( ipi                 ),
