@@ -366,14 +366,19 @@ module cva6_rvfi
       rvfi_instr_o[i].mem_addr <= mem_q[commit_pointer[i]].lsu_addr;
       // So far, only write paddr is reported. TODO: read paddr
       rvfi_instr_o[i].mem_paddr <= mem_paddr;
-      rvfi_instr_o[i].mem_wmask <= /* (mem_q[commit_pointer[i]].lsu_wmask == 16'hFFFF) ? '0 : */ (is_amo_sc(
+      rvfi_instr_o[i].mem_wmask <= (is_amo_sc(
           commit_instr_op[i]
       ) && wdata[i] == 1) ? '0 :
-          mem_q[commit_pointer[i]].lsu_wmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
+          mem_q[commit_pointer[i]].lsu_wmask >> mem_q[commit_pointer[i]].lsu_addr[$clog2(
+          CVA6Cfg.CLEN/8
+      )-1:0];
       rvfi_instr_o[i].mem_wdata <= (is_amo_sc(
           commit_instr_op[i]
       ) && wdata[i] == 1) ? '0 : mem_q[commit_pointer[i]].lsu_wdata;
-      rvfi_instr_o[i].mem_rmask <= /* (mem_q[commit_pointer[i]].lsu_wmask == 16'hFFFF) ? '0 :  */mem_q[commit_pointer[i]].lsu_rmask >> mem_q[commit_pointer[i]].lsu_addr[3:0];
+      rvfi_instr_o[i].mem_rmask <= mem_q[commit_pointer[i]].lsu_rmask >>
+          mem_q[commit_pointer[i]].lsu_addr[$clog2(
+          CVA6Cfg.CLEN/8
+      )-1:0];
       rvfi_instr_o[i].mem_rdata <= commit_instr_result[i];
       rvfi_instr_o[i].rs1_rdata <= mem_q[commit_pointer[i]].rs1_rdata;
       rvfi_instr_o[i].rs2_rdata <= (rs2_addr == 0) ? '0 : mem_q[commit_pointer[i]].rs2_rdata;
