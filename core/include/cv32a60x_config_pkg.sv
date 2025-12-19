@@ -51,10 +51,10 @@ package cva6_config_pkg;
       CvxifEn: bit'(1),
       CoproType: config_pkg::COPRO_EXAMPLE,
       RVZiCond: bit'(0),
-      RVZcheripurecap: bit'(0),
-      RVZcherihybrid: bit'(0),
       RVZicntr: bit'(0),
       RVZihpm: bit'(0),
+      RVZcheripurecap: bit'(0),
+      RVZcherihybrid: bit'(0),
       NrScoreboardEntries: unsigned'(4),
       PerfCounterEn: bit'(0),
       MmuPresent: bit'(0),
@@ -115,7 +115,8 @@ package cva6_config_pkg;
       NrStorePipeRegs: int'(0),
       DcacheIdWidth: int'(1),
       CheriCapTagWidth : int'(1),
-      RVFI_DII : int'(0)
+      RVFI_DII : int'(0),
+      DIIIDLEN : int'(0)
   };
 
 endpackage

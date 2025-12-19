@@ -83,6 +83,8 @@ package cva6_config_pkg;
       RVZiCond: bit'(1),
       RVZicntr: bit'(1),
       RVZihpm: bit'(1),
+      RVZcheripurecap: bit'(0),
+      RVZcherihybrid: bit'(0),
       NrScoreboardEntries: unsigned'(8),
       PerfCounterEn: bit'(1),
       MmuPresent: bit'(1),
@@ -147,7 +149,10 @@ package cva6_config_pkg;
       SharedTlbDepth: int'(64),
       NrLoadPipeRegs: int'(0),
       NrStorePipeRegs: int'(0),
-      DcacheIdWidth: int'(3)
+      DcacheIdWidth: int'(3),
+      CheriCapTagWidth : int'(1),
+      RVFI_DII: int'(0),
+      DIIIDLEN: int'(0)
   };
 
 endpackage
