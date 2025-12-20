@@ -88,6 +88,7 @@ package cva6_cheri_pkg;
     logic [3:0]  fault_type;   /* Type of check being performed */
     logic [11:0] wpri;
     logic [3:0]  fault_cause;  /* Reason for failed check */
+    logic [1:0]  ignored;      /* Bottom two bits are sliced off */
   } cap_tval2_t;
 
   /**

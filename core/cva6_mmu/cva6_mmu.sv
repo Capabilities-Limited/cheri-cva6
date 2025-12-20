@@ -639,7 +639,7 @@ module cva6_mmu
               lsu_exception_o.gva   = ld_st_v_i;
             end
             if (CVA6Cfg.CheriPresent) begin
-              if (cheri_cap_err) lsu_exception_o.tval2 = daccess_err ? 'd2 : 'd1;
+              if (cheri_cap_err) lsu_exception_o.tval2 = daccess_err ? {'d2, 2'b0} : {'d1, 2'b0};
               else lsu_exception_o.tval2 = '0;
             end
           end
@@ -663,7 +663,7 @@ module cva6_mmu
               lsu_exception_o.gva   = ld_st_v_i;
             end
             if (CVA6Cfg.CheriPresent) begin
-              if (cheri_cap_err) lsu_exception_o.tval2 = daccess_err ? 'd2 : 'd1;
+              if (cheri_cap_err) lsu_exception_o.tval2 = daccess_err ? {'d2, 2'b0} : {'d1, 2'b0};
               else lsu_exception_o.tval2 = '0;
             end
           end
@@ -702,7 +702,7 @@ module cva6_mmu
                 lsu_exception_o.gva   = ld_st_v_i;
               end
               if (CVA6Cfg.CheriPresent) begin
-                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN - 2{1'b0}}, ptw_cheri_error};
+                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN - 4{1'b0}}, ptw_cheri_error, 2'b0};
               end
             end
           end else begin
@@ -723,7 +723,7 @@ module cva6_mmu
                 lsu_exception_o.gva   = ld_st_v_i;
               end
               if (CVA6Cfg.CheriPresent) begin
-                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN - 2{1'b0}}, ptw_cheri_error};
+                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN - 4{1'b0}}, ptw_cheri_error, 2'b0};
               end
             end
           end
