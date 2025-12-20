@@ -2435,12 +2435,12 @@ module csr_regfile
                                 riscv::VIRTUAL_INSTRUCTION
                               } || ex_i.cause[CVA6Cfg.XLEN-1])) ? '0 : {{CVA6Cfg.XLEN - 32 {1'b0}}, ex_i.tinst};
             hstatus_d.spvp = v_q ? priv_lvl_q[0] : hstatus_d.spvp;
-            htval_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:0]};
+            htval_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN + 2{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:2]};
             hstatus_d.gva = ex_i.gva;
             hstatus_d.spv = v_q;
           end
           if (CVA6Cfg.CheriPresent) begin
-            stval2_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:0]};
+            stval2_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN + 2{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:2]};
           end
         end
         // trap to machine mode
@@ -2490,7 +2490,7 @@ module csr_regfile
           mstatus_d.gva = ex_i.gva;
         end
         if (CVA6Cfg.CheriPresent || CVA6Cfg.RVH) begin
-          mtval2_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:0]};
+          mtval2_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN + 2{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:2]};
         end
       end
 
