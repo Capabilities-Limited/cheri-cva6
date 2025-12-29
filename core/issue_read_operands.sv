@@ -783,6 +783,9 @@ module issue_read_operands
               issue_instr_i[0].rd == issue_instr_i[1].result[REG_ADDR_SIZE-1:0] : 1'b0) begin
         stall_raw[1] = 1'b1;
       end
+
+      // Stall the second instruction if the first one could change bounds.
+      if (CVA6Cfg.CheriPresent && (issue_instr_i[0].op == ariane_pkg::CJALR)) stall_raw[1] = 1'b1;
     end
 
     // Stall while there is an outstanding change to bounds.
