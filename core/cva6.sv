@@ -142,13 +142,14 @@ module cva6
     // all the necessary data structures
     // bp_resolve_t
     localparam type bp_resolve_t = struct packed {
-      logic                        valid;           // prediction with all its values is valid
-      logic [CVA6Cfg.VLEN-1:0]     pc;              // PC of predict or mis-predict
-      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;          // dii id of branch
-      logic [CVA6Cfg.PCLEN-1:0]    target_address;  // target address at which to jump, or not
-      logic                        is_mispredict;   // set if this was a mis-predict
-      logic                        is_taken;        // branch is taken
-      cf_t                         cf_type;         // Type of control flow change
+      logic valid;  // prediction with all its values is valid
+      logic [CVA6Cfg.VLEN-1:0] pc;  // PC of predict or mis-predict
+      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;  // dii id of branch
+      logic [CVA6Cfg.PCLEN-1:0] target_address;  // target address at which to jump, or not
+      logic is_mispredict;  // set if this was a mis-predict
+      logic is_taken;  // branch is taken
+      logic is_pcc_change;  // with CHERI: set if the branch changes PCC metadata
+      cf_t cf_type;  // Type of control flow change
     },
 
     // All information needed to determine whether we need to associate an interrupt

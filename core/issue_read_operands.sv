@@ -836,15 +836,7 @@ module issue_read_operands
         else pcc_n = pcc_q;
 
         if (eret_i || set_pc_commit_i || ex_valid_i) pcc_jump_change_valid_n = 1'b0;
-        else if (resolved_branch_i.valid && (cva6_cheri_pkg::set_cap_reg_flags(
-                resolved_branch_i.target_address, 0
-            ) != cva6_cheri_pkg::set_cap_reg_address(
-                cva6_cheri_pkg::set_cap_reg_flags(
-                    pcc_q, 0
-                ),
-                resolved_branch_i.target_address[CVA6Cfg.XLEN-1:0],
-                pcc_meta
-            ))) begin
+        else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
           pcc_jump_change_valid_n = 1'b1;
         end else if (backend_empty_i) pcc_jump_change_valid_n = 1'b0;
         else pcc_jump_change_valid_n = pcc_jump_change_valid_q;

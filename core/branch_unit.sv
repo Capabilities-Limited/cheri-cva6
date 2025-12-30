@@ -106,6 +106,7 @@ module branch_unit #(
     resolved_branch_o.is_taken = 1'b0;
     resolved_branch_o.valid = branch_valid_i;
     resolved_branch_o.is_mispredict = 1'b0;
+    resolved_branch_o.is_pcc_change = 1'b0;
     resolved_branch_o.cf_type = branch_predict_i.cf;
     // calculate target address simple 64 bit addition
     target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
@@ -124,8 +125,21 @@ module branch_unit #(
         branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(
             cva6_cheri_pkg::cap_pcc_to_cap_reg(next_pc), cva6_cheri_pkg::SENTRY_CAP);
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
+          automatic cva6_cheri_pkg::cap_pcc_t compare_pcc;
+          automatic cva6_cheri_pkg::cap_pcc_t compare_target_cap;
+          compare_pcc = cva6_cheri_pkg::set_cap_reg_flags(pcc, 0);
+          compare_target_cap = cva6_cheri_pkg::set_cap_reg_flags(
+              cva6_cheri_pkg::set_cap_reg_otype(operand_a, cva6_cheri_pkg::UNSEALED_CAP), 0);
           target_address =
               cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
+          if (compare_target_cap != cva6_cheri_pkg::set_cap_reg_address(
+                  compare_pcc,
+                  compare_target_cap[CVA6Cfg.XLEN-1:0],
+                  cva6_cheri_pkg::get_cap_reg_meta_data(
+                      pcc)
+              )) begin
+            resolved_branch_o.is_pcc_change = 1'b1;
+          end
           // If jumping into intmode, we must have been in capmode, so always mispredict
           if (cva6_cheri_pkg::get_cap_reg_flags(target_address) == 1'b1)
             resolved_branch_o.is_mispredict = branch_valid_i;
