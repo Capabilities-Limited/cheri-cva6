@@ -344,7 +344,7 @@ done_processing:
       // Clear memory
       for (int i = 0; i < (sizeof(MEM0)/sizeof(MEM0[0])); i++) {
           MEM0[i] = 0;
-          MEM1[i] = 0;
+          //MEM1[i] = 0;
       }
     }
   }
