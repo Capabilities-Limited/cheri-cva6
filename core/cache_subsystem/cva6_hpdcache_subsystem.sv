@@ -194,10 +194,10 @@ module cva6_hpdcache_subsystem
     userCfg.nRequesters = HPDCACHE_NREQUESTERS;
     userCfg.paWidth = CVA6Cfg.PLEN;
     userCfg.wordWidth = CVA6Cfg.CLEN;
+    userCfg.wordUserWidth = 1;
     userCfg.sets = CVA6Cfg.DCACHE_NUM_WORDS;
     userCfg.ways = CVA6Cfg.DCACHE_SET_ASSOC;
     userCfg.clWords = CVA6Cfg.DCACHE_LINE_WIDTH / userCfg.wordWidth;
-    userCfg.reqUserWidth = 1; // 1 cheri tag bit for every CLEN (2 XLEN) word
     userCfg.reqWords = CVA6Cfg.CLEN / userCfg.wordWidth;
     userCfg.reqTransIdWidth = CVA6Cfg.DcacheIdWidth;
     userCfg.reqSrcIdWidth = 3;  // Up to 8 requesters
@@ -207,7 +207,6 @@ module cva6_hpdcache_subsystem
     userCfg.dataRamByteEnable = 1'b1;
     //userCfg.accessWords = __maxu(CVA6Cfg.AxiDataWidth / userCfg.wordWidth, 1  /*reqWords*/);
     userCfg.accessWords = __maxu(CVA6Cfg.AxiDataWidth / userCfg.wordWidth, userCfg.reqWords);
-    userCfg.accessUserWidth = __minu((userCfg.accessWords / userCfg.reqWords) * userCfg.reqUserWidth, 1);
     userCfg.mshrSets = CVA6Cfg.NrLoadBufEntries < 16 ? 1 : CVA6Cfg.NrLoadBufEntries / 2;
     userCfg.mshrWays = CVA6Cfg.NrLoadBufEntries < 16 ? CVA6Cfg.NrLoadBufEntries : 2;
     userCfg.mshrWaysPerRamWord = CVA6Cfg.NrLoadBufEntries < 16 ? CVA6Cfg.NrLoadBufEntries : 2;
@@ -229,7 +228,6 @@ module cva6_hpdcache_subsystem
     userCfg.memAddrWidth = CVA6Cfg.AxiAddrWidth;
     userCfg.memIdWidth = CVA6Cfg.MEM_TID_WIDTH;
     userCfg.memDataWidth = CVA6Cfg.AxiDataWidth;
-    userCfg.memUserWidth = __maxu(CVA6Cfg.AxiDataWidth / CVA6Cfg.CLEN, 1);
     userCfg.lowLatency = 1'b1;
     userCfg.wtEn =
         (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT) ||
@@ -302,6 +300,7 @@ module cva6_hpdcache_subsystem
       .hpdcache_mem_resp_w_t(hpdcache_mem_resp_w_t),
       .hpdcache_req_offset_t(hpdcache_req_offset_t),
       .hpdcache_data_word_t(hpdcache_data_word_t),
+      .hpdcache_req_user_t(hpdcache_req_user_t),
       .hpdcache_req_data_t(hpdcache_req_data_t),
       .hpdcache_req_be_t(hpdcache_req_be_t),
       .hpdcache_req_sid_t(hpdcache_req_sid_t),
