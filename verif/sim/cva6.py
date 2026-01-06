@@ -178,7 +178,6 @@ def get_iss_cmd(base_cmd, elf, target, log):
   cmd = re.sub(r"\<elf\>", elf, base_cmd)
   cmd = re.sub(r"\<target\>", target, cmd)
   cmd = re.sub(r"\<log\>", log, cmd)
-  cmd += (" &> %s.iss" % log)
   return cmd
 
 
