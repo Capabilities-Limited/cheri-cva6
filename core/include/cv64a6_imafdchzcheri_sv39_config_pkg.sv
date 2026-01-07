@@ -36,7 +36,8 @@ package cva6_config_pkg;
 
   localparam CVA6ConfigAxiIdWidth = 4;
   localparam CVA6ConfigAxiAddrWidth = 64;
-  localparam CVA6ConfigAxiDataWidth = 64;
+  //localparam CVA6ConfigAxiDataWidth = CVA6ConfigXlen * 2;
+  localparam CVA6ConfigAxiDataWidth = CVA6ConfigXlen;
   localparam CVA6ConfigFetchUserEn = 0;
   localparam CVA6ConfigFetchUserWidth = 1;
   localparam CVA6ConfigDataUserEn = 1;
@@ -73,7 +74,7 @@ package cva6_config_pkg;
 
   localparam CVA6ConfigPerfCounterEn = 1;
 
-  localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::HPDCACHE_WT;
+  localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::HPDCACHE_WB;
 
   localparam CVA6ConfigMmuPresent = 1;
 
