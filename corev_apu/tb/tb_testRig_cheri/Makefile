@@ -141,6 +141,9 @@ src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                        
         $(root-dir)/vendor/pulp-platform/tech_cells_generic/src/deprecated/cluster_clk_cells.sv                  \
         $(root-dir)/vendor/pulp-platform/tech_cells_generic/src/deprecated/pulp_clk_cells.sv                     \
         $(root-dir)/vendor/pulp-platform/tech_cells_generic/src/rtl/tc_clk.sv                                    \
+        $(root-dir)/corev_apu/instr_tracing/ITI/include/iti_pkg.sv                                               \
+        $(root-dir)/corev_apu/instr_tracing/rv_tracer-main/include/te_pkg.sv                                     \
+        $(root-dir)/corev_apu/instr_tracing/rv_encapsulator-main/src/include/encap_pkg.sv                        \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_burst_cutter.sv                    \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_data_way.sv                        \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_merge_unit.sv                      \
