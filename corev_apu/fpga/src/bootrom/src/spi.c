@@ -105,6 +105,8 @@ int spi_write_bytes(uint8_t *bytes, uint32_t len, uint8_t *ret)
     // enable slave select
     write_reg(SPI_SLAVE_SELECT_REG, 0xfffffffe);
 
+    wait_for_tx_empty();
+
     for (int i = 0; i < len; i++)
     {
         write_reg(SPI_TRANSMIT_REG, bytes[i] & 0xff);
