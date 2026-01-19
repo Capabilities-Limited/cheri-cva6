@@ -207,6 +207,7 @@ module load_store_unit
   logic ld_valid_i;
   logic ld_translation_req;
   logic st_translation_req, cva6_st_translation_req, acc_st_translation_req;
+  logic st_translation_req_is_actually_lr, cva6_st_translation_req_is_actually_lr;
   logic ld_translation_req_is_cap;
   logic st_translation_req_is_cap, cva6_st_translation_req_is_cap;
   logic [CVA6Cfg.VLEN-1:0] ld_vaddr;
@@ -239,6 +240,7 @@ module load_store_unit
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] ld_trans_id;
   logic [       CVA6Cfg.REGLEN-1:0] ld_result;
   logic                             st_valid;
+  logic                             st_is_actually_lr;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] st_trans_id;
   logic [       CVA6Cfg.REGLEN-1:0] st_result;
 
@@ -299,7 +301,7 @@ module load_store_unit
         .lsu_req_i(translation_req),
         .lsu_vaddr_i(mmu_vaddr),
         .lsu_tinst_i(mmu_tinst),
-        .lsu_is_store_i(st_translation_req),
+        .lsu_is_store_i(st_translation_req && !st_translation_req_is_actually_lr),
         .lsu_is_cap_i(cva6_translation_req_is_cap),
         .csr_hs_ld_st_inst_o(csr_hs_ld_st_inst_o),
         .lsu_dtlb_hit_o(dtlb_hit),  // send in the same cycle as the request
@@ -414,7 +416,7 @@ module load_store_unit
       .lsu_paddr_i         (lsu_paddr),
       .lsu_vaddr_i         (mmu_vaddr),
       .lsu_exception_i     (mmu_exception),
-      .lsu_is_store_i      (st_translation_req),
+      .lsu_is_store_i      (st_translation_req && !st_translation_req_is_actually_lr),
       .lsu_valid_o         (translation_valid),
       .lsu_paddr_o         (mmu_paddr),
       .lsu_exception_o     (pmp_exception),
@@ -439,7 +441,7 @@ module load_store_unit
           64'h8000_0000, 64'h000800000, check_address
       ) && tval_vaddr[CVA6Cfg.XLEN-1:CVA6Cfg.PLEN] == '0;
       automatic exception_t rvfi_exception = '0;
-      rvfi_exception.cause = st_valid ? riscv::ST_ACCESS_FAULT : riscv::LD_ACCESS_FAULT;
+      rvfi_exception.cause = (st_valid && !st_is_actually_lr) ? riscv::ST_ACCESS_FAULT : riscv::LD_ACCESS_FAULT;
       rvfi_exception.valid = pmp_translation_valid;
       if (CVA6Cfg.TvalEn) rvfi_exception.tval = tval_vaddr;
       lsu_exception = (rvfi_addr_allowed || mmu_exception.valid) ? mmu_exception : rvfi_exception;
@@ -470,11 +472,12 @@ module load_store_unit
     // This logic can be optimized to reduce answer latency and contention
     always_comb begin
       // Maintain state
-      mmu_state_d          = mmu_state_q;
+      mmu_state_d                       = mmu_state_q;
       // Serve CVA6 and gate the accelerator by default
       // MMU input
-      misaligned_exception = cva6_misaligned_exception;
-      st_translation_req   = cva6_st_translation_req;
+      misaligned_exception              = cva6_misaligned_exception;
+      st_translation_req                = cva6_st_translation_req;
+      st_translation_req_is_actually_lr = cva6_st_translation_req_is_actually_lr;
       if (CVA6Cfg.CheriPresent) begin
         st_translation_req_is_cap = cva6_st_translation_req_is_cap;
       end
@@ -509,7 +512,8 @@ module load_store_unit
         ACC: begin
           // MMU input
           misaligned_exception = acc_mmu_req_i.acc_mmu_misaligned_ex;
-          st_translation_req   = acc_mmu_req_i.acc_mmu_is_store;
+          st_translation_req = acc_mmu_req_i.acc_mmu_is_store;
+          st_translation_req_is_actually_lr = 1'b0;
           if (CVA6Cfg.CheriPresent) begin
             st_translation_req_is_cap = 1'b0;
           end
@@ -546,18 +550,19 @@ module load_store_unit
     if (CVA6Cfg.CheriPresent) begin
       assign st_translation_req_is_cap = cva6_st_translation_req_is_cap;
     end
-    assign translation_req        = cva6_translation_req;
-    assign mmu_vaddr              = cva6_mmu_vaddr;
+    assign st_translation_req_is_actually_lr = cva6_st_translation_req_is_actually_lr;
+    assign translation_req                   = cva6_translation_req;
+    assign mmu_vaddr                         = cva6_mmu_vaddr;
     // MMU output
-    assign cva6_translation_valid = translation_valid;
-    assign cva6_mmu_paddr         = mmu_paddr;
-    assign cva6_mmu_exception     = lsu_exception;
-    assign cva6_dtlb_hit          = dtlb_hit;
-    assign cva6_dtlb_ppn          = dtlb_ppn;
+    assign cva6_translation_valid            = translation_valid;
+    assign cva6_mmu_paddr                    = mmu_paddr;
+    assign cva6_mmu_exception                = lsu_exception;
+    assign cva6_dtlb_hit                     = dtlb_hit;
+    assign cva6_dtlb_ppn                     = dtlb_ppn;
     // No accelerator
-    assign acc_mmu_resp_o         = '0;
+    assign acc_mmu_resp_o                    = '0;
     // Feed forward the lsu_ctrl bypass
-    assign lsu_ctrl               = lsu_ctrl_byp;
+    assign lsu_ctrl                          = lsu_ctrl_byp;
   end
 
   logic store_buffer_empty;
@@ -585,30 +590,32 @@ module load_store_unit
       .commit_ready_o,
       .amo_valid_commit_i,
 
-      .valid_o                 (st_valid),
-      .trans_id_o              (st_trans_id),
-      .result_o                (st_result),
-      .ex_o                    (st_ex),
+      .valid_o                         (st_valid),
+      .st_is_actually_lr_o             (st_is_actually_lr),
+      .trans_id_o                      (st_trans_id),
+      .result_o                        (st_result),
+      .ex_o                            (st_ex),
       // MMU port
-      .translation_req_o       (cva6_st_translation_req),
-      .translation_req_is_cap_o(cva6_st_translation_req_is_cap),
-      .vaddr_o                 (st_vaddr),
-      .rvfi_mem_paddr_o        (rvfi_mem_paddr_o),
-      .tinst_o                 (st_tinst),
-      .hs_ld_st_inst_o         (st_hs_ld_st_inst),
-      .hlvx_inst_o             (st_hlvx_inst),
-      .paddr_i                 (cva6_mmu_paddr),
-      .ex_i                    (cva6_mmu_exception),
-      .dtlb_hit_i              (cva6_dtlb_hit),
+      .translation_req_o               (cva6_st_translation_req),
+      .translation_req_is_cap_o        (cva6_st_translation_req_is_cap),
+      .translation_req_is_actually_lr_o(cva6_st_translation_req_is_actually_lr),
+      .vaddr_o                         (st_vaddr),
+      .rvfi_mem_paddr_o                (rvfi_mem_paddr_o),
+      .tinst_o                         (st_tinst),
+      .hs_ld_st_inst_o                 (st_hs_ld_st_inst),
+      .hlvx_inst_o                     (st_hlvx_inst),
+      .paddr_i                         (cva6_mmu_paddr),
+      .ex_i                            (cva6_mmu_exception),
+      .dtlb_hit_i                      (cva6_dtlb_hit),
       // Load Unit
-      .page_offset_i           (page_offset),
-      .page_offset_matches_o   (page_offset_matches),
+      .page_offset_i                   (page_offset),
+      .page_offset_matches_o           (page_offset_matches),
       // AMOs
       .amo_req_o,
       .amo_resp_i,
       // to memory arbiter
-      .req_port_i              (dcache_req_ports_i[2]),
-      .req_port_o              (dcache_req_ports_o[2])
+      .req_port_i                      (dcache_req_ports_i[2]),
+      .req_port_o                      (dcache_req_ports_o[2])
   );
 
   logic ld_strip_tag, ld_strip_tag_o;
@@ -846,7 +853,7 @@ module load_store_unit
         end
         STORE: begin
 
-          cva6_misaligned_exception.cause = riscv::ST_ADDR_MISALIGNED;
+          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRC} ? riscv::LD_ADDR_MISALIGNED : riscv::ST_ADDR_MISALIGNED;
           cva6_misaligned_exception.valid = 1'b1;
           if (CVA6Cfg.TvalEn)
             cva6_misaligned_exception.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, lsu_ctrl.vaddr};
@@ -875,7 +882,7 @@ module load_store_unit
           end
         end
         STORE: begin
-          cva6_misaligned_exception.cause = riscv::STORE_PAGE_FAULT;
+          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRC} ? riscv::LOAD_PAGE_FAULT : riscv::STORE_PAGE_FAULT;
           cva6_misaligned_exception.valid = 1'b1;
           if (CVA6Cfg.TvalEn)
             cva6_misaligned_exception.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, lsu_ctrl.vaddr};
@@ -904,7 +911,7 @@ module load_store_unit
           end
         end
         STORE: begin
-          cva6_misaligned_exception.cause = riscv::STORE_GUEST_PAGE_FAULT;
+          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRC} ? riscv:: LOAD_GUEST_PAGE_FAULT : riscv::STORE_GUEST_PAGE_FAULT;
           cva6_misaligned_exception.valid = 1'b1;
           if (CVA6Cfg.TvalEn)
             cva6_misaligned_exception.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, lsu_ctrl.vaddr};
