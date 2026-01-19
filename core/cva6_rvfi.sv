@@ -178,7 +178,7 @@ module cva6_rvfi
 
   assign lsu_addr = instr.lsu_ctrl_vaddr;
   assign lsu_rmask = (instr.lsu_ctrl_fu == LOAD || (((mem_q[lsu_addr_trans_id].instr & 32'hF800703F) == 32'h1000402F)) && instr.lsu_ctrl_fu == STORE) ? instr.lsu_ctrl_be : '0;
-  assign lsu_wmask = (instr.lsu_ctrl_fu == STORE && !((mem_q[lsu_addr_trans_id].instr  & 32'hF800703F) == 32'h1000402F)) ? instr.lsu_ctrl_be : '0;
+  assign lsu_wmask = instr.lsu_ctrl_fu == STORE ? instr.lsu_ctrl_be : '0;
   assign lsu_addr_trans_id = instr.lsu_ctrl_trans_id;
   assign branch_trans_id = instr.branch_trans_id;
 
