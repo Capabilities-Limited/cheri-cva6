@@ -947,9 +947,9 @@ module load_store_unit
       automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
       automatic cva6_cheri_pkg::cap_reg_t operand_b;
       // "Safe" defaults for the below in case we miss a decoding case
-      logic [CVA6Cfg.XLEN-1:0] size = cva6_cheri_pkg::CLEN/8;
-      logic does_load = 1'b1;
-      logic does_store = 1'b1;
+      automatic logic [CVA6Cfg.XLEN-1:0] size = cva6_cheri_pkg::CLEN/8;
+      automatic logic does_load = 1'b1;
+      automatic logic does_store = 1'b1;
 
       cheri_tval2 = '0;
       cheri_tval2.fault_type = cva6_cheri_pkg::CAP_DATA_ACCESS_FAULT;
