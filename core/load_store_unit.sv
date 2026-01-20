@@ -953,25 +953,29 @@ module load_store_unit
       operand_b = lsu_ctrl.data;
 
       unique case (lsu_ctrl.operation)
-        ariane_pkg::LW, ariane_pkg::SW,
-            ariane_pkg::LWU, ariane_pkg::FLW,
-            ariane_pkg::HLV_W, ariane_pkg::HLV_WU,
-            ariane_pkg::HLVX_WU: begin
+        LW, SW, LWU, FLW, FSW,
+            HLV_W, HLV_WU, HLVX_WU, HSV_W,
+            AMO_LRW, AMO_SCW, AMO_SWAPW, AMO_ADDW,
+            AMO_ANDW, AMO_ORW, AMO_XORW, AMO_MAXW,
+            AMO_MAXWU, AMO_MINW, AMO_MINWU: begin
           size = 4;
         end
-        ariane_pkg::LH, ariane_pkg::SH,
-            ariane_pkg::LHU, ariane_pkg::FLH,
-            ariane_pkg::HLV_H, ariane_pkg::HLV_HU,
-            ariane_pkg::HLVX_HU: begin
+        LH, SH, LHU, FLH, FSH, HLV_H, HLV_HU, HLVX_HU, HSV_H, AMO_LRH, AMO_SCH: begin
           size = 2;
         end
-        ariane_pkg::LD, ariane_pkg::SD, ariane_pkg::FLD, ariane_pkg::HSV_D, ariane_pkg::HLV_D: begin
+        LD, SD, FLD, FSD, HSV_D, HLV_D,
+            AMO_LRD, AMO_SCD, AMO_SWAPD, AMO_ADDD,
+            AMO_ANDD, AMO_ORD, AMO_XORD, AMO_MAXD,
+            AMO_MAXDU, AMO_MIND, AMO_MINDU: begin
           size = 8;
         end
-        ariane_pkg::LC, ariane_pkg::SC, ariane_pkg::AMO_LRC, ariane_pkg::AMO_SCC: begin
+        LC, SC, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
           size = cva6_cheri_pkg::CLEN / 8;
         end
-        default: size = 1;
+        LB, LBU, SB, AMO_LRB, AMO_SCB, FLB, FSB, HLV_B, HLV_BU, HSV_B: begin
+          size = 1;
+        end
+        default: size = cva6_cheri_pkg::CLEN / 8;  // "Safe" default in case we miss any ops
       endcase
 
       if (lsu_ctrl.valid && !debug_mode_i) begin
