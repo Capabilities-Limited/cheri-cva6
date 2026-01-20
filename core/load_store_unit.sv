@@ -946,7 +946,10 @@ module load_store_unit
     always_comb begin : data_cheri_exception
       automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
       automatic cva6_cheri_pkg::cap_reg_t operand_b;
-      logic [CVA6Cfg.XLEN-1:0] size;
+      // "Safe" defaults for the below in case we miss a decoding case
+      logic [CVA6Cfg.XLEN-1:0] size = cva6_cheri_pkg::CLEN/8;
+      logic does_load = 1'b1;
+      logic does_store = 1'b1;
 
       cheri_tval2 = '0;
       cheri_tval2.fault_type = cva6_cheri_pkg::CAP_DATA_ACCESS_FAULT;
@@ -960,32 +963,60 @@ module load_store_unit
       operand_b = lsu_ctrl.data;
 
       unique case (lsu_ctrl.operation)
-        LW, SW, LWU, FLW, FSW,
-            HLV_W, HLV_WU, HLVX_WU, HSV_W,
-            AMO_LRW, AMO_SCW, AMO_SWAPW, AMO_ADDW,
+        LW, SW, LWU, FLW, HLV_W, HLV_WU, HLVX_WU, AMO_LRW: begin
+          size = 4;
+          does_store = 1'b0;
+        end
+        FSW, HSV_W, AMO_SCW: begin
+          size = 4;
+          does_load = 1'b0;
+        end
+        AMO_SWAPW, AMO_ADDW,
             AMO_ANDW, AMO_ORW, AMO_XORW, AMO_MAXW,
             AMO_MAXWU, AMO_MINW, AMO_MINWU: begin
           size = 4;
         end
-        LH, SH, LHU, FLH, FSH,
-            HLV_H, HLV_HU, HLVX_HU, HSV_H,
-            AMO_LRH, AMO_SCH: begin
+        LH, SH, LHU, FLH, HLV_H, HLV_HU, HLVX_HU, AMO_LRH: begin
           size = 2;
+          does_store = 1'b0;
         end
-        LD, SD, FLD, FSD, HSV_D, HLV_D,
-            AMO_LRD, AMO_SCD, AMO_SWAPD, AMO_ADDD,
+        FSH, HSV_H, AMO_SCH: begin
+          size = 2;
+          does_load = 1'b0;
+        end
+        LD, SD, FLD, HSV_D, HLV_D, AMO_LRD: begin
+          size = 8;
+          does_store = 1'b0;
+        end
+        FSD, AMO_SCD: begin
+          size = 8;
+          does_load = 1'b0;
+        end
+        AMO_SWAPD, AMO_ADDD,
             AMO_ANDD, AMO_ORD, AMO_XORD, AMO_MAXD,
             AMO_MAXDU, AMO_MIND, AMO_MINDU: begin
           size = 8;
         end
-        LC, SC, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
-          size = cva6_cheri_pkg::CLEN / 8;
+        LC, AMO_LRC: begin
+          size = cva6_cheri_pkg::CLEN/8;
+          does_store = 1'b0;
         end
-        LB, LBU, SB, AMO_LRB, AMO_SCB,
-            FLB, FSB, HLV_B, HLV_BU, HSV_B: begin
+        SC, AMO_SCC: begin
+          size = cva6_cheri_pkg::CLEN/8;
+          does_load = 1'b0;
+        end
+        AMO_SWAPC: begin
+          size = cva6_cheri_pkg::CLEN/8;
+        end
+        LB, LBU, AMO_LRB, FLB, HLV_B, HLV_BU: begin
           size = 1;
+          does_store = 1'b0;
         end
-        default: size = cva6_cheri_pkg::CLEN/8; // "Safe" default in case we miss any ops
+        SB, AMO_SCB, FSB, HSV_B: begin
+          size = 1;
+          does_load = 1'b0;
+        end
+        default: begin end
       endcase
 
       if (lsu_ctrl.valid && !debug_mode_i) begin
@@ -994,12 +1025,12 @@ module load_store_unit
           cheri_exception.valid   = 1'b1;
         end
 
-        if (!check_cap.hperms.permit_load && (lsu_ctrl.fu == LOAD)) begin
+        if (!check_cap.hperms.permit_load && does_load) begin
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
           cheri_exception.valid   = 1'b1;
         end
 
-        if (!check_cap.hperms.permit_store && (lsu_ctrl.fu == STORE)) begin
+        if (!check_cap.hperms.permit_store && does_store) begin
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
           cheri_exception.valid   = 1'b1;
         end
