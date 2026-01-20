@@ -364,13 +364,13 @@ module cva6_hpdcache_if_adapter
           if (amo_addr[1] == 1'b1) begin
             amo_resp[15:0] = amo_resp[31:16];
           end
-          amo_resp[31:16] = {16{amo_resp[15]}};
+          amo_resp[63:16] = {48{amo_resp[15]}};
         end
         if (cva6_amo_req_i.size == 3'b000) begin
           if (amo_addr[0] == 1'b1) begin
             amo_resp[7:0] = amo_resp[15:8];
           end
-          amo_resp[15:8] = {8{amo_resp[7]}};
+          amo_resp[63:8] = {56{amo_resp[7]}};
         end
       end
       //if (CVA6Cfg.XLEN == 64) begin : amo_resp_64_gen
