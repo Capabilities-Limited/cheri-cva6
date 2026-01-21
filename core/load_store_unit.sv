@@ -963,11 +963,11 @@ module load_store_unit
       operand_b = lsu_ctrl.data;
 
       unique case (lsu_ctrl.operation)
-        LW, SW, LWU, FLW, HLV_W, HLV_WU, HLVX_WU, AMO_LRW: begin
+        LW, LWU, FLW, HLV_W, HLV_WU, HLVX_WU, AMO_LRW: begin
           size = 4;
           does_store = 1'b0;
         end
-        FSW, HSV_W, AMO_SCW: begin
+        SW, FSW, HSV_W, AMO_SCW: begin
           size = 4;
           does_load = 1'b0;
         end
@@ -976,19 +976,19 @@ module load_store_unit
             AMO_MAXWU, AMO_MINW, AMO_MINWU: begin
           size = 4;
         end
-        LH, SH, LHU, FLH, HLV_H, HLV_HU, HLVX_HU, AMO_LRH: begin
+        LH, LHU, FLH, HLV_H, HLV_HU, HLVX_HU, AMO_LRH: begin
           size = 2;
           does_store = 1'b0;
         end
-        FSH, HSV_H, AMO_SCH: begin
+        SH, FSH, HSV_H, AMO_SCH: begin
           size = 2;
           does_load = 1'b0;
         end
-        LD, SD, FLD, HSV_D, HLV_D, AMO_LRD: begin
+        LD, FLD, HLV_D, AMO_LRD: begin
           size = 8;
           does_store = 1'b0;
         end
-        FSD, AMO_SCD: begin
+        SD, FSD, HSV_D, AMO_SCD: begin
           size = 8;
           does_load = 1'b0;
         end
