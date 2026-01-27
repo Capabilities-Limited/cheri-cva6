@@ -427,7 +427,7 @@ package cva6_cheri_pkg;
   } top_base_t;
 
   function automatic top_base_t get_cap_reg_top_base(cap_reg_t cap, cap_meta_data_t cap_meta_data);
-    ew_t exp = cap.bounds.exp;
+    ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
     addrw_t addr_bits = CAP_ADDR_WIDTH'({2'b0, cap.addr} & ~(~66'b0 >> exp)); // mask in relevant addr bits
     // base
     addrw_t base_corr_bits = CAP_ADDR_WIDTH'($signed({cap_meta_data.cb, 66'b0}) >>> exp);
@@ -498,9 +498,10 @@ package cva6_cheri_pkg;
   function automatic addrw_t get_cap_reg_length(cap_reg_t cap, cap_meta_data_t cap_meta_data);
     mwe2_t  top = {cap_meta_data.ct, cap.bounds.top_bits};
     mwe2_t  base = {cap_meta_data.cb, cap.bounds.base_bits};
-    addrw_t length = CAP_ADDR_WIDTH'({(top - base), 52'b0} >> cap.bounds.exp);
+    ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
+    addrw_t length = CAP_ADDR_WIDTH'({(top - base), 52'b0} >> exp);
     // TODO: same saturation behaviour as bsv... "short of being correct"
-    return (cap.bounds.exp == CAP_RESET_EXP) ? ~0 : length;
+    return (exp == CAP_RESET_EXP) ? ~0 : length;
   endfunction
 
   /**
@@ -510,7 +511,7 @@ package cva6_cheri_pkg;
       * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
       */
   function automatic addrw_t get_cap_reg_offset(cap_reg_t cap, cap_meta_data_t cap_meta_data);
-    ew_t exp = cap.bounds.exp;
+    ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
     mwe2_t base = {cap_meta_data.cb, cap.bounds.base_bits};
     mwe2_t offset_bits = {2'b0, cap.addr_mid} - base;
     addrw_t addr_lsb = cap.addr & (~0 >> (CAP_M_WIDTH - 2 + exp));
@@ -532,7 +533,7 @@ package cva6_cheri_pkg;
                                                    cap_meta_data_t cap_meta_data);
     localparam T_W = CAP_ADDR_WIDTH - CAP_M_WIDTH;
     cap_reg_t ret = cap;
-    ew_t e = cap.bounds.exp;
+    ew_t e = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
 
     mw_t newAddrMid = extract_addr_mid(address, e);
     bool_t newAddrHi = newAddrMid < cap_meta_data.r;
@@ -571,7 +572,7 @@ package cva6_cheri_pkg;
       , addrw_t offset  // this is the increment in inc offset, and the offset in set offset
       , cap_meta_data_t cap_meta_data, bool_t set_offset);
     cap_reg_t ret = cap;
-    ew_t exp = cap.bounds.exp;
+    ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
     addrw_t offset_addr = offset;
     mw_t offset_bits = extract_addr_mid(offset_addr, exp);
 
