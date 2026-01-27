@@ -30,7 +30,8 @@ pipeline {
                           }
                       fi
                       . /local/ecad/xilinx/Vivado/2020.1/settings64.sh
-                      sed "s/\\(ConfigRVZ.*\\) = 1/\\1 = 0/" core/include/cv64a6_imafdchzcheri_sv39_config_pkg.sv > core/include/cv64a6_imafdchzNOcheri_sv39_config_pkg.sv
+                      sed "s/\\(ConfigRVZcheri.*\\) = 1/\\1 = 0/" core/include/cv64a6_imafdchzcheri_sv39_config_pkg.sv > core/include/cv64a6_imafdchzNOcheri_sv39_config_pkg.sv
+                      sed -i -E 's/ConfigDataUserEn = 1/ConfigDataUserEn = 0/' core/include/cv64a6_imafdchzNOcheri_sv39_config_pkg.sv
                       export target="cv64a6_imafdchzNOcheri_sv39"
                       if [ "$flavour" = "CHERI" ]; then
                         export target="cv64a6_imafdchzcheri_sv39"
