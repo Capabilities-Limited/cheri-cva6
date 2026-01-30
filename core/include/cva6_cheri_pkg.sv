@@ -219,7 +219,6 @@ package cva6_cheri_pkg;
   /* Capability definition in register */
   typedef struct packed {
     bool_t       tag;
-    mw_t         addr_mid;
     resw_hi_t    res_hi;
     upermsw_t    uperms;
     cap_flags_t  flags;
@@ -252,7 +251,6 @@ package cva6_cheri_pkg;
   localparam cap_reg_t REG_ROOT_CAP = '{
       tag             : 1'b1,
       addr            : '{default: 0},
-      addr_mid        : '{default: 0},
       uperms          : '{default: '1},
       hperms          : '{default: '1},
       flags           : 1'b1,
@@ -266,7 +264,6 @@ package cva6_cheri_pkg;
   localparam cap_reg_t REG_NULL_CAP = '{
       tag             : 1'b0,
       addr            : '{default: 0},
-      addr_mid        : '{default: 0},
       uperms          : '{default: 0},
       hperms          : '{default: 0},
       flags           : 1'b0,
@@ -504,23 +501,6 @@ package cva6_cheri_pkg;
   endfunction
 
   /**
-      * @brief Function to compute the capability offset address.
-      * @param cap capability in register format.
-      * @param dec_bounds decounds bounds meta data.
-      * @returns the capability offset with size [CAP_ADDR_WIDTH-1:0].
-      */
-  function automatic addrw_t get_cap_reg_offset(cap_reg_t cap, cap_meta_data_t cap_meta_data);
-    ew_t exp = cap.bounds.exp;
-    mwe2_t base = {cap_meta_data.cb, cap.bounds.base_bits};
-    mwe2_t offset_bits = {2'b0, cap.addr_mid} - base;
-    addrw_t addr_lsb = cap.addr & (~0 >> (CAP_M_WIDTH - 2 + exp));
-    addrw_t offset = {{CAP_ADDR_WIDTH - CAP_M_WIDTH - 2{offset_bits[CAP_M_WIDTH+1]}}, offset_bits};
-    offset = offset << (CAP_MAX_EXP - exp);
-    offset = offset | addr_lsb;
-    return offset;
-  endfunction
-
-  /**
       * @brief Function sets the capability address and check if is representable.
       * @param cap capability in register format.
       * @param cursor target address for the resulting capability.
@@ -546,7 +526,6 @@ package cva6_cheri_pkg;
 
     bool_t is_rep = deltaAddrHi == deltaAddrUpper;
     ret.addr = address;
-    ret.addr_mid = newAddrMid;
     // The exp out-of-range check is required for formal bsv equivalence.
     if (!is_rep || e > CAP_MAX_EXP) ret.tag = 1'b0;
     return ret;
@@ -562,88 +541,7 @@ package cva6_cheri_pkg;
     cap_reg_t ret = cap;
     ew_t exp = (cap.bounds.exp > CAP_MAX_EXP) ? CAP_MAX_EXP : cap.bounds.exp;
     ret.addr = address;
-    ret.addr_mid = extract_addr_mid(address, exp);
     return ret;
-  endfunction
-
-  function automatic cap_reg_t cap_reg_inc_offset(
-      cap_reg_t cap, addrw_t cursor
-      , addrw_t offset  // this is the increment in inc offset, and the offset in set offset
-      , cap_meta_data_t cap_meta_data, bool_t set_offset);
-    cap_reg_t ret = cap;
-    ew_t exp = cap.bounds.exp;
-    addrw_t offset_addr = offset;
-    mw_t offset_bits = extract_addr_mid(offset_addr, exp);
-
-    // ----------------
-    // In Range test
-
-    localparam T_W = CAP_ADDR_WIDTH - CAP_M_WIDTH;
-    logic [T_W-1:0] sgn_bits = T_W'($signed(offset[CAP_ADDR_WIDTH-1]));
-    logic [T_W-1:0] og_hi_off_bits = offset_addr[CAP_ADDR_WIDTH-1:CAP_M_WIDTH];
-    logic [T_W-1:0] hi_filt_bits = T_W'(~({T_W + 2{1'b1}} >> exp));
-    logic [T_W-1:0] hi_off_bits = (og_hi_off_bits ^ sgn_bits) & hi_filt_bits;
-    bool_t in_range = hi_off_bits == 0;
-
-    // The sign of the increment
-    bool_t pos_inc = 1'(offset_addr[CAP_ADDR_WIDTH-1]) == 1'b0;
-    mw_t to_bounds_a = {3'b110, (CAP_M_WIDTH - 3)'(0)};
-    mw_t to_bounds_m1_a = to_bounds_a - CAP_M_WIDTH'(1);
-    mw_t rep_bound_bits = cap_meta_data.r;
-    mw_t to_bounds_b = rep_bound_bits - cap.addr_mid;
-    mw_t to_bounds_m1_b = rep_bound_bits + ~cap.addr_mid;
-
-    // Select the appropriate toBounds value
-    mw_t to_bounds = set_offset ? to_bounds_a : to_bounds_b;
-    mw_t to_bounds_m1 = set_offset ? to_bounds_m1_a : to_bounds_m1_b;
-    bool_t addr_at_rep_bound = !set_offset && (rep_bound_bits == cap.addr_mid);
-
-    // Implement the in_limits test
-    bool_t in_limits = pos_inc ? (set_offset ? offset_bits <= to_bounds_m1
-                                                 : offset_bits < to_bounds_m1)
-                                   : ((offset_bits >= to_bounds) && !addr_at_rep_bound);
-
-    // Complete representable bounds check
-    // -----------------------------------
-    bool_t in_bounds = (in_range && in_limits) || (exp <= 2);
-
-    // Updating the return capability
-    // ------------------------------
-    mw_t new_addr_bits = cap.bounds.base_bits + offset_bits;
-    logic [CAP_M_WIDTH-3:0] mask_lo = ~0;
-    logic [1:0] mask_hi = (exp == 0) ? 2'b00 : (exp == 1) ? 2'b01 : 2'b11;
-    mw_t mask = {mask_hi, mask_lo};
-    if (set_offset) begin
-      ret.addr = get_cap_reg_base(cap, cap_meta_data) + offset_addr;
-      ret.addr_mid = new_addr_bits & mask;
-    end else begin
-      ret.addr = cursor;
-      ret.addr_mid = extract_addr_mid(cursor, exp);
-    end
-    // Nullify the capability if the representable bounds check has failed
-    if (!in_bounds) ret.tag = 1'b0;
-
-    // return updated / invalid capability
-    return ret;
-  endfunction
-
-  /**
-      * @brief Function to check if capabiliy is within bounds.
-      * @param cap capability in register format.
-      * @param cap_meta_data capability decounds bounds meta data.
-      * @param inclusive 0 - includes top in the in bounds check.
-      *                  1 - excludes top in the inbounds check.
-      * @returns 0 if not in bounds and 1 if in bounds.
-      */
-  function automatic bool_t is_cap_reg_inbounds(cap_reg_t cap, cap_meta_data_t meta_data,
-                                                bool_t inclusive);
-    mw_t addr_mid = cap.addr_mid;
-    bool_t check_addr = inclusive ? addr_mid <= cap.bounds.top_bits
-                            : addr_mid <  cap.bounds.top_bits;
-    bool_t check_top  = (meta_data.top_hi_r   == meta_data.addr_hi_r) ? check_addr : meta_data.top_hi_r;
-    bool_t check_base = (meta_data.base_hi_r  == meta_data.addr_hi_r) ? addr_mid >= cap.bounds.base_bits
-                                         : meta_data.addr_hi_r;
-    return check_top && check_base;
   endfunction
 
   /**
@@ -773,7 +671,6 @@ package cva6_cheri_pkg;
     ret.cap.bounds.exp = final_exp;
     ret.cap.bounds.top_bits = final_top_bits;
     ret.cap.bounds.base_bits = final_base_bits;
-    ret.cap.addr_mid = base_bits;
     ret.exact = exact;
     ret.mask = base_mask[CAP_ADDR_WIDTH-1:0];
     return ret;
@@ -834,8 +731,7 @@ package cva6_cheri_pkg;
         otype: cap.otype,
         EF: cap.EF,
         bounds: bounds,
-        addr: cap.addr,
-        addr_mid: extract_addr_mid(cap.addr, exp)
+        addr: cap.addr
     };
     return ret;
   endfunction
