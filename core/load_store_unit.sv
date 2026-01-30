@@ -257,8 +257,6 @@ module load_store_unit
   cva6_cheri_pkg::cap_meta_data_t check_cap_meta_data;
   cva6_cheri_pkg::addrw_t         check_cap_base;
   cva6_cheri_pkg::addrwe_t        check_cap_top;
-  cva6_cheri_pkg::addrwe_t        check_cap_length;
-  cva6_cheri_pkg::addrw_t         check_cap_offset;
   cva6_cheri_pkg::addrw_t         check_cap_address;
   logic                           check_cap_is_sealed;
   logic                           check_cap_bounds_root;
@@ -931,8 +929,6 @@ module load_store_unit
       check_cap_address = lsu_ctrl.vaddr;
       check_cap_base = cva6_cheri_pkg::get_cap_reg_base(check_cap, check_cap_meta_data);
       check_cap_top = cva6_cheri_pkg::get_cap_reg_top(check_cap, check_cap_meta_data);
-      check_cap_length = cva6_cheri_pkg::get_cap_reg_length(check_cap, check_cap_meta_data);
-      check_cap_offset = cva6_cheri_pkg::get_cap_reg_offset(check_cap, check_cap_meta_data);
       check_cap_is_sealed = (check_cap.otype != cva6_cheri_pkg::UNSEALED_CAP);
       check_cap_bounds_root =
           cva6_cheri_pkg::are_cap_reg_bounds_root(check_cap, check_cap_meta_data);
