@@ -753,10 +753,8 @@ package cva6_cheri_pkg;
         ) : add_b1000(
             lost_sig_top, new_top_bits[CAP_M_WIDTH-1:0])
     );
-    mw_t final_base_bits = bot3z(
-        int_exp
-        , (len_ovflw && int_exp) ? new_base_bits[CAP_M_WIDTH:1] : new_base_bits[CAP_M_WIDTH-1:0]
-    );
+    mw_t base_bits = (len_ovflw && int_exp) ? new_base_bits[CAP_M_WIDTH:1] : new_base_bits[CAP_M_WIDTH-1:0];
+    mw_t final_base_bits = bot3z(int_exp, base_bits);
 
     bool_t exact = !(lost_sig_base || lost_sig_top);
     cap_fmt_t fmt = (int_exp) ? EMBEDDED_EXP : IMPLIED_EXP;
@@ -775,7 +773,7 @@ package cva6_cheri_pkg;
     ret.cap.bounds.exp = final_exp;
     ret.cap.bounds.top_bits = final_top_bits;
     ret.cap.bounds.base_bits = final_base_bits;
-    ret.cap.addr_mid = final_base_bits;
+    ret.cap.addr_mid = base_bits;
     ret.exact = exact;
     ret.mask = base_mask[CAP_ADDR_WIDTH-1:0];
     return ret;
