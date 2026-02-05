@@ -658,6 +658,15 @@ package cva6_cheri_pkg;
                                                   : ~lmask_lo )
                     : {CAP_ADDR_WIDTH + 2{1'b1}};
 
+    // perform well-formed checks on the result cap
+    ////////////////////////////////////////////////////////////////////////
+    if (final_exp == 6'd0 && final_base_bits != '0) begin
+      ret.cap.tag = 1'b0;
+    end
+    if (final_exp == 6'd1 && final_base_bits[CAP_M_WIDTH-1] != 1'b0) begin
+      ret.cap.tag = 1'b0;
+    end
+
     // fold in return values and return
     ////////////////////////////////////////////////////////////////////////
     ret.cap.EF = fmt;
