@@ -1318,7 +1318,7 @@ module csr_regfile
 
     if (mtvec_rst_load_q) begin
       if (CVA6Cfg.RVFI_DII) begin
-        mtvec_d = cva6_cheri_pkg::REG_ROOT_CAP;
+        mtvec_d = REG_ROOT;
       end else begin
         mtvec_d =
             set_cap_reg_addr(cap_pcc_to_cap_reg(boot_addr_i), boot_addr_i[CVA6Cfg.XLEN-1:0] + 'h40);
@@ -1389,7 +1389,7 @@ module csr_regfile
         if (CVA6Cfg.DebugEn) begin
           if (CVA6Cfg.CheriPresent) begin
             // XXX debugger injects infinite cap on PCC changes
-            csr_update_cap_prelegal = cva6_cheri_pkg::REG_ROOT_CAP;
+            csr_update_cap_prelegal = REG_ROOT;
             dpc_d = csr_update_cap_postlegal;
           end else begin
             dpc_d = csr_wdata;
@@ -3023,7 +3023,7 @@ module csr_regfile
     if (CVA6Cfg.DebugEn && debug_mode_q) begin
       if (CVA6Cfg.CheriPresent) begin
         trap_vector_base_o = cva6_cheri_pkg::set_cap_reg_addr(
-          cva6_cheri_pkg::REG_ROOT_CAP,
+          REG_ROOT,
           CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0]
         );
       end else begin
@@ -3090,7 +3090,7 @@ module csr_regfile
     endcase
 
     if (CVA6Cfg.CheriPresent) begin
-      if (csr_rcap_null) csr_rdata_o = set_cap_reg_addr(REG_NULL_CAP, csr_rdata_tmp);
+      if (csr_rcap_null) csr_rdata_o = set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, csr_rdata_tmp);
       else csr_rdata_o = csr_rcap;
     end else csr_rdata_o = csr_rdata_tmp;
   end
@@ -3197,7 +3197,7 @@ module csr_regfile
       if (CVA6Cfg.DebugEn) begin
         debug_mode_q       <= 1'b0;
         dcsr_q             <= '{xdebugver: 4'h4, prv: riscv::PRIV_LVL_M, default: '0};
-        dpc_q              <= CVA6Cfg.CheriPresent ? cva6_cheri_pkg::REG_ROOT_CAP : '0;
+        dpc_q              <= REG_ROOT;
         dscratch0_q        <= {CVA6Cfg.XLEN{1'b0}};
         dscratch1_q        <= {CVA6Cfg.XLEN{1'b0}};
         dscratch2_q        <= {CVA6Cfg.XLEN{1'b0}};
@@ -3207,14 +3207,14 @@ module csr_regfile
       mstatus_q <= 64'b0;
       // set to boot address + direct mode + 4 byte offset which is the initial trap
       mtvec_rst_load_q <= 1'b1;
-      mtvec_q <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_ROOT_CAP : 0;
+      mtvec_q <= REG_ROOT;
       mip_q <= {CVA6Cfg.XLEN{1'b0}};
       mie_q <= {CVA6Cfg.XLEN{1'b0}};
-      mepc_q <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_ROOT_CAP : {CVA6Cfg.XLEN{1'b0}};
+      mepc_q <= REG_ROOT;
       mcause_q <= {CVA6Cfg.XLEN{1'b0}};
       mcounteren_q <= {CVA6Cfg.XLEN{1'b0}};
-      mscratch_q <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : {CVA6Cfg.XLEN{1'b0}};
-      if (CVA6Cfg.CheriPresent) mtid_q <= cva6_cheri_pkg::REG_NULL_CAP;
+      mscratch_q <= REG_NULL;
+      if (CVA6Cfg.CheriPresent) mtid_q <= REG_NULL;
       if (CVA6Cfg.TvalEn) mtval_q <= {CVA6Cfg.XLEN{1'b0}};
       mfiom_q         <= '0;
       dcache_q        <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
@@ -3229,12 +3229,12 @@ module csr_regfile
       if (CVA6Cfg.RVS) begin
         medeleg_q <= {CVA6Cfg.XLEN{1'b0}};
         mideleg_q <= {CVA6Cfg.XLEN{1'b0}};
-        sepc_q <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_ROOT_CAP : {CVA6Cfg.XLEN{1'b0}};
+        sepc_q <= REG_ROOT;
         scause_q <= {CVA6Cfg.XLEN{1'b0}};
-        stvec_q <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_ROOT_CAP : {CVA6Cfg.XLEN{1'b0}};
+        stvec_q <= REG_ROOT;
         scounteren_q <= {CVA6Cfg.XLEN{1'b0}};
-        sscratch_q <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : {CVA6Cfg.XLEN{1'b0}};
-        if (CVA6Cfg.CheriPresent) stid_q <= cva6_cheri_pkg::REG_NULL_CAP;
+        sscratch_q <= REG_NULL;
+        if (CVA6Cfg.CheriPresent) stid_q <= REG_NULL;
         stval_q  <= {CVA6Cfg.XLEN{1'b0}};
         stval2_q <= {CVA6Cfg.XLEN{1'b0}};
         sfiom_q  <= '0;
@@ -3262,11 +3262,11 @@ module csr_regfile
         htinst_q <= {CVA6Cfg.XLEN{1'b0}};
         // virtual supervisor mode registers
         vsstatus_q <= 64'b0;
-        vsepc_q <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_ROOT_CAP : {CVA6Cfg.XLEN{1'b0}};
+        vsepc_q <= REG_ROOT;
         vscause_q <= {CVA6Cfg.XLEN{1'b0}};
-        vstvec_q <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_ROOT_CAP : {CVA6Cfg.XLEN{1'b0}};
-        vsscratch_q <= (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : {CVA6Cfg.XLEN{1'b0}};
-        if (CVA6Cfg.CheriPresent) vstid_q <= cva6_cheri_pkg::REG_NULL_CAP;
+        vstvec_q <= REG_ROOT;
+        vsscratch_q <= REG_NULL;
+        if (CVA6Cfg.CheriPresent) vstid_q <= REG_NULL;
         vstval_q                 <= {CVA6Cfg.XLEN{1'b0}};
         vsatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
         en_ld_st_g_translation_q <= 1'b0;
@@ -3296,8 +3296,8 @@ module csr_regfile
         end
       end
       if (CVA6Cfg.CheriPresent) begin
-        ddc_q  <= cva6_cheri_pkg::REG_ROOT_CAP;
-        utid_q <= cva6_cheri_pkg::REG_NULL_CAP;
+        ddc_q  <= REG_ROOT;
+        utid_q <= REG_NULL;
       end
     end else begin
       priv_lvl_q <= priv_lvl_d;

@@ -402,7 +402,7 @@ module ex_stage
     // Branch result as default case
     flu_result_o = branch_result;
     flu_trans_id_o = one_cycle_data.trans_id;
-    result = cva6_cheri_pkg::REG_NULL_CAP;
+    result = REG_NULL;
     // ALU result
     if (|alu_valid_i) begin
       if (CVA6Cfg.CheriPresent) begin
