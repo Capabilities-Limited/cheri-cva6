@@ -481,6 +481,8 @@ package config_pkg;
     assert (!(Cfg.RVS && !Cfg.SoftwareInterruptEn));
     assert (!(Cfg.RVH && !Cfg.SoftwareInterruptEn));
     assert (!(Cfg.RVZCMT && ~Cfg.MmuPresent));
+    // Can only have CHERI hybrid support if CHERI purecap is supported
+    assert (!(!Cfg.RVZcheripurecap && Cfg.RVZcherihybrid));
     // pragma translate_on
   endfunction
 

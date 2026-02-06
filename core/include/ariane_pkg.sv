@@ -29,7 +29,7 @@
 /// moved out to favour a fully parameterizable core.
 package ariane_pkg;
 
-  localparam CLEN = cva6_config_pkg::CVA6ConfigRVZcheripurecap || cva6_config_pkg::CVA6ConfigRVZcherihybrid ? 2*cva6_config_pkg::CVA6ConfigXlen : cva6_config_pkg::CVA6ConfigXlen;
+  localparam CLEN = cva6_config_pkg::CVA6ConfigRVZcheripurecap ? 2*cva6_config_pkg::CVA6ConfigXlen : cva6_config_pkg::CVA6ConfigXlen;
   // TODO: Slowly move those parameters to the new system.
   localparam BITS_SATURATION_COUNTER = 2;
 
