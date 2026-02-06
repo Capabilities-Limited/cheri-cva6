@@ -453,7 +453,7 @@ module csr_regfile
             csr_rcap = dscratch0_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = dscratch0_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(dscratch0_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH1:
         if (CVA6Cfg.DebugEn) begin
@@ -461,7 +461,7 @@ module csr_regfile
             csr_rcap = dscratch1_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = dscratch1_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(dscratch1_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH2:
         if (CVA6Cfg.DebugEn & CVA6Cfg.CheriPresent) begin
@@ -469,7 +469,7 @@ module csr_regfile
             csr_rcap = dscratch2_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = dscratch2_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(dscratch2_q);
         end else read_access_exception = 1'b1;
         // Trigger module registers
         riscv::CSR_TSELECT:
@@ -513,7 +513,7 @@ module csr_regfile
             csr_rcap = vstvec_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = vstvec_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(vstvec_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_VSSCRATCH:
         if (CVA6Cfg.RVH) begin
@@ -521,7 +521,7 @@ module csr_regfile
             csr_rcap = vsscratch_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = vsscratch_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(vsscratch_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_VSTID:
         if (CVA6Cfg.RVH && CVA6Cfg.CheriPresent) begin
@@ -529,7 +529,7 @@ module csr_regfile
             csr_rcap = vstid_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = vstid_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(vstid_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_VSEPC:
         if (CVA6Cfg.RVH) begin
@@ -537,7 +537,7 @@ module csr_regfile
             csr_rcap = vsepc_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = vsepc_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(vsepc_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_VSCAUSE:
         if (CVA6Cfg.RVH) csr_rdata = vscause_q;
@@ -573,7 +573,7 @@ module csr_regfile
             csr_rcap = stvec_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = stvec_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(stvec_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_SCOUNTEREN:
         if (CVA6Cfg.RVS) csr_rdata = scounteren_q;
@@ -584,7 +584,7 @@ module csr_regfile
             csr_rcap = sscratch_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = sscratch_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(sscratch_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_STID:
         if (CVA6Cfg.RVS && CVA6Cfg.CheriPresent) begin
@@ -592,7 +592,7 @@ module csr_regfile
             csr_rcap = stid_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = stid_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(stid_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_SEPC:
         if (CVA6Cfg.RVS) begin
@@ -600,7 +600,7 @@ module csr_regfile
             csr_rcap = sepc_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = sepc_q[XLEN-1:0];
+          csr_rdata = reg_to_x(sepc_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_SCAUSE:
         if (CVA6Cfg.RVS) csr_rdata = scause_q;
@@ -694,7 +694,7 @@ module csr_regfile
             csr_rcap = mtvec_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = mtvec_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(mtvec_q);
         end
         riscv::CSR_MCOUNTEREN:
         if (CVA6Cfg.RVU) csr_rdata = mcounteren_q;
@@ -704,7 +704,7 @@ module csr_regfile
             csr_rcap = mscratch_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = mscratch_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(mscratch_q);
         end
         riscv::CSR_MTID:
         if (CVA6Cfg.CheriPresent) begin
@@ -712,14 +712,14 @@ module csr_regfile
             csr_rcap = mtid_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = mtid_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(mtid_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_MEPC: begin
           if (CVA6Cfg.CheriPresent && csr_read_cap) begin
             csr_rcap = mepc_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = mepc_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(mepc_q);
         end
         riscv::CSR_MCAUSE: csr_rdata = mcause_q;
         riscv::CSR_MTVAL:
@@ -1061,7 +1061,7 @@ module csr_regfile
             csr_rcap = ddc_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = ddc_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(ddc_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_UTID:
         if (CVA6Cfg.CheriPresent) begin
@@ -1069,7 +1069,7 @@ module csr_regfile
             csr_rcap = utid_q;
             csr_rcap_null = 1'b0;
           end
-          csr_rdata = utid_q[CVA6Cfg.XLEN-1:0];
+          csr_rdata = reg_to_x(utid_q);
         end else read_access_exception = 1'b1;
         default: read_access_exception = 1'b1;
       endcase
@@ -1112,7 +1112,7 @@ module csr_regfile
 
     csr_update_cap_prelegal = CVA6Cfg.CheriPresent ? csr_wdata_i : '0;
     csr_update_allow_sealed = 1'b0;
-    csr_wdata_legalised = csr_wdata_i[CVA6Cfg.XLEN-1:0];
+    csr_wdata_legalised = reg_to_x(csr_wdata_i);
 
     if (CVA6Cfg.RVS) begin
       satp = satp_q;
@@ -1266,7 +1266,7 @@ module csr_regfile
         mtvec_d = REG_ROOT;
       end else begin
         mtvec_d =
-            set_cap_reg_addr(cap_pcc_to_cap_reg(boot_addr_i), boot_addr_i[CVA6Cfg.XLEN-1:0] + 'h40);
+            set_cap_reg_addr(cap_pcc_to_cap_reg(boot_addr_i), reg_to_x(boot_addr_i) + 'h40);
       end
     end else begin
       mtvec_d = mtvec_q;
@@ -2643,7 +2643,7 @@ module csr_regfile
   // CSR OP Select Logic
   // ---------------------------
   always_comb begin : csr_op_logic
-    csr_wdata = csr_wdata_i[CVA6Cfg.XLEN-1:0];
+    csr_wdata = reg_to_x(csr_wdata_i);
     csr_we = 1'b1;
     csr_write_cap = (CVA6Cfg.CheriPresent && !commit_instr_i.int_mode && csr_op_i == CSR_WRITE && !csr_op_is_imm_i) ? 1'b1 : 1'b0;
     ;
@@ -2654,9 +2654,9 @@ module csr_regfile
     dret         = 1'b0;
 
     unique case (csr_op_i)
-      CSR_WRITE: csr_wdata = csr_wdata_i[CVA6Cfg.XLEN-1:0];
-      CSR_SET:   csr_wdata = csr_wdata_i[CVA6Cfg.XLEN-1:0] | csr_rdata;
-      CSR_CLEAR: csr_wdata = (~csr_wdata_i[CVA6Cfg.XLEN-1:0]) & csr_rdata;
+      CSR_WRITE: csr_wdata = reg_to_x(csr_wdata_i);
+      CSR_SET:   csr_wdata = reg_to_x(csr_wdata_i) | csr_rdata;
+      CSR_CLEAR: csr_wdata = (~reg_to_x(csr_wdata_i)) & csr_rdata;
       CSR_READ:  csr_we = 1'b0;
       MRET: begin
         // the return should not have any write or read side-effects
@@ -2994,10 +2994,8 @@ module csr_regfile
       default: ;
     endcase
 
-    if (CVA6Cfg.CheriPresent) begin
-      if (csr_rcap_null) csr_rdata_o = set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP, csr_rdata_tmp);
-      else csr_rdata_o = csr_rcap;
-    end else csr_rdata_o = csr_rdata_tmp;
+    csr_rdata_o = x_to_reg(csr_rdata_tmp);
+    if (CVA6Cfg.CheriPresent && !csr_rcap_null) csr_rdata_o = csr_rcap;
   end
 
   // in debug mode we execute with privilege level M

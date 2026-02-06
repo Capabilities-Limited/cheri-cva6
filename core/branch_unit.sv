@@ -145,8 +145,7 @@ module branch_unit #(
             resolved_branch_o.is_mispredict = branch_valid_i;
         end
       end else begin
-        branch_result_o = cva6_cheri_pkg::set_cap_reg_addr(cva6_cheri_pkg::REG_NULL_CAP,
-                                                           next_pc[CVA6Cfg.VLEN-1:0]);
+        branch_result_o = ariane_pkg::x_to_reg(next_pc[CVA6Cfg.VLEN-1:0]);
       end
     end else begin
       // we need to put the branch target address into rd, this is the result of this unit

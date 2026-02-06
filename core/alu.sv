@@ -62,8 +62,8 @@ module alu
   logic [CVA6Cfg.XLEN-1:0] xperm4_result;
 
   // Fetch the capability address in case CHERI extension is enabled
-  assign operand_a = fu_data_i.operand_a[CVA6Cfg.XLEN-1:0];
-  assign operand_b = fu_data_i.operand_b[CVA6Cfg.XLEN-1:0];
+  assign operand_a = reg_to_x(fu_data_i.operand_a);
+  assign operand_b = reg_to_x(fu_data_i.operand_b);
 
   // bit reverse operand_a for left shifts and bit counting
   generate
