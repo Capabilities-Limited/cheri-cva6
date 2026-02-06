@@ -1887,7 +1887,7 @@ module cva6
 
   logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] wdata_commit_rvfi;
   for (genvar i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
-    assign wdata_commit_rvfi[i] = wdata_commit_id[i][CVA6Cfg.XLEN-1:0];
+    assign wdata_commit_rvfi[i] = reg_to_x(wdata_commit_id[i]);
   end
 
   cva6_rvfi_probes #(

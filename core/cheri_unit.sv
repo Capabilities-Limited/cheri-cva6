@@ -148,32 +148,28 @@ module cheri_unit
         if (fu_data_i.operation == ariane_pkg::CBLD) clu_result = tmp_cap;
         // fu_data_i.operation == ariane_pkg::SCSS
         else
-          clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN - 1{1'b0}}, tmp_cap.tag});
+          clu_result = ariane_pkg::x_to_reg({{CVA6Cfg.XLEN - 1{1'b0}}, tmp_cap.tag});
       end
       // CGetBase
       ariane_pkg::GCBASE: begin
-        clu_result =
-            set_cap_reg_addr(REG_NULL_CAP, operand_a_bounds_malformed ? '0 : operand_a_base);
+        clu_result = ariane_pkg::x_to_reg(operand_a_bounds_malformed ? '0 : operand_a_base);
       end
       // CGetFlags
       ariane_pkg::GCMODE: begin
-        clu_result = set_cap_reg_addr(REG_NULL_CAP,
-                                      {{CVA6Cfg.XLEN - 1{1'b0}}, get_cap_reg_flags(operand_a)});
+        clu_result = ariane_pkg::x_to_reg({{CVA6Cfg.XLEN - 1{1'b0}}, get_cap_reg_flags(operand_a)});
       end
       // CGetLength
       ariane_pkg::GCLEN: begin
-        clu_result =
-            set_cap_reg_addr(REG_NULL_CAP, operand_a_bounds_malformed ? '0 : operand_a_length);
+        clu_result = ariane_pkg::x_to_reg(operand_a_bounds_malformed ? '0 : operand_a_length);
       end
       // CGetHigh
       ariane_pkg::GCHI: begin
         cap_mem = cap_reg_to_cap_mem(operand_a);
-        clu_result = set_cap_reg_addr(REG_NULL_CAP, cap_mem[((CVA6Cfg.XLEN*2)-1):CVA6Cfg.XLEN]);
+        clu_result = ariane_pkg::x_to_reg(cap_mem[((CVA6Cfg.XLEN*2)-1):CVA6Cfg.XLEN]);
       end
       // CGetPerm
       ariane_pkg::GCPERM: begin
-        clu_result = set_cap_reg_addr(
-          REG_NULL_CAP,
+        clu_result = ariane_pkg::x_to_reg(
           {
             {CVA6Cfg.XLEN - $bits(cap_report_perms_t) {1'b0}},
             hperms_and_uperms_to_report_perms(
@@ -184,11 +180,11 @@ module cheri_unit
       end
       // CGetTag
       ariane_pkg::GCTAG: begin
-        clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN - 1{1'b0}}, operand_a.tag});
+        clu_result = ariane_pkg::x_to_reg({{CVA6Cfg.XLEN - 1{1'b0}}, operand_a.tag});
       end
       // CGetType
       ariane_pkg::GCTYPE: begin
-        clu_result = set_cap_reg_addr(REG_NULL_CAP, {{CVA6Cfg.XLEN - 1{1'b0}}, operand_a.otype});
+        clu_result = ariane_pkg::x_to_reg({{CVA6Cfg.XLEN - 1{1'b0}}, operand_a.otype});
       end
       // CIncOffset and CIncOffsetImm
       // TODO-cheri(ninolomata): use ALU to calculate address
@@ -223,7 +219,7 @@ module cheri_unit
         check_operand_a_violations.seal = 1'b1;
         check_operand_a_violations.bounds = 1'b1;
         if (fu_data_i.operation == ariane_pkg::CRAM) begin
-          clu_result = set_cap_reg_addr(REG_NULL_CAP, res_set_bounds.mask);
+          clu_result = ariane_pkg::x_to_reg(res_set_bounds.mask);
         end else begin
           clu_result = res_set_bounds.cap;
         end
@@ -234,8 +230,7 @@ module cheri_unit
       end
       // CSetEqualExact
       ariane_pkg::SCEQ: begin
-        clu_result = set_cap_reg_addr(
-          REG_NULL_CAP,
+        clu_result = ariane_pkg::x_to_reg(
           {
             {CVA6Cfg.XLEN - 1{1'b0}},
             (cap_reg_to_cap_mem(operand_a) == cap_reg_to_cap_mem(operand_b)) ? 1'b1 : 1'b0
