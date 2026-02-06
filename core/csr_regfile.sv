@@ -237,8 +237,7 @@ module csr_regfile
   logic                                          csr_write_cap;
   logic                                          csr_read_cap;
   logic                                          csr_rcap_null;
-  cva6_cheri_pkg::cap_pcc_t                      pcc;
-  cva6_cheri_pkg::cap_reg_t                      pcc_reg;
+  cva6_cheri_pkg::cap_reg_t                      pcc;
   riscv::priv_lvl_t                              trap_to_priv_lvl;
   logic                                          trap_to_v;
   // register for enabling load store address translation, this is critical, hence the register
@@ -379,8 +378,7 @@ module csr_regfile
   assign pmpcfg_o = pmpcfg_q[(CVA6Cfg.NrPMPEntries>0?CVA6Cfg.NrPMPEntries-1 : 0):0];
   assign pmpaddr_o = pmpaddr_q[(CVA6Cfg.NrPMPEntries>0?CVA6Cfg.NrPMPEntries-1 : 0):0];
 
-  assign pcc = cva6_cheri_pkg::cap_pcc_t'(pc_i);
-  assign pcc_reg = cap_pcc_to_cap_reg(pcc);
+  assign pcc = cva6_cheri_pkg::cap_reg_t'(pc_i);
 
   riscv::fcsr_t fcsr_q, fcsr_d;
   jvt_t jvt_q, jvt_d;
@@ -1320,8 +1318,7 @@ module csr_regfile
       if (CVA6Cfg.RVFI_DII) begin
         mtvec_d = REG_ROOT;
       end else begin
-        mtvec_d =
-            set_cap_reg_addr(cap_pcc_to_cap_reg(boot_addr_i), reg_to_x(boot_addr_i) + 'h40);
+        mtvec_d = set_cap_reg_addr(boot_addr_i, reg_to_x(boot_addr_i) + 'h40);
       end
     end else begin
       mtvec_d = mtvec_q;
@@ -2387,7 +2384,7 @@ module csr_regfile
           vscause_d = ex_i.cause[CVA6Cfg.XLEN-1] ? {ex_i.cause[CVA6Cfg.XLEN-1:2], 2'b01} : ex_i.cause;
           // set epc
           if (CVA6Cfg.CheriPresent) begin
-            vsepc_d = pcc_reg;
+            vsepc_d = pcc;
           end else begin
             vsepc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
           end
@@ -2408,7 +2405,7 @@ module csr_regfile
           scause_d = ex_i.cause;
           // set epc
           if (CVA6Cfg.CheriPresent) begin
-            sepc_d = pcc_reg;
+            sepc_d = pcc;
           end else begin
             sepc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
           end
@@ -2453,7 +2450,7 @@ module csr_regfile
         mcause_d = (break_from_trigger) ? 32'h00000003 : ex_i.cause;
         // set epc
         if (CVA6Cfg.CheriPresent) begin
-          mepc_d = pcc_reg;
+          mepc_d = pcc;
         end else begin
           mepc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
         end
@@ -2552,7 +2549,7 @@ module csr_regfile
         endcase
         // save PC of next this instruction e.g.: the next one to be executed
         if (CVA6Cfg.CheriPresent) begin
-          dpc_d = pcc_reg;
+          dpc_d = pcc;
         end else begin
           dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
         end
@@ -2565,7 +2562,7 @@ module csr_regfile
         dcsr_d.v   = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
         // save the PC
         if (CVA6Cfg.CheriPresent) begin
-          dpc_d = pcc_reg;
+          dpc_d = pcc;
         end else begin
           dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
         end
@@ -2588,7 +2585,7 @@ module csr_regfile
         dcsr_d.v = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
         // save the PC
         if (CVA6Cfg.CheriPresent) begin
-          dpc_d = pcc_reg;
+          dpc_d = pcc;
         end else begin
           dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
         end
