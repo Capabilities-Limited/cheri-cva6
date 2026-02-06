@@ -618,8 +618,6 @@ module load_unit
         if (CVA6Cfg.CheriPresent && ldbuf_rdata.operation == ariane_pkg::LC) begin
           // Convert memory capability to register capability
           result_o = cva6_cheri_pkg::cap_mem_to_cap_reg(data);
-        end else begin
-          result_o = x_to_reg(shifted_data);
         end
       end
     endcase
