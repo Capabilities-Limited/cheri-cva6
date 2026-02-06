@@ -100,7 +100,7 @@ module branch_unit #(
     jump_base = (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) ? fu_data_i.operand_a[CVA6Cfg.VLEN-1:0] : pc_i[CVA6Cfg.VLEN-1:0];
     jump_base_cap = CVA6Cfg.CheriPresent ? ((fu_data_i.operation inside {ariane_pkg::CJALR}) ? operand_a : pc_i) : '0;
 
-    branch_result_o = CVA6Cfg.CheriPresent ? cva6_cheri_pkg::REG_NULL_CAP : '0;
+    branch_result_o = ariane_pkg::REG_NULL;
     resolve_branch_o = 1'b0;
     resolved_branch_o.target_address = '0;
     resolved_branch_o.is_taken = 1'b0;
