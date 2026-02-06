@@ -250,7 +250,7 @@ module issue_read_operands
   logic [CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
   logic pcc_jump_change_valid_n, pcc_jump_change_valid_q;
   logic [CVA6Cfg.PCLEN-1:0] pcc_jump_change_n, pcc_jump_change_q;
-  cva6_cheri_pkg::cap_pcc_t pcc[CVA6Cfg.NrIssuePorts-1:0];
+  cva6_cheri_pkg::cap_reg_t pcc[CVA6Cfg.NrIssuePorts-1:0];
   cva6_cheri_pkg::cap_meta_data_t pcc_meta;
 
   // forwarding signals
@@ -1226,7 +1226,7 @@ module issue_read_operands
       end
       pc_o <= '0;
       if (CVA6Cfg.CheriPresent) begin
-        pcc_q <= cva6_cheri_pkg::PCC_ROOT_CAP;
+        pcc_q <= REG_ROOT;
         pcc_jump_change_valid_q <= '0;
       end
       is_zcmt_o                <= '0;
