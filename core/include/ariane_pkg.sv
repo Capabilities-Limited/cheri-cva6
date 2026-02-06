@@ -30,6 +30,9 @@
 package ariane_pkg;
 
   localparam CLEN = cva6_config_pkg::CVA6ConfigRVZcheripurecap ? 2*cva6_config_pkg::CVA6ConfigXlen : cva6_config_pkg::CVA6ConfigXlen;
+  localparam REGLEN = cva6_config_pkg::CVA6ConfigRVZcheripurecap ? $bits(cva6_cheri_pkg::cap_reg_t) : cva6_config_pkg::CVA6ConfigXlen;
+  localparam logic [REGLEN-1:0] REG_NULL = cva6_config_pkg::CVA6ConfigRVZcheripurecap ? cva6_cheri_pkg::REG_NULL_CAP : '0;
+  localparam logic [REGLEN-1:0] REG_ROOT = cva6_config_pkg::CVA6ConfigRVZcheripurecap ? cva6_cheri_pkg::REG_ROOT_CAP : '0;
   // TODO: Slowly move those parameters to the new system.
   localparam BITS_SATURATION_COUNTER = 2;
 

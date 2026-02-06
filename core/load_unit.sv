@@ -586,7 +586,7 @@ module load_unit
 
   // result mux
   always_comb begin
-    result_o = (CVA6Cfg.CheriPresent) ? cva6_cheri_pkg::REG_NULL_CAP : '{default: 0};
+    result_o = REG_NULL;
     unique case (ldbuf_rdata.operation)
       ariane_pkg::LW, ariane_pkg::LWU, ariane_pkg::HLV_W, ariane_pkg::HLV_WU, ariane_pkg::HLVX_WU:
       result_o = cva6_cheri_pkg::set_cap_reg_addr(
