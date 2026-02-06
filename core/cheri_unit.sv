@@ -22,7 +22,6 @@ typedef struct packed {
 } cap_check_select_t;
 
 module cheri_unit
-  import ariane_pkg::*;
   import cva6_cheri_pkg::*;
 #(
     parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
