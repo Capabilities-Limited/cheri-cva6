@@ -230,9 +230,6 @@ package cva6_cheri_pkg;
     addrw_t      addr;
   } cap_reg_t;
 
-  /* Full PCC Capability definition */
-  typedef cap_reg_t cap_pcc_t;
-
   /* Capability set bounds return */
   typedef struct packed {
     cap_reg_t cap;
@@ -273,10 +270,6 @@ package cva6_cheri_pkg;
       EF              : EMBEDDED_EXP,
       bounds          : DEFAULT_BOUNDS_CAP
   };
-
-  localparam cap_pcc_t PCC_ROOT_CAP = REG_ROOT_CAP;
-
-  localparam cap_pcc_t PCC_NULL_CAP = REG_NULL_CAP;
 
   localparam cap_mem_t MEM_NULL_CAP = '{
       tag             : 1'b0,
@@ -734,14 +727,6 @@ package cva6_cheri_pkg;
         addr: cap.addr
     };
     return ret;
-  endfunction
-
-  function automatic cap_pcc_t cap_reg_to_cap_pcc(cap_reg_t cap);
-    return cap;
-  endfunction
-
-  function automatic cap_reg_t cap_pcc_to_cap_reg(cap_pcc_t cap);
-    return cap;
   endfunction
 
   /**

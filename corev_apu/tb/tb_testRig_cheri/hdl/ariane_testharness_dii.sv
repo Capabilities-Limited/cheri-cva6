@@ -648,10 +648,10 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   rvfi_csr_t rvfi_csr;
   rvfi_instr_t [CVA6Cfg.NrCommitPorts-1:0]  rvfi_instr;
 
-  cva6_cheri_pkg::cap_pcc_t boot_cap;
+  cva6_cheri_pkg::cap_reg_t boot_cap;
   logic [CVA6Cfg.PCLEN-1:0] boot_addr;
   always_comb begin : gen_boot_cap
-    boot_cap = cva6_cheri_pkg::PCC_ROOT_CAP;
+    boot_cap = ariane_pkg::REG_ROOT;
     if (CVA6Cfg.RVFI_DII)
       boot_addr = ariane_soc::DRAMBase;
     else
