@@ -678,9 +678,9 @@ module issue_read_operands
     assign rs3_valid[i] = fwd_res_valid[idx_hzd_rs3[i]];
 
     if (CVA6Cfg.NrRgprPorts == 3) begin
-      assign rs3_res[i] = rs3[i][CVA6Cfg.XLEN-1:0];
+      assign rs3_res[i] = x_to_reg(rs3[i][CVA6Cfg.XLEN-1:0]);
     end else begin
-      assign rs3_res[i] = rs3[i][CVA6Cfg.FLen-1:0];
+      assign rs3_res[i] = x_to_reg(rs3[i][CVA6Cfg.FLen-1:0]);
     end
   end
 
