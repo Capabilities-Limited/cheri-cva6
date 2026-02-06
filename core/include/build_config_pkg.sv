@@ -4,7 +4,7 @@ package build_config_pkg;
     bit IS_XLEN32 = (CVA6Cfg.XLEN == 32) ? 1'b1 : 1'b0;
     bit IS_XLEN64 = (CVA6Cfg.XLEN == 32) ? 1'b0 : 1'b1;
     bit FpPresent = CVA6Cfg.RVF | CVA6Cfg.RVD | CVA6Cfg.XF16 | CVA6Cfg.XF16ALT | CVA6Cfg.XF8;
-    bit CheriPresent = CVA6Cfg.RVZcheripurecap | CVA6Cfg.RVZcherihybrid;
+    bit CheriPresent = CVA6Cfg.RVZcheripurecap;
     bit NSX = CVA6Cfg.XF16 | CVA6Cfg.XF16ALT | CVA6Cfg.XF8 | CVA6Cfg.XFVec;  // Are non-standard extensions present?
     int unsigned FLen = CVA6Cfg.RVD ? 64 :  // D ext.
     CVA6Cfg.RVF ? 32 :  // F ext.
