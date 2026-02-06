@@ -536,13 +536,7 @@ module ex_stage
       assign fpu_trans_id_o = '0;
     end
   end
-  if (CVA6Cfg.CheriPresent) begin
-    assign fpu_result_o = cva6_cheri_pkg::set_cap_reg_addr(
-        cva6_cheri_pkg::REG_NULL_CAP, fpu_result_muxed
-    );
-  end else begin
-    assign fpu_result_o = fpu_result_muxed;
-  end
+  assign fpu_result_o = x_to_reg(fpu_result_muxed);
 
   // ----------------
   // Load-Store Unit
