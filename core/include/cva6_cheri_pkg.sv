@@ -449,7 +449,7 @@ package cva6_cheri_pkg;
 
   function automatic cap_flags_t get_cap_reg_flags(cap_reg_t cap);
     cap_hperms_t perms = legalize_arch_perms(cap.hperms);
-    return (perms.permit_execute) ? cap.flags : 1'b0;
+    return (perms == cap.hperms && perms.permit_execute) ? cap.flags : 1'b0;
   endfunction
 
   function automatic cap_reg_t set_cap_reg_flags(cap_reg_t cap, cap_flags_t flags);
