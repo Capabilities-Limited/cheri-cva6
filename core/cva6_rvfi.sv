@@ -504,7 +504,6 @@ module cva6_rvfi
     for (i = 0; i < 16; i++) begin
       `CONNECT_RVFI_FULL(1'b1, pmpaddr[i], {csr.pmpaddr_q[i][CVA6Cfg.PLEN-3:1], pmpcfg_q[i].addr_mode[1]})
     end
-    ;
   end
   // verilog_format: on
 endmodule
