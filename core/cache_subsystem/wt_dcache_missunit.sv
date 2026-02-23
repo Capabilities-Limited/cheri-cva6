@@ -47,7 +47,7 @@ module wt_dcache_missunit
     input logic [NumPorts-1:0][CVA6Cfg.DCACHE_USER_WIDTH-1:0] miss_wuser_i,
     input logic [NumPorts-1:0][CVA6Cfg.PLEN-1:0] miss_paddr_i,
     input logic [NumPorts-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0] miss_vld_bits_i,
-    input logic [NumPorts-1:0][2:0] miss_size_i,
+    input logic [NumPorts-1:0][CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0] miss_size_i,
     input logic [NumPorts-1:0][CVA6Cfg.MEM_TID_WIDTH-1:0] miss_id_i,  // used as transaction ID
     // signals that the request collided with a pending read
     output logic [NumPorts-1:0] miss_replay_o,
@@ -121,7 +121,7 @@ module wt_dcache_missunit
   // MSHR for reads
   typedef struct packed {
     logic [CVA6Cfg.PLEN-1:0]                     paddr;
-    logic [2:0]                                  size;
+    logic [CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0]   size;
     logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0]         vld_bits;
     logic [CVA6Cfg.MEM_TID_WIDTH-1:0]            id;
     logic                                        nc;
