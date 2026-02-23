@@ -542,7 +542,7 @@ module load_unit
 
   // realign as needed
   assign shifted_data_wide = req_port_i.data_rdata >> {ldbuf_rdata.address_offset, 3'b000};
-  assign shifted_data = reg_to_x(shifted_data_wide);
+  assign shifted_data = shifted_data_wide[CVA6Cfg.XLEN-1:0];
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_load_data
     assign data = {req_port_i.data_ruser, req_port_i.data_rdata};
   end
