@@ -1098,7 +1098,9 @@ module issue_read_operands
         .CVA6Cfg      (CVA6Cfg),
         .DATA_WIDTH   (CVA6Cfg.REGLEN),
         .NR_READ_PORTS(CVA6Cfg.NrRgprPorts),
-        .ZERO_REG_ZERO(1)
+        .ZERO_REG_ZERO(1),
+        .ZERO_VAL     (ariane_pkg::REG_NULL),
+        .INIT_VAL     (CVA6Cfg.RVFI_DII ? ariane_pkg::REG_ROOT : ariane_pkg::REG_NULL)
     ) i_ariane_regfile (
         .clk_i,
         .rst_ni,
