@@ -802,14 +802,38 @@ module issue_read_operands
     end
   end
 
+  // PCC logic
+  if (CVA6Cfg.CheriPresent) begin
+    always_comb begin : pcc_select
+      pcc_jump_change_valid_n = pcc_jump_change_valid_q;
+      pcc_jump_change_n = pcc_jump_change_q;
+      pcc_n = pcc_q;
+
+      if (eret_i) begin
+        pcc_jump_change_valid_n = 1'b0;
+        pcc_n = epc_i;
+      end else if (set_pc_commit_i) begin
+        pcc_jump_change_valid_n = 1'b0;
+        pcc_n = pcc_commit_i;
+      end else if (ex_valid_i) begin
+        pcc_jump_change_valid_n = 1'b0;
+        pcc_n = trap_vector_base_i;
+      end else if (pcc_jump_change_valid_q && backend_empty_i) begin
+        pcc_jump_change_valid_n = 1'b0;
+        pcc_n = pcc_jump_change_q;
+      end else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
+        pcc_jump_change_valid_n = 1'b1;
+        pcc_jump_change_n = resolved_branch_i.target_address;
+      end
+    end
+  end
+
   // Forwarding/Output MUX
   for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
     always_comb begin : forwarding_operand_select
       // default is regfiles (gpr or fpr)
       fu_data_n[i].operand_a = operand_a_regfile[i];
       fu_data_n[i].operand_b = operand_b_regfile[i];
-
-      pcc_jump_change_n = pcc_jump_change_q;
 
       // immediates are the third operands in the store case
       // for FP operations, the imm field can also be the third operand from the regfile
@@ -828,21 +852,6 @@ module issue_read_operands
       fu_data_n[i].rs2       = CVA6Cfg.CheriPresent ? issue_instr_i[i].rs2 : '0;
       fu_data_n[i].use_ddc   = CVA6Cfg.CheriPresent ? issue_instr_i[i].use_ddc : '0;
 
-      if (CVA6Cfg.CheriPresent) begin
-        if (eret_i) pcc_n = epc_i;
-        else if (set_pc_commit_i) pcc_n = pcc_commit_i;
-        else if (ex_valid_i) pcc_n = trap_vector_base_i;
-        else if (pcc_jump_change_valid_q && backend_empty_i) pcc_n = pcc_jump_change_q;
-        else pcc_n = pcc_q;
-
-        if (eret_i || set_pc_commit_i || ex_valid_i) pcc_jump_change_valid_n = 1'b0;
-        else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
-          pcc_jump_change_valid_n = 1'b1;
-        end else if (backend_empty_i) pcc_jump_change_valid_n = 1'b0;
-        else pcc_jump_change_valid_n = pcc_jump_change_valid_q;
-
-        if (resolved_branch_i.valid) pcc_jump_change_n = resolved_branch_i.target_address;
-      end
       if (CVA6Cfg.RVH) begin
         tinst_n[i] = issue_instr_i[i].ex.tinst;
       end
