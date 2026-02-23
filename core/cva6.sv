@@ -1325,7 +1325,7 @@ module cva6
       .debug_from_trigger_o    (debug_from_trigger),
       .vaddr_from_lsu_i        (rvfi_lsu_ctrl.vaddr),
       .orig_instr_i            (orig_instr_id_issue),
-      .store_result_i          (store_result_ex_id),
+      .store_result_i          (reg_to_x(store_result_ex_id)),
       .break_from_trigger_o    (break_from_trigger)
   );
 
