@@ -692,7 +692,7 @@ module ex_stage
         .v_i,
         .fu_data_i   (one_cycle_data),
         .clu_valid_i (|clu_valid_i),
-        .alu_result_i(alu_result),
+        .alu_result_i(alu_result[0]),
         .clu_result_o(clu_result)
     );
   end
