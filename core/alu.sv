@@ -86,7 +86,7 @@ module alu
   assign adder_op_b_negate = fu_data_i.operation inside {EQ, NE, SUB, SUBW, ANDN, ORN, XNOR};
 
   always_comb begin
-    operand_a_cpop     = fu_data_cpop_i.operand_a;
+    operand_a_cpop     = reg_to_x(fu_data_cpop_i.operand_a);
     operand_a_bitmanip = operand_a;
 
     if (CVA6Cfg.RVB) begin
