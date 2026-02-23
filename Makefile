@@ -245,6 +245,7 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_config.sv \
         vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_hit_miss.sv \
         vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_top.sv \
+        vendor/zero-day/axi_tagcontroller/src/llc_cache_wrapper.sv \
         vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_reg_wrap.sv \
         corev_apu/tb/ariane_testharness.sv                                           \
         corev_apu/tb/cva6_cheri_tag_mem.sv                                           \
@@ -371,8 +372,9 @@ riscv-benchmarks          := $(shell xargs printf '\n%s' < $(riscv-benchmarks-li
 
 # Search here for include files (e.g.: non-standalone components)
 incdir := $(CVA6_REPO_DIR)/vendor/pulp-platform/common_cells/include/ $(CVA6_REPO_DIR)/vendor/pulp-platform/axi/include/ \
-		  $(CVA6_REPO_DIR)/vendor/zero-day/axi_tagcontroller/include/ \
-		  $(CVA6_REPO_DIR)/vendor/zero-day/axi_tagcontroller/src/axi_llc/include/ \
+          $(CVA6_REPO_DIR)/vendor/zero-day/axi_tagcontroller/include/ \
+	  $(CVA6_REPO_DIR)/vendor/zero-day/axi_tagcontroller/src/axi_llc/include/ \
+	  $(CVA6_REPO_DIR)/vendor/zero-day/axi_tagcontroller/src/axi_llc/include/axi_llc/ \
           $(CVA6_REPO_DIR)/corev_apu/register_interface/include/ $(CVA6_REPO_DIR)/corev_apu/tb/common/ \
           $(CVA6_REPO_DIR)/vendor/pulp-platform/axi/include/ \
           $(CVA6_REPO_DIR)/verif/core-v-verif/lib/uvm_agents/uvma_rvfi/ \
