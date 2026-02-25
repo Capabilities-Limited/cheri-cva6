@@ -999,7 +999,7 @@ module load_store_unit
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
           cheri_exception.valid   = 1'b1;
         end
-        cheri_exception.tval2 = cheri_tval2;
+        cheri_exception.tval2 = {{CVA6Cfg.GPLEN - 22{1'b0}}, cheri_tval2};
       end
     end
   end
