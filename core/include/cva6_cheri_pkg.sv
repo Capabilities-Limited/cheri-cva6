@@ -742,10 +742,8 @@ package cva6_cheri_pkg;
       * @returns permissions in the report format for gcperms.
       */
   function automatic cap_report_perms_t hperms_and_uperms_to_report_perms(
-      cap_hperms_t hp_raw, upermsw_t up, bool_t int_mode);
-    cap_hperms_t hp = ((legalize_arch_perms(
-        hp_raw
-    ) != hp_raw) || (int_mode && !hp_raw.permit_execute)) ? '0 : hp_raw;
+      cap_hperms_t hp_raw, upermsw_t up, logic perms_are_malformed);
+    cap_hperms_t hp = perms_are_malformed ? '0 : hp_raw;
     cap_report_perms_t rp = '{
         reserved_hi          : 0,  //Newer spec:'1,
         permit_load          : hp.permit_load,
@@ -754,8 +752,7 @@ package cva6_cheri_pkg;
         reserved_lo          : 0,  //Newer spec:'1,
         uperms               : up,
         permit_cap           : hp.permit_cap,
-        cap_level            :
-            hp_raw.cap_level,  // Not a permission, so not subject to the same legalisation
+        cap_level            : hp_raw.cap_level,  // Not a permission, so not legalised
         permit_store_level   : hp.permit_store_level,
         permit_elevate_level : hp.permit_elevate_level,
         permit_load_mutable  : hp.permit_load_mutable,
@@ -767,7 +764,7 @@ package cva6_cheri_pkg;
   /**
       * @brief Function to convert from reported permissions format for andperms to encoded hardware permissions.
       * @param permissions in the report format for ACPERM.
-      * @returns hardware permissions in encoded format.
+      * @returns hardware permissions in encoded format. Note that legalisation must be performed outside.
       */
   function automatic cap_hperms_t report_perms_to_hperms(cap_report_perms_t rp);
     cap_hperms_t hp = '{
@@ -781,7 +778,7 @@ package cva6_cheri_pkg;
         permit_cap           : rp.permit_cap,
         cap_level            : rp.cap_level
     };
-    return legalize_arch_perms(hp);
+    return hp;
   endfunction
 
   /**
