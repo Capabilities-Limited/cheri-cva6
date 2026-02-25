@@ -233,7 +233,6 @@ localparam int unsigned DRAMMemBase = {64'h80000000};
 localparam int unsigned DRAMMemLength = {64'h40000000};
 localparam int unsigned TagCacheMemLength = DRAMMemLength >> 7;
 localparam int unsigned TagCacheMemBase = DRAMMemBase + DRAMMemLength - TagCacheMemLength;
-localparam int unsigned AxiIdWidth = 64'd6;
 localparam int unsigned SetAssociativity = 32'd8;
 localparam int unsigned NumLines = 32'd128;
 localparam int unsigned NumBlocks = 32'd4;
@@ -1234,7 +1233,7 @@ axi_riscv_atomics_wrap #(
   } rule_full_t;
 
 localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
-  typedef logic [AxiIdWidth:0] axi_mst_id_t;
+  typedef logic [(AxiIdWidthSlaves+1)-1:0] axi_mst_id_t; // Extend by 1 because of tag controller
   typedef logic [AxiDataWidth-1:0] axi_data_t;
   typedef logic [AxiStrbWidth-1:0] axi_strb_t;
   typedef logic  axi_user_t;
@@ -1266,7 +1265,7 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
       .SetAssociativity(SetAssociativity),
       .NumLines        (NumLines),
       .NumBlocks       (NumBlocks),
-      .AxiIdWidth      (ariane_axi_soc::IdWidthSlave),
+      .AxiIdWidth      (AxiIdWidthSlaves),
       .AxiAddrWidth    (AxiAddrWidth),
       .AxiDataWidth    (AxiDataWidth),
       .AxiUserWidth    (AxiUserWidth),
