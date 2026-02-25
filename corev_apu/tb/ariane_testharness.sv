@@ -518,7 +518,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     axi_tagctrl_reg_wrap #(
         .DRAMMemBase     (ariane_soc::DRAMBase),
         .CapSize         (CVA6Cfg.CLEN),
-        .TagCacheMemBase ({64'hA0000000}),
+        .TagCacheMemBase (ariane_soc::DRAMBase + ariane_soc::DRAMLength - (ariane_soc::DRAMLength>>7)),
         .SetAssociativity(ariane_soc::SetAssociativity),
         .NumLines        (ariane_soc::NumLines),
         .NumBlocks       (ariane_soc::NumBlocks),
@@ -545,7 +545,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
         .conf_req_i         (  /* not used */),
         .conf_resp_o        (  /* not used */),
         .cached_start_addr_i(ariane_soc::DRAMBase),
-        .cached_end_addr_i  ({64'hA0000000})
+        .cached_end_addr_i  (ariane_soc::DRAMBase + ariane_soc::DRAMLength - (ariane_soc::DRAMLength>>7))
     );
   end else begin
     assign axi_tag_req = dram_req;
