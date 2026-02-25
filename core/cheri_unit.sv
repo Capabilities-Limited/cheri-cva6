@@ -100,11 +100,14 @@ module cheri_unit
       end
       // CAndPerm
       ariane_pkg::ACPERM: begin
-        automatic cap_report_perms_t mask = cap_report_perms_t'(operand_b_address);
+        automatic cap_report_perms_t new_perms;
         check_operand_a_violations.seal = 1'b1;
         tmp_cap = operand_a;
-        tmp_cap.uperms = (tmp_cap.uperms & mask.uperms);
-        tmp_cap.hperms = cap_hperms_t'(tmp_cap.hperms & report_perms_to_hperms(mask));
+        new_perms = hperms_and_uperms_to_report_perms(operand_a.hperms, operand_a.uperms,
+                                                      operand_a_hperms_malformed);
+        new_perms &= cap_report_perms_t'(operand_b_address);
+        tmp_cap.uperms = new_perms.uperms;
+        tmp_cap.hperms = legalize_arch_perms(report_perms_to_hperms(new_perms));
         if (!tmp_cap.hperms.permit_execute) tmp_cap.flags.int_mode = 1'b0;
         clu_result = tmp_cap;
       end
@@ -173,7 +176,7 @@ module cheri_unit
           {
             {CVA6Cfg.XLEN - $bits(cap_report_perms_t) {1'b0}},
             hperms_and_uperms_to_report_perms(
-              operand_a.hperms, operand_a.uperms, operand_a.flags.int_mode
+              operand_a.hperms, operand_a.uperms, operand_a_hperms_malformed
             )
           }
         );
