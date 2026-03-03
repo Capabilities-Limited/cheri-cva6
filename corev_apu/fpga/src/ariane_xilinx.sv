@@ -246,6 +246,7 @@ localparam AxiDataWidth = 64;
 localparam AxiIdWidthMaster = 4;
 localparam AxiIdWidthSlaves = AxiIdWidthMaster + $clog2(NBSlave); // 5
 localparam AxiUserWidth = CVA6Cfg.AxiUserWidth;
+localparam AxiCheriExtraIdBits = CVA6Cfg.CheriPresent ? 1 : 0;
 
 `AXI_TYPEDEF_ALL(axi_slave,
                  logic [    AxiAddrWidth-1:0],
@@ -802,7 +803,7 @@ ariane #(
 ) i_ariane (
     .clk_i        ( clk                 ),
     .rst_ni       ( ndmreset_n          ),
-    .boot_addr_i  ( (CVA6Cfg.CheriPresent) ? boot_cap : ariane_soc::ROMBase ), // start fetching from ROM
+    .boot_addr_i  ( CVA6Cfg.CheriPresent ? boot_cap : ariane_soc::ROMBase ), // start fetching from ROM
     .hart_id_i    ( '0                  ),
     .irq_i        ( irq                 ),
     .ipi_i        ( ipi                 ),
@@ -1205,10 +1206,10 @@ AXI_BUS #(
 ) dram();
 
 AXI_BUS #(
-  .AXI_ADDR_WIDTH ( AxiAddrWidth            ),
-  .AXI_DATA_WIDTH ( AxiDataWidth               ),
-  .AXI_ID_WIDTH   ( AxiIdWidthSlaves + 1 ),
-  .AXI_USER_WIDTH ( AxiUserWidth               )
+  .AXI_ADDR_WIDTH ( AxiAddrWidth                           ),
+  .AXI_DATA_WIDTH ( AxiDataWidth                           ),
+  .AXI_ID_WIDTH   ( AxiIdWidthSlaves + AxiCheriExtraIdBits ),
+  .AXI_USER_WIDTH ( AxiUserWidth                           )
 ) tag_mst();
 
 axi_riscv_atomics_wrap #(
@@ -1234,10 +1235,10 @@ axi_riscv_atomics_wrap #(
   } rule_full_t;
 
 localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
-  typedef logic [AxiIdWidth:0] axi_mst_id_t;
+  typedef logic [(AxiIdWidthSlaves+AxiCheriExtraIdBits)-1:0] axi_mst_id_t;
   typedef logic [AxiDataWidth-1:0] axi_data_t;
   typedef logic [AxiStrbWidth-1:0] axi_strb_t;
-  typedef logic  axi_user_t;
+  typedef logic axi_user_t;
   typedef logic [7:0] byte_t;
 
   `AXI_TYPEDEF_AW_CHAN_T(axi_mst_aw_t, axi_addr_t, axi_mst_id_t, axi_user_t)
@@ -1253,45 +1254,49 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
   ariane_axi_soc::resp_slv_t dram_resp;
   axi_mst_req_t axi_tag_req;
   axi_mst_resp_t axi_tag_resp;
-  `AXI_ASSIGN_TO_REQ(dram_req,   dram)
-  `AXI_ASSIGN_FROM_RESP( dram, dram_resp)
+  `AXI_ASSIGN_TO_REQ(dram_req, dram)
+  `AXI_ASSIGN_FROM_RESP(dram, dram_resp)
   `AXI_ASSIGN_FROM_REQ(tag_mst, axi_tag_req)
-  `AXI_ASSIGN_TO_RESP(  axi_tag_resp, tag_mst)
+  `AXI_ASSIGN_TO_RESP(axi_tag_resp, tag_mst)
   `REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
 
-  axi_tagctrl_reg_wrap #(
-      .DRAMMemBase    (DRAMMemBase),
-     .CapSize         (CapSize),
-      .TagCacheMemBase (TagCacheMemBase),
-      .SetAssociativity(SetAssociativity),
-      .NumLines        (NumLines),
-      .NumBlocks       (NumBlocks),
-      .AxiIdWidth      (ariane_axi_soc::IdWidthSlave),
-      .AxiAddrWidth    (AxiAddrWidth),
-      .AxiDataWidth    (AxiDataWidth),
-      .AxiUserWidth    (AxiUserWidth),
-      .slv_req_t       (ariane_axi_soc::req_slv_t),
-      .slv_resp_t      (ariane_axi_soc::resp_slv_t),
-      .mst_req_t       (axi_mst_req_t),
-      .mst_resp_t      (axi_mst_resp_t),
-      .reg_req_t       (conf_req_t),
-      .reg_resp_t      (conf_rsp_t),
-      .rule_full_t     (rule_full_t),
-      .PrintSramCfg    (1'b0)
-  ) i_axi_tagctrl_reg_wrap_raw (
-      .clk_i(clk),
-      .rst_ni (ndmreset_n),
-      .test_i             (1'b0),
-      .slv_req_i          (dram_req),
-      .slv_resp_o         (dram_resp),
-      .mst_req_o          (axi_tag_req),
-      .mst_resp_i         (axi_tag_resp),
-      .conf_req_i         (  /* not used */),
-      .conf_resp_o        (  /* not used */),
-      .cached_start_addr_i(DRAMBase),
-      .cached_end_addr_i  (TagCacheMemBase)
-  );
-
+  if (CVA6Cfg.CheriPresent) begin
+    axi_tagctrl_reg_wrap #(
+        .DRAMMemBase     (DRAMMemBase),
+        .CapSize         (CapSize),
+        .TagCacheMemBase (TagCacheMemBase),
+        .SetAssociativity(SetAssociativity),
+        .NumLines        (NumLines),
+        .NumBlocks       (NumBlocks),
+        .AxiIdWidth      (ariane_axi_soc::IdWidthSlave),
+        .AxiAddrWidth    (AxiAddrWidth),
+        .AxiDataWidth    (AxiDataWidth),
+        .AxiUserWidth    (AxiUserWidth),
+        .slv_req_t       (ariane_axi_soc::req_slv_t),
+        .slv_resp_t      (ariane_axi_soc::resp_slv_t),
+        .mst_req_t       (axi_mst_req_t),
+        .mst_resp_t      (axi_mst_resp_t),
+        .reg_req_t       (conf_req_t),
+        .reg_resp_t      (conf_rsp_t),
+        .rule_full_t     (rule_full_t),
+        .PrintSramCfg    (1'b0)
+    ) i_axi_tagctrl_reg_wrap_raw (
+        .clk_i              (clk),
+        .rst_ni             (ndmreset_n),
+        .test_i             (1'b0),
+        .slv_req_i          (dram_req),
+        .slv_resp_o         (dram_resp),
+        .mst_req_o          (axi_tag_req),
+        .mst_resp_i         (axi_tag_resp),
+        .conf_req_i         (  /* not used */),
+        .conf_resp_o        (  /* not used */),
+        .cached_start_addr_i(DRAMBase),
+        .cached_end_addr_i  (TagCacheMemBase)
+    );
+  end else begin
+    assign axi_tag_req = dram_req;
+    assign dram_resp = axi_tag_resp;
+  end
 
 `ifdef PROTOCOL_CHECKER
 logic pc_status;

@@ -417,6 +417,8 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
   logic [AXI_USER_WIDTH-1:0]    wuser;
   logic [AXI_USER_WIDTH-1:0]    ruser;
 
+  localparam AxiCheriExtraIdBits = CVA6Cfg.CheriPresent ? 1 : 0;
+
   axi_riscv_atomics_wrap #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
@@ -434,7 +436,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
-    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + ((CVA6Cfg.CheriPresent) ? 1 : 0)),
+    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + AxiCheriExtraIdBits ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
   ) dram_delayed();
 
@@ -445,42 +447,24 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
   ) tag_mst();
 
-  if (CVA6Cfg.CheriPresent) begin
-    axi_delayer_intf #(
-      .AXI_ID_WIDTH        ( ariane_axi_soc::IdWidthSlave + 1),
-      .AXI_ADDR_WIDTH      ( AXI_ADDRESS_WIDTH            ),
-      .AXI_DATA_WIDTH      ( AXI_DATA_WIDTH               ),
-      .AXI_USER_WIDTH      ( AXI_USER_WIDTH               ),
-      .STALL_RANDOM_INPUT  ( StallRandomInput             ),
-      .STALL_RANDOM_OUTPUT ( StallRandomOutput            ),
-      .FIXED_DELAY_INPUT   ( 0                            ),
-      .FIXED_DELAY_OUTPUT  ( 0                            )
-    ) i_axi_delayer (
-      .clk_i  ( clk_i        ),
-      .rst_ni ( ndmreset_n   ),
-      .slv    ( tag_mst ),
-      .mst    ( dram_delayed )
-    );
-  end else begin
-    axi_delayer_intf #(
-      .AXI_ID_WIDTH        ( ariane_axi_soc::IdWidthSlave ),
-      .AXI_ADDR_WIDTH      ( AXI_ADDRESS_WIDTH            ),
-      .AXI_DATA_WIDTH      ( AXI_DATA_WIDTH               ),
-      .AXI_USER_WIDTH      ( AXI_USER_WIDTH               ),
-      .STALL_RANDOM_INPUT  ( StallRandomInput             ),
-      .STALL_RANDOM_OUTPUT ( StallRandomOutput            ),
-      .FIXED_DELAY_INPUT   ( 0                            ),
-      .FIXED_DELAY_OUTPUT  ( 0                            )
-    ) i_axi_delayer (
-      .clk_i  ( clk_i        ),
-      .rst_ni ( ndmreset_n   ),
-      .slv    ( dram         ),
-      .mst    ( dram_delayed )
-    );
-  end
+  axi_delayer_intf #(
+    .AXI_ID_WIDTH        ( ariane_axi_soc::IdWidthSlave + AxiCheriExtraIdBits ),
+    .AXI_ADDR_WIDTH      ( AXI_ADDRESS_WIDTH            ),
+    .AXI_DATA_WIDTH      ( AXI_DATA_WIDTH               ),
+    .AXI_USER_WIDTH      ( AXI_USER_WIDTH               ),
+    .STALL_RANDOM_INPUT  ( StallRandomInput             ),
+    .STALL_RANDOM_OUTPUT ( StallRandomOutput            ),
+    .FIXED_DELAY_INPUT   ( 0                            ),
+    .FIXED_DELAY_OUTPUT  ( 0                            )
+  ) i_axi_delayer (
+    .clk_i  ( clk_i        ),
+    .rst_ni ( ndmreset_n   ),
+    .slv    ( tag_mst ),
+    .mst    ( dram_delayed )
+  );
 
   axi2mem #(
-    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + ((CVA6Cfg.CheriPresent) ? 1 : 0 )),
+    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + AxiCheriExtraIdBits ),
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
@@ -504,7 +488,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     axi_addr_t   end_addr;
   } rule_full_t;
 
-  typedef logic [ariane_axi_soc::IdWidthSlave:0] axi_mst_id_t;
+  typedef logic [(ariane_axi_soc::IdWidthSlave+AxiCheriExtraIdBits)-1:0] axi_mst_id_t;
   typedef logic [CVA6Cfg.AxiDataWidth-1:0] axi_data_t;
   typedef logic [ariane_axi_soc::StrbWidth-1:0] axi_strb_t;
   typedef logic [CVA6Cfg.AxiUserWidth-1:0] axi_user_t;
@@ -523,14 +507,14 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
   ariane_axi_soc::resp_slv_t dram_resp;
   axi_mst_req_t axi_tag_req;
   axi_mst_resp_t axi_tag_resp;
-  if (CVA6Cfg.CheriPresent) begin : gen_cheri_tag_controller
 
-  `AXI_ASSIGN_TO_REQ(dram_req,   dram)
-  `AXI_ASSIGN_FROM_RESP( dram, dram_resp)
+  `AXI_ASSIGN_TO_REQ(dram_req, dram)
+  `AXI_ASSIGN_FROM_RESP(dram, dram_resp)
   `AXI_ASSIGN_FROM_REQ(tag_mst, axi_tag_req)
-  `AXI_ASSIGN_TO_RESP(  axi_tag_resp, tag_mst)
+  `AXI_ASSIGN_TO_RESP(axi_tag_resp, tag_mst)
   `REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
 
+  if (CVA6Cfg.CheriPresent) begin : gen_cheri_tag_controller
     axi_tagctrl_reg_wrap #(
         .DRAMMemBase     (ariane_soc::DRAMBase),
         .CapSize         (CVA6Cfg.CLEN),
@@ -563,8 +547,10 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
         .cached_start_addr_i(ariane_soc::DRAMBase),
         .cached_end_addr_i  ({64'hA0000000})
     );
+  end else begin
+    assign axi_tag_req = dram_req;
+    assign dram_resp = axi_tag_resp;
   end
-
 
   sram #(
     .DATA_WIDTH ( AXI_DATA_WIDTH ),
@@ -588,16 +574,6 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     .ruser_o    ( ruser                                                                       ),
     .rdata_o    ( rdata                                                                       )
   );
-
-  /* cva6_cheri_tag_mem tag_mem (
-    .clk_i        ( clk_i     ),
-    .rst_ni       ( rst_ni    ),
-    .address_i    ( addr      ),
-    .we_i         ( we        ),
-    .writedata_i  ( wuser ),
-    .readdata_o   ( ruser )
-  ); */
-
 
   // ---------------
   // AXI Xbar
@@ -755,7 +731,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
   ) i_ariane (
     .clk_i                ( clk_i               ),
     .rst_ni               ( ndmreset_n          ),
-    .boot_addr_i          ( (CVA6Cfg.CheriPresent) ? boot_cap : ariane_soc::ROMBase ), // start fetching from ROM
+    .boot_addr_i          ( CVA6Cfg.CheriPresent ? boot_cap : ariane_soc::ROMBase ), // start fetching from ROM
     .hart_id_i            ( {56'h0, hart_id}    ),
     .irq_i                ( irqs                ),
     .ipi_i                ( ipi                 ),
