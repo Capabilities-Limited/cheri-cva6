@@ -175,7 +175,7 @@ package build_config_pkg;
 
     cfg.CheriCapTagWidth = CVA6Cfg.CheriCapTagWidth;
     cfg.RVFI_DII = bit'(CVA6Cfg.RVFI_DII);
-    cfg.DIIIDLEN = CVA6Cfg.DIIIDLEN;
+    cfg.DIIIDLEN = 6;
 
     cfg.DATA_USER_EN = CVA6Cfg.DataUserEn;
     cfg.WtDcacheWbufDepth = CVA6Cfg.WtDcacheWbufDepth;
