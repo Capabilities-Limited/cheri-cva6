@@ -173,7 +173,9 @@ src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                        
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_config.sv                          \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/src/axi_llc_hit_miss.sv                        \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_top.sv                                     \
+        $(root-dir)/vendor/zero-day/axi_tagcontroller/src/llc_cache_wrapper.sv                                   \
         $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_reg_wrap.sv                                \
+	$(root-dir)/vendor/zero-day/axi_tagcontroller/src/hpdcache_wrapper.sv                                    \
         $(root-dir)/corev_apu/tb/ariane_testharness.sv                                                           \
         $(root-dir)/corev_apu/tb/cva6_cheri_tag_mem.sv                                                           \
         $(root-dir)/corev_apu/tb/ariane_peripherals.sv                                                           \
@@ -197,6 +199,7 @@ tbs := $(addprefix $(root-dir), $(tbs))
 incdir := $(root-dir)/vendor/pulp-platform/common_cells/include/ $(CVA6_REPO_DIR)/vendor/pulp-platform/axi/include/ \
           $(root-dir)/vendor/zero-day/axi_tagcontroller/include/                                                    \
           $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/include/                                        \
+          $(root-dir)/vendor/zero-day/axi_tagcontroller/src/axi_llc/include/axi_llc/                                \
           $(root-dir)/corev_apu/register_interface/include/ $(CVA6_REPO_DIR)/corev_apu/tb/common/                   \
           $(root-dir)/vendor/pulp-platform/axi/include/                                                             \
           $(root-dir)/verif/core-v-verif/lib/uvm_agents/uvma_rvfi/                                                  \
