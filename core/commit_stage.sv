@@ -127,7 +127,7 @@ module commit_stage
     automatic
     cva6_cheri_pkg::cap_reg_t
     pcc_o = cva6_cheri_pkg::set_cap_reg_addr(
-        pcc_i[0], commit_instr_i[0].pc
+        pcc_i[commit_instr_i[0].pcc_gen], commit_instr_i[0].pc
     );
     pcc_o = cva6_cheri_pkg::set_cap_reg_flags(pcc_o, commit_instr_i[0].int_mode);
     pc_o  = pcc_o;
