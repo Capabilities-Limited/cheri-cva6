@@ -232,7 +232,7 @@ localparam int unsigned TagCacheMemBase = DRAMMemBase + DRAMMemLength - TagCache
 localparam int unsigned SetAssociativity = 32'd8;
 localparam int unsigned NumLines = 32'd128;
 localparam int unsigned NumBlocks = 32'd4;
-  
+
 // WARNING: If NBSlave is modified, Xilinx's IPs under fpga/xilinx need to be updated with the new AXI id width and regenerated.
 // Otherwise reads and writes to DRAM may be returned to the wrong master and the crossbar will freeze. See issue #568.
 localparam NBSlave = 2; // debug, ariane

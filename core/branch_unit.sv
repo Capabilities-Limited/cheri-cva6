@@ -104,11 +104,15 @@ module branch_unit #(
     resolved_branch_o.is_taken = 1'b0;
     resolved_branch_o.valid = branch_valid_i;
     resolved_branch_o.is_mispredict = 1'b0;
-    resolved_branch_o.is_pcc_change = 1'b0;
     resolved_branch_o.cf_type = branch_predict_i.cf;
+    resolved_branch_o.pcc_gen = fu_data_i.pcc_gen;
     // calculate target address simple 64 bit addition
     target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
-    if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
+    if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) begin
+      target_address[0] = 1'b0;
+    end
+    if (fu_data_i.operation inside {ariane_pkg::CJALR})
+      resolved_branch_o.pcc_gen = ~fu_data_i.pcc_gen;
     if (CVA6Cfg.CheriPresent) begin
       target_address = cva6_cheri_pkg::set_cap_reg_address(
         jump_base_cap,
@@ -116,27 +120,12 @@ module branch_unit #(
         cva6_cheri_pkg::get_cap_reg_meta_data(
           jump_base_cap)
       );
-    end
-    // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
-    if (CVA6Cfg.CheriPresent) begin
+      // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
       if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
         branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(next_pc, cva6_cheri_pkg::SENTRY_CAP);
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
-          automatic cva6_cheri_pkg::cap_reg_t compare_pcc;
-          automatic cva6_cheri_pkg::cap_reg_t compare_target_cap;
-          compare_pcc = cva6_cheri_pkg::set_cap_reg_flags(pcc, 0);
-          compare_target_cap = cva6_cheri_pkg::set_cap_reg_flags(
-              cva6_cheri_pkg::set_cap_reg_otype(operand_a, cva6_cheri_pkg::UNSEALED_CAP), 0);
           target_address =
               cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
-          if (compare_target_cap != cva6_cheri_pkg::set_cap_reg_address(
-                  compare_pcc,
-                  compare_target_cap[CVA6Cfg.XLEN-1:0],
-                  cva6_cheri_pkg::get_cap_reg_meta_data(
-                      pcc)
-              )) begin
-            resolved_branch_o.is_pcc_change = 1'b1;
-          end
           // If jumping into intmode, we must have been in capmode, so always mispredict
           if (cva6_cheri_pkg::get_cap_reg_flags(target_address) == 1'b1)
             resolved_branch_o.is_mispredict = branch_valid_i;
@@ -161,7 +150,7 @@ module branch_unit #(
       if (CVA6Cfg.RVZCMT) begin
         if (is_zcmt_i) begin
           // Unconditional jump handling
-          resolved_branch_o.is_mispredict = 1'b1;  // miss prediction for ZCMT 
+          resolved_branch_o.is_mispredict = 1'b1;  // miss prediction for ZCMT
           resolved_branch_o.cf_type = ariane_pkg::JumpR;
         end
       end
@@ -183,6 +172,10 @@ module branch_unit #(
       end
       // to resolve the branch in ID
       resolve_branch_o = 1'b1;
+    end
+    if (branch_exception_o.valid) begin
+      resolved_branch_o.valid = 1'b0;
+      resolved_branch_o.is_mispredict = 1'b0;
     end
   end
   // use ALU exception signal for storing instruction fetch exceptions if
