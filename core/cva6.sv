@@ -119,6 +119,7 @@ module cva6
       logic use_pc;  // set if we need to use the PC as operand a, PC from exception
       logic use_ddc;  // use DDC as the default cap for load and stores
       logic int_mode; // Instruction was decoded in integer decoding mode (as opposed to capability mode)
+      logic pcc_gen; // Which forwarded PCC bounds to read in the backend.
       exception_t ex;  // exception has occurred
       branchpredict_sbe_t bp;  // branch predict scoreboard data structure
       logic                     is_compressed; // signals a compressed instructions, we need this information at the commit stage if
@@ -148,7 +149,7 @@ module cva6
       logic [CVA6Cfg.PCLEN-1:0] target_address;  // target address at which to jump, or not
       logic is_mispredict;  // set if this was a mis-predict
       logic is_taken;  // branch is taken
-      logic is_pcc_change;  // with CHERI: set if the branch changes PCC metadata
+      logic pcc_gen;  // with CHERI: set if the branch changes PCC metadata
       cf_t cf_type;  // Type of control flow change
     },
 
@@ -195,6 +196,7 @@ module cva6
       logic [REG_ADDR_SIZE-1:0]         rs2;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;
       logic                             use_ddc;
+      logic                             pcc_gen;          // generation of pcc for this prediction
       logic [5:0]                       orig_instr_aes_bits;
     },
 
@@ -564,7 +566,7 @@ module cva6
   // --------------
   // ISSUE <-> COMMIT
   // --------------
-  logic [CVA6Cfg.PCLEN-1:0] commit_pcc;
+  logic [1:0][CVA6Cfg.PCLEN-1:0] commit_pcc;
   // --------------
   // RVFI
   // --------------
@@ -920,7 +922,6 @@ module cva6
       .fu_data_o               (fu_data_id_ex),
       .alu_bypass_o            (alu_bypass_id_ex),
       .pc_o                    (pc_id_ex),
-      .commit_pcc_o            (commit_pcc),
       .dii_id_o                (dii_id_id_ex),
       .is_zcmt_o               (zcmt_id_ex),
       .is_compressed_instr_o   (is_compressed_instr_id_ex),
@@ -990,8 +991,8 @@ module cva6
       .commit_instr_o (commit_instr_id_commit),
       .commit_drop_o  (commit_drop_id_commit),
       .commit_ack_i   (commit_ack_commit_id),
-      .pcc_commit_i   (pc_commit),
       .set_pc_commit_i(set_pc_ctrl_pcgen),
+      .pc_commit_o    (pc_commit),
 
       // Performance Counters
       .stall_issue_o        (stall_issue),
@@ -1188,8 +1189,7 @@ module cva6
       .we_gpr_o              (we_gpr_commit_id),
       .we_fpr_o              (we_fpr_commit_id),
       .amo_resp_i            (amo_resp),
-      .pcc_i                 (commit_pcc),
-      .pc_o                  (pc_commit),
+      .pc_o                  (),
       .dii_id_o              (dii_id_commit),
       .csr_op_o              (csr_op_commit_csr),
       .csr_op_is_imm_o       (csr_op_is_imm_commit_csr),
