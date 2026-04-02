@@ -214,6 +214,7 @@ module issue_stage
   logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_ack_iro_sb;
 
   logic                                               backend_empty;
+  logic                                               issue_pcc_gen;
 
   exception_t        [CVA6Cfg.NrIssuePorts-1:0]       issue_pcc_ex;
 
@@ -254,6 +255,7 @@ module issue_stage
       .orig_instr_o            (orig_instr_sb_iro),
       .issue_instr_valid_o     (issue_instr_valid_sb_iro),
       .issue_ack_i             (issue_ack_iro_sb),
+      .issue_pcc_gen_i         (issue_pcc_gen),
       .issue_pcc_ex_i          (issue_pcc_ex),
       .backend_empty_o         (backend_empty),
       .fwd_o                   (fwd),
@@ -298,6 +300,7 @@ module issue_stage
       .issue_ack_o             (issue_ack_iro_sb),
       .fwd_i                   (fwd),
       .int_mode_o,
+      .issue_pcc_gen_o         (issue_pcc_gen),
       .issue_pcc_ex_o          (issue_pcc_ex),
       .backend_empty_i         (backend_empty),
       .fu_data_o               (fu_data_o),
