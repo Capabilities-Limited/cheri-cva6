@@ -67,8 +67,6 @@ module issue_stage
     output alu_bypass_t alu_bypass_o,
     // Program Counter - EX_STAGE
     output logic [CVA6Cfg.REGLEN-1:0] pc_o,
-    // Program Counter Capability - EX_STAGE
-    output logic [CVA6Cfg.REGLEN-1:0] commit_pcc_o,
     // DII ID - EX_STAGE
     output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is zcmt instruction - EX_STAGE
@@ -173,6 +171,8 @@ module issue_stage
     input logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_i,
     // Exception event - COMMIT
     input logic ex_valid_i,
+    // Program Counter Capability - COMMIT_STAGE
+    output logic [1:0][CVA6Cfg.REGLEN-1:0] commit_pcc_o,
     // Program counter capability last committed - TO_BE_COMPLETED
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
     // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER

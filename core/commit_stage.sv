@@ -59,7 +59,7 @@ module commit_stage
     // Result of AMO operation - CACHE
     input amo_resp_t amo_resp_i,
     // Current PCC - ISSUE_STAGE
-    input logic [CVA6Cfg.PCLEN-1:0] pcc_i,
+    input logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_i,
     // TO_BE_COMPLETED - FRONTEND_CSR_REGFILE
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
     // Last committed DII ID - FRONTEND
@@ -127,7 +127,7 @@ module commit_stage
     automatic
     cva6_cheri_pkg::cap_reg_t
     pcc_o = cva6_cheri_pkg::set_cap_reg_addr(
-        pcc_i, commit_instr_i[0].pc
+        pcc_i[0], commit_instr_i[0].pc
     );
     pcc_o = cva6_cheri_pkg::set_cap_reg_flags(pcc_o, commit_instr_i[0].int_mode);
     pc_o  = pcc_o;
