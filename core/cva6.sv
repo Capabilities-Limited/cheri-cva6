@@ -564,7 +564,7 @@ module cva6
   // --------------
   // ISSUE <-> COMMIT
   // --------------
-  logic [CVA6Cfg.PCLEN-1:0] commit_pcc;
+  logic [1:0][CVA6Cfg.PCLEN-1:0] commit_pcc;
   // --------------
   // RVFI
   // --------------
@@ -920,7 +920,6 @@ module cva6
       .fu_data_o               (fu_data_id_ex),
       .alu_bypass_o            (alu_bypass_id_ex),
       .pc_o                    (pc_id_ex),
-      .commit_pcc_o            (commit_pcc),
       .dii_id_o                (dii_id_id_ex),
       .is_zcmt_o               (zcmt_id_ex),
       .is_compressed_instr_o   (is_compressed_instr_id_ex),
@@ -990,6 +989,7 @@ module cva6
       .commit_instr_o (commit_instr_id_commit),
       .commit_drop_o  (commit_drop_id_commit),
       .commit_ack_i   (commit_ack_commit_id),
+      .commit_pcc_o   (commit_pcc),
       .pcc_commit_i   (pc_commit),
       .set_pc_commit_i(set_pc_ctrl_pcgen),
 
