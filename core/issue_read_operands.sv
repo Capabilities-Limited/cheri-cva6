@@ -70,8 +70,6 @@ module issue_read_operands
     output logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs2_forwarding_o,
     // Program Counter - EX_STAGE
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
-    // Last committed pcc change - EX_STAGE
-    output logic [CVA6Cfg.PCLEN-1:0] commit_pcc_o,
     // Instruction DII ID - EX_STAGE
     output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is zcmt - EX_STAGE
@@ -145,7 +143,9 @@ module issue_read_operands
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_i,
     // FPR write enable - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_i,
-    // Program counter capability last committed - TO_BE_COMPLETED
+    // Last committed pcc change - COMMIT_STAGE
+    output logic [1:0][CVA6Cfg.PCLEN-1:0] commit_pcc_o,
+    // Program counter capability last committed - COMMIT_STAGE
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
     // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
     input logic set_pc_commit_i,
@@ -248,9 +248,8 @@ module issue_read_operands
   logic [CVA6Cfg.NrIssuePorts-1:0][31:0] tinst_n, tinst_q;  // transformed instruction
 
   // PCC signals : we only have one as we only allow one PCC change at a time
-  logic [CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
+  logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
   logic pcc_jump_change_valid_n, pcc_jump_change_valid_q;
-  logic [CVA6Cfg.PCLEN-1:0] pcc_jump_change_n, pcc_jump_change_q;
   cva6_cheri_pkg::cap_reg_t pcc[CVA6Cfg.NrIssuePorts-1:0];
   cva6_cheri_pkg::cap_meta_data_t pcc_meta;
 
@@ -365,7 +364,7 @@ module issue_read_operands
     assign use_alu2 = '0;
   end
 
-  assign int_mode_o   = cva6_cheri_pkg::get_cap_reg_flags(pcc_q);
+  assign int_mode_o   = cva6_cheri_pkg::get_cap_reg_flags(pcc_q[0]);
   assign commit_pcc_o = pcc_q;
   // ---------------
   // Issue Stage
@@ -489,7 +488,7 @@ module issue_read_operands
     // Update PCC with correct int mode
     always_comb begin : pcc_int_mode
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_q, issue_instr_i[i].int_mode);
+        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_q[0], issue_instr_i[i].int_mode);
       end
     end
 
@@ -498,10 +497,10 @@ module issue_read_operands
       automatic cva6_cheri_pkg::addrw_t pcc_base;
       automatic cva6_cheri_pkg::addrwe_t pcc_top;
       automatic logic pcc_bounds_root;
-      pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q);
-      pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q, pcc_meta);
-      pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q, pcc_meta);
-      pcc_bounds_root = cva6_cheri_pkg::are_cap_reg_bounds_root(pcc_q, pcc_meta);
+      pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q[0]);
+      pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q[0], pcc_meta);
+      pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q[0], pcc_meta);
+      pcc_bounds_root = cva6_cheri_pkg::are_cap_reg_bounds_root(pcc_q[0], pcc_meta);
       issue_pcc_ex_o = '0;
       // Check PCC bounds every instruction
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
@@ -806,24 +805,24 @@ module issue_read_operands
   if (CVA6Cfg.CheriPresent) begin
     always_comb begin : pcc_select
       pcc_jump_change_valid_n = pcc_jump_change_valid_q;
-      pcc_jump_change_n = pcc_jump_change_q;
-      pcc_n = pcc_q;
+      pcc_n[1] = pcc_q[1];
+      pcc_n[0] = pcc_q[0];
 
       if (eret_i) begin
         pcc_jump_change_valid_n = 1'b0;
-        pcc_n = epc_i;
+        pcc_n[0] = epc_i;
       end else if (set_pc_commit_i) begin
         pcc_jump_change_valid_n = 1'b0;
-        pcc_n = pcc_commit_i;
+        pcc_n[0] = pcc_commit_i;
       end else if (ex_valid_i) begin
         pcc_jump_change_valid_n = 1'b0;
-        pcc_n = trap_vector_base_i;
+        pcc_n[0] = trap_vector_base_i;
       end else if (pcc_jump_change_valid_q && backend_empty_i) begin
         pcc_jump_change_valid_n = 1'b0;
-        pcc_n = pcc_jump_change_q;
+        pcc_n[0] = pcc_q[1];
       end else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
         pcc_jump_change_valid_n = 1'b1;
-        pcc_jump_change_n = resolved_branch_i.target_address;
+        pcc_n[1] = resolved_branch_i.target_address;
       end
     end
   end
@@ -1244,7 +1243,7 @@ module issue_read_operands
       end
       pc_o <= '0;
       if (CVA6Cfg.CheriPresent) begin
-        pcc_q <= REG_ROOT;
+        pcc_q[0] <= REG_ROOT;
         pcc_jump_change_valid_q <= '0;
       end
       is_zcmt_o                <= '0;
@@ -1264,9 +1263,9 @@ module issue_read_operands
       branch_predict_o <= branch_predict_n;
       if (CVA6Cfg.RVFI_DII) dii_id_o <= dii_id_n;
       if (CVA6Cfg.CheriPresent) begin
-        pcc_q <= pcc_n;
+        pcc_q[0] <= pcc_n[0];
         pcc_jump_change_valid_q <= pcc_jump_change_valid_n;
-        pcc_jump_change_q <= pcc_jump_change_n;
+        pcc_q[1] <= pcc_n[1];
       end
       if (CVA6Cfg.RVZCMT) is_zcmt_o <= issue_instr_i[0].is_zcmt;
       else is_zcmt_o <= '0;
