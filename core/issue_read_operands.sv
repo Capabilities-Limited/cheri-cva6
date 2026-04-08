@@ -343,6 +343,7 @@ module issue_read_operands
   assign cvxif_off_instr_o = CVA6Cfg.CvxifEn ? cvxif_off_instr_q : '0;
   assign stall_issue_o = stall_raw[0];
   assign tinst_o = CVA6Cfg.RVH ? tinst_q : '0;
+  assign issue_pcc_gen_o = pcc_gen_q;
 
   // ALU bypass signals
   if (CVA6Cfg.ALUBypass) begin
