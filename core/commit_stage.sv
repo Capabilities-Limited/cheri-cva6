@@ -60,7 +60,7 @@ module commit_stage
     input amo_resp_t amo_resp_i,
     // Current PCC - ISSUE_STAGE
     input logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_i,
-    // TO_BE_COMPLETED - FRONTEND_CSR_REGFILE
+    // PCC to be written on flush - FRONTEND_CSR_REGFILE_ISSUE_STAGE
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
     // Last committed DII ID - FRONTEND
     output logic [CVA6Cfg.DIIIDLEN-1 : 0] dii_id_o,
