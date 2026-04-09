@@ -229,7 +229,6 @@ localparam int unsigned DRAMMemBase = {64'h80000000};
 localparam int unsigned DRAMMemLength = {64'h40000000};
 localparam int unsigned TagCacheMemLength = DRAMMemLength >> 7;
 localparam int unsigned TagCacheMemBase = DRAMMemBase + DRAMMemLength - TagCacheMemLength;
-localparam int unsigned AxiIdWidth = 64'd6;
 localparam int unsigned SetAssociativity = 32'd8;
 localparam int unsigned NumLines = 32'd128;
 localparam int unsigned NumBlocks = 32'd4;
