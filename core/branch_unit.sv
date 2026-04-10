@@ -116,14 +116,14 @@ module branch_unit #(
         cva6_cheri_pkg::get_cap_reg_meta_data(
           jump_base_cap)
       );
+      target_address =
+          cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
     end
     // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
     if (CVA6Cfg.CheriPresent) begin
       if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
         branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(next_pc, cva6_cheri_pkg::SENTRY_CAP);
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
-          target_address =
-              cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
           resolved_branch_o.is_pcc_change = 1'b1;
           // If jumping into intmode, we must have been in capmode, so always mispredict
           if (cva6_cheri_pkg::get_cap_reg_flags(target_address) == 1'b1)
