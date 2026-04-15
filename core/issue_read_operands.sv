@@ -1250,14 +1250,22 @@ module issue_read_operands
       end
       if (CVA6Cfg.SuperscalarEn) begin
         if (issue_instr_i[1].fu == CTRL_FLOW) begin
-          pc_o <= cva6_cheri_pkg::set_cap_reg_address(pcc_n[1], issue_instr_i[1].pc, pcc_meta);
+          automatic cva6_cheri_pkg::cap_reg_t pc_out = pcc_n[pcc_gen_n];
+          // Unsafe, but this instruction will not commit if its PC is out-of-bounds
+          pc_out = cva6_cheri_pkg::set_cap_reg_addr(pc_out, issue_instr_i[1].pc);
+          pc_out = cva6_cheri_pkg::set_cap_reg_flags(pc_out, issue_instr_i[1].int_mode);
+          pc_o <= pc_out;
           is_compressed_instr_o <= issue_instr_i[1].is_compressed;
           branch_predict_o <= issue_instr_i[1].bp;
           if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[1].dii_id;
         end
       end
       if (issue_instr_i[0].fu == CTRL_FLOW) begin
-        pc_o <= cva6_cheri_pkg::set_cap_reg_address(pcc_n[0], issue_instr_i[0].pc, pcc_meta);
+        automatic cva6_cheri_pkg::cap_reg_t pc_out = pcc_n[pcc_gen_n];
+        // Unsafe, but this instruction will not commit if its PC is out-of-bounds
+        pc_out = cva6_cheri_pkg::set_cap_reg_addr(pc_out, issue_instr_i[0].pc);
+        pc_out = cva6_cheri_pkg::set_cap_reg_flags(pc_out, issue_instr_i[0].int_mode);
+        pc_o <= pc_out;
         is_compressed_instr_o <= issue_instr_i[0].is_compressed;
         branch_predict_o <= issue_instr_i[0].bp;
         if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[0].dii_id;
