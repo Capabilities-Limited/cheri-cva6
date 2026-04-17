@@ -102,7 +102,7 @@ module acc_dispatcher
    **************************/
 
   // Issue accelerator instructions
-  `FF(acc_valid_q, acc_valid_d, '0)
+  `FF(acc_valid_q, acc_valid_d, '0, clk_i, rst_ni)
 
   assign acc_valid_ex_o = acc_valid_q;
   assign acc_valid_d    = ~issue_instr_i.ex.valid &
@@ -174,13 +174,13 @@ module acc_dispatcher
 
   // Keep track of the instructions that were received by the dispatcher.
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0] insn_pending_d, insn_pending_q;
-  `FF(insn_pending_q, insn_pending_d, '0)
+  `FF(insn_pending_q, insn_pending_d, '0, clk_i, rst_ni)
 
   // Only non-speculative instructions can be issued to the accelerators.
   // The following block keeps track of which transaction IDs reached the
   // top of the scoreboard, and are therefore no longer speculative.
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0] insn_ready_d, insn_ready_q;
-  `FF(insn_ready_q, insn_ready_d, '0)
+  `FF(insn_ready_q, insn_ready_d, '0, clk_i, rst_ni)
 
   always_comb begin : p_non_speculative_ff
     // Maintain state
@@ -334,7 +334,7 @@ module acc_dispatcher
   // before continuing execution), halt execution while there are pending stores in
   // the accelerator pipeline.
   logic wait_acc_store_d, wait_acc_store_q;
-  `FF(wait_acc_store_q, wait_acc_store_d, '0)
+  `FF(wait_acc_store_q, wait_acc_store_d, '0, clk_i, rst_ni)
 
   // Set on store barrier. Clear when no store is pending.
   assign wait_acc_store_d = (wait_acc_store_q | commit_st_barrier_i) & acc_resp_i.acc_resp.store_pending;
