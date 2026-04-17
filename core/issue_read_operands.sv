@@ -188,7 +188,7 @@ module issue_read_operands
   rs3_len_t operand_c_fpr;
   // output flipflop (ID <-> EX)
   fu_data_t [CVA6Cfg.NrIssuePorts-1:0] fu_data_n, fu_data_q;
-  logic               [        CVA6Cfg.VLEN-1:0]                   pc_n;
+  logic               [CVA6Cfg.PCLEN-1:0]                          pc_n;
   logic                                                            is_compressed_instr_n;
   branchpredict_sbe_t                                              branch_predict_n;
   logic               [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.XLEN-1:0] imm_forward_rs3;
@@ -1206,13 +1206,25 @@ module issue_read_operands
     branch_predict_n = {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
     if (CVA6Cfg.SuperscalarEn) begin
       if (issue_instr_i[1].fu == CTRL_FLOW) begin
-        pc_n                  = issue_instr_i[1].pc;
+        if (CVA6Cfg.CheriPresent) begin
+          automatic cva6_cheri_pkg::cap_reg_t pc_out = pcc_n[pcc_gen_n];
+          // Unsafe, but this instruction will not commit if its PC is out-of-bounds
+          pc_out = cva6_cheri_pkg::set_cap_reg_addr(pc_out, issue_instr_i[1].pc);
+          pc_out = cva6_cheri_pkg::set_cap_reg_flags(pc_out, issue_instr_i[1].int_mode);
+          pc_n = pc_out;
+        end else pc_n         = issue_instr_i[1].pc;
         is_compressed_instr_n = issue_instr_i[1].is_compressed;
         branch_predict_n      = issue_instr_i[1].bp;
       end
     end
     if (issue_instr_i[0].fu == CTRL_FLOW) begin
-      pc_n                  = issue_instr_i[0].pc;
+      if (CVA6Cfg.CheriPresent) begin
+        automatic cva6_cheri_pkg::cap_reg_t pc_out = pcc_n[pcc_gen_n];
+        // Unsafe, but this instruction will not commit if its PC is out-of-bounds
+        pc_out = cva6_cheri_pkg::set_cap_reg_addr(pc_out, issue_instr_i[0].pc);
+        pc_out = cva6_cheri_pkg::set_cap_reg_flags(pc_out, issue_instr_i[0].int_mode);
+        pc_n = pc_out;
+      end else pc_n         = issue_instr_i[0].pc;
       is_compressed_instr_n = issue_instr_i[0].is_compressed;
       branch_predict_n      = issue_instr_i[0].bp;
     end
@@ -1251,34 +1263,20 @@ module issue_read_operands
         pcc_q <= pcc_n;
         pcc_gen_q <= pcc_gen_n;
       end
+      pc_o <= pc_n;
+      is_compressed_instr_o <= is_compressed_instr_n;
+      branch_predict_o <= branch_predict_n;
       if (CVA6Cfg.SuperscalarEn) begin
         if (issue_instr_i[1].fu == CTRL_FLOW) begin
-          automatic cva6_cheri_pkg::cap_reg_t pc_out = pcc_n[pcc_gen_n];
-          // Unsafe, but this instruction will not commit if its PC is out-of-bounds
-          pc_out = cva6_cheri_pkg::set_cap_reg_addr(pc_out, issue_instr_i[1].pc);
-          pc_out = cva6_cheri_pkg::set_cap_reg_flags(pc_out, issue_instr_i[1].int_mode);
-          pc_o <= pc_out;
-          is_compressed_instr_o <= issue_instr_i[1].is_compressed;
-          branch_predict_o <= issue_instr_i[1].bp;
           if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[1].dii_id;
         end
       end
       if (issue_instr_i[0].fu == CTRL_FLOW) begin
-        automatic cva6_cheri_pkg::cap_reg_t pc_out = pcc_n[pcc_gen_n];
-        // Unsafe, but this instruction will not commit if its PC is out-of-bounds
-        pc_out = cva6_cheri_pkg::set_cap_reg_addr(pc_out, issue_instr_i[0].pc);
-        pc_out = cva6_cheri_pkg::set_cap_reg_flags(pc_out, issue_instr_i[0].int_mode);
-        pc_o <= pc_out;
-        is_compressed_instr_o <= issue_instr_i[0].is_compressed;
-        branch_predict_o <= issue_instr_i[0].bp;
         if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[0].dii_id;
         if (CVA6Cfg.RVZCMT) is_zcmt_o <= issue_instr_i[0].is_zcmt;
         else is_zcmt_o <= '0;
       end
-      x_transaction_rejected_o <= 1'b0;
-      if (issue_instr_i[0].fu == CVXIF) begin
-        x_transaction_rejected_o <= x_transaction_rejected;
-      end
+      x_transaction_rejected_o <= x_transaction_rejected_n;
     end
   end
 
