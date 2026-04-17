@@ -334,7 +334,7 @@ module wt_dcache_missunit
   logic [CVA6Cfg.CLEN_ALIGN_BYTES-1:0] amo_offset;
 
   if (CVA6Cfg.CheriPresent) begin
-    assign amo_offset = ((amo_req_i.size==3'b011) & CVA6Cfg.IS_XLEN64 & CVA6Cfg.CheriPresent) ? amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0] + 7 : 
+    assign amo_offset = ((amo_req_i.size==3'b011) & CVA6Cfg.IS_XLEN64 & CVA6Cfg.CheriPresent) ? amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0] + 7 :
                         ((amo_req_i.size==3'b010) & CVA6Cfg.IS_XLEN64) ? amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0] + 3 :
                         ((amo_req_i.size==3'b001))  ? amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0] + 1 :
                                                       amo_req_i.operand_a[CVA6Cfg.CLEN_ALIGN_BYTES-1:0];

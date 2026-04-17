@@ -896,6 +896,7 @@ package ariane_pkg;
           default: ;  // Do nothing
         endcase
       end
+      default: return 16'b0;
     endcase
     return 16'b0;
   endfunction
