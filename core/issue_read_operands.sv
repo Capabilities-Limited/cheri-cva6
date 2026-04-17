@@ -492,7 +492,9 @@ module issue_read_operands
     // Update PCC with correct int mode
     always_comb begin : pcc_int_mode
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_q[pcc_gen_q], issue_instr_i[i].int_mode);
+        // Unsafely set the address without representability check; relies on proper bounds check passing.
+        pcc[i] = cva6_cheri_pkg::set_cap_reg_addr(pcc_n[pcc_gen_n], issue_instr_i[i].pc);
+        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc[i], issue_instr_i[i].int_mode);
       end
     end
 
@@ -500,11 +502,12 @@ module issue_read_operands
     always_comb begin : pcc_bounds
       automatic cva6_cheri_pkg::addrw_t pcc_base;
       automatic cva6_cheri_pkg::addrwe_t pcc_top;
+      cva6_cheri_pkg::cap_reg_t pcc_cur = pcc_q[pcc_gen_q];
       automatic logic pcc_bounds_root;
-      pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_q[pcc_gen_q]);
-      pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_q[pcc_gen_q], pcc_meta);
-      pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_q[pcc_gen_q], pcc_meta);
-      pcc_bounds_root = cva6_cheri_pkg::are_cap_reg_bounds_root(pcc_q[pcc_gen_q], pcc_meta);
+      pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_cur);
+      pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_cur, pcc_meta);
+      pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_cur, pcc_meta);
+      pcc_bounds_root = cva6_cheri_pkg::are_cap_reg_bounds_root(pcc_cur, pcc_meta);
       issue_pcc_ex_o = '0;
       // Check PCC bounds every instruction
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
@@ -521,25 +524,25 @@ module issue_read_operands
           issue_pcc_ex_o[i].tval2 = cheri_tval2;
           issue_pcc_ex_o[i].valid = 1'b1;
         end
-        if (issue_instr_i[i].needs_asr && !pcc[i].hperms.access_sys_regs) begin
+        if (issue_instr_i[i].needs_asr && !pcc_cur.hperms.access_sys_regs) begin
           issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
           issue_pcc_ex_o[i].tval2 = cheri_tval2;
           issue_pcc_ex_o[i].valid = 1'b1;
         end
-        if (!pcc[i].hperms.permit_execute) begin
+        if (!pcc_cur.hperms.permit_execute) begin
           issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
           issue_pcc_ex_o[i].tval2 = cheri_tval2;
           issue_pcc_ex_o[i].valid = 1'b1;
         end
-        if ((pcc[i].otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc[i].tag) begin
+        if ((pcc_cur.otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc_cur.tag) begin
           issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
           issue_pcc_ex_o[i].tval2 = cheri_tval2;
           issue_pcc_ex_o[i].valid = 1'b1;
         end
-        if (!pcc[i].tag) begin
+        if (!pcc_cur.tag) begin
           issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
           issue_pcc_ex_o[i].tval2 = cheri_tval2;
@@ -860,7 +863,7 @@ module issue_read_operands
       // use the PC as operand a
       if (issue_instr_i[i].use_pc) begin
         if (CVA6Cfg.CheriPresent) begin
-          fu_data_n[i].operand_a = cva6_cheri_pkg::set_cap_reg_addr(pcc[i], issue_instr_i[i].pc);
+          fu_data_n[i].operand_a = pcc[i];
         end else begin
           fu_data_n[i].operand_a = {
             {CVA6Cfg.XLEN - CVA6Cfg.VLEN{issue_instr_i[i].pc[CVA6Cfg.VLEN-1]}}, issue_instr_i[i].pc
