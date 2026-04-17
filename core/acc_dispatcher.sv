@@ -88,7 +88,7 @@ module acc_dispatcher
 
   `include "common_cells/registers.svh"
 
-  import cf_math_pkg::idx_width;
+  import prim_util_pkg::vbits;
 
   /***********************
    *  Common signals     *
@@ -140,7 +140,7 @@ module acc_dispatcher
   fu_data_t                                        acc_insn_queue_o;
   logic                                            acc_insn_queue_pop;
   logic                                            acc_insn_queue_empty;
-  logic     [idx_width(InstructionQueueDepth)-1:0] acc_insn_queue_usage;
+  logic     [vbits(InstructionQueueDepth)-1:0] acc_insn_queue_usage;
   logic                                            acc_commit;
   logic     [           CVA6Cfg.TRANS_ID_BITS-1:0] acc_commit_trans_id;
 

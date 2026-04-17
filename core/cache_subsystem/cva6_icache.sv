@@ -408,14 +408,19 @@ module cva6_icache
   );
 
   // generate random cacheline index
-  lfsr #(
-      .LfsrWidth(8),
-      .OutWidth (CVA6Cfg.ICACHE_SET_ASSOC_WIDTH)
+  prim_lfsr #(
+      .LfsrDw     (8),
+      .StateOutDw (CVA6Cfg.ICACHE_SET_ASSOC_WIDTH)
   ) i_lfsr (
-      .clk_i (clk_i),
-      .rst_ni(rst_ni),
-      .en_i  (update_lfsr),
-      .out_o (rnd_way)
+      .clk_i  (clk_i),
+      .rst_ni (rst_ni),
+
+      .seed_en_i (1'b0),
+      .seed_i    ('0),
+      .entropy_i ('0),
+
+      .lfsr_en_i (update_lfsr),
+      .state_o   (rnd_way)
   );
 
 
