@@ -47,6 +47,7 @@ logic [USER_WIDTH_ALIGNED-1:0]  wuser_aligned;
 logic [BE_WIDTH_ALIGNED-1:0]    be_aligned;
 logic [DATA_WIDTH_ALIGNED-1:0]  rdata_aligned;
 logic [USER_WIDTH_ALIGNED-1:0]  ruser_aligned;
+logic [DATA_WIDTH_ALIGNED-1:0]  wmask_aligned;
 
 
 // align to 64 bits for inferrable macro below
@@ -54,9 +55,16 @@ always_comb begin : p_align
     wdata_aligned                    ='0;
     wuser_aligned                    ='0;
     be_aligned                       ='0;
+    wmask_aligned                    ='0;
     wdata_aligned[DATA_WIDTH-1:0]    = wdata_i;
     wuser_aligned[USER_WIDTH-1:0]    = wuser_i;
     be_aligned[BE_WIDTH_ALIGNED-1:0] = be_i;
+
+    // Convert byte-enables (BE) to a bit-level write mask (wmask). Each bit in be_i is expanded
+    // to 8 bits to match the SRAM bitmask interface.
+    for (int i=0; i < (DATA_WIDTH_ALIGNED / 8); ++i) begin
+        wmask_aligned[i*8 +: 8] = {8{be_aligned[i]}};
+    end
 
     rdata_o = rdata_aligned[DATA_WIDTH-1:0];
     ruser_o = ruser_aligned[USER_WIDTH-1:0];
@@ -64,42 +72,40 @@ end
 
   for (genvar k = 0; k<(DATA_WIDTH+63)/64; k++) begin : gen_cut
       // unused byte-enable segments (8bits) are culled by the tool
-      tc_sram_wrapper #(
-        .NumWords(NUM_WORDS),           // Number of Words in data array
-        .DataWidth(64),                 // Data signal width
-        .ByteWidth(32'd8),              // Width of a data byte
-        .NumPorts(32'd1),               // Number of read and write ports
-        .Latency(32'd1),                // Latency when the read data is available
-        .SimInit(SIM_INIT),             // Simulation initialization
-        .PrintSimCfg(1'b0)              // Print configuration
+      prim_ram_1p #(
+        .Depth(NUM_WORDS),       // Number of Words in data array
+        .Width(64),              // Data signal width
+        .DataBitsPerMask(32'd8), // Width of a data byte
+        .MemInitFile(SIM_INIT)   // Simulation initialization
       ) i_tc_sram_wrapper (
           .clk_i    ( clk_i                     ),
           .rst_ni   ( rst_ni                    ),
           .req_i    ( req_i                     ),
-          .we_i     ( we_i                      ),
-          .be_i     ( be_aligned[k*8 +: 8]      ),
+          .write_i  ( we_i                      ),
+          .wmask_i  ( wmask_aligned[k*64 +: 64] ),
           .wdata_i  ( wdata_aligned[k*64 +: 64] ),
           .addr_i   ( addr_i                    ),
-          .rdata_o  ( rdata_aligned[k*64 +: 64] )
+          .rdata_o  ( rdata_aligned[k*64 +: 64] ),
+          .cfg_i    ( '0                        ),
+          .cfg_rsp_o(                           )
       );
       if (USER_EN > 0) begin : gen_mem_user
-        tc_sram_wrapper #(
-          .NumWords(NUM_WORDS),           // Number of Words in data array
-          .DataWidth(64),                 // Data signal width
-          .ByteWidth(32'd8),              // Width of a data byte
-          .NumPorts(32'd1),               // Number of read and write ports
-          .Latency(32'd1),                // Latency when the read data is available
-          .SimInit(SIM_INIT),             // Simulation initialization
-          .PrintSimCfg(1'b0)              // Print configuration
+        prim_ram_1p #(
+          .Depth(NUM_WORDS),       // Number of Words in data array
+          .Width(64),              // Data signal width
+          .DataBitsPerMask(32'd8), // Width of a data byte
+          .MemInitFile(SIM_INIT)   // Simulation initialization
         ) i_tc_sram_wrapper_user (
             .clk_i    ( clk_i                     ),
             .rst_ni   ( rst_ni                    ),
             .req_i    ( req_i                     ),
-            .we_i     ( we_i                      ),
-            .be_i     ( be_aligned[k*8 +: 8]      ),
+            .write_i  ( we_i                      ),
+            .wmask_i  ( wmask_aligned[k*64 +: 64] ),
             .wdata_i  ( wuser_aligned[k*64 +: 64] ),
             .addr_i   ( addr_i                    ),
-            .rdata_o  ( ruser_aligned[k*64 +: 64] )
+            .rdata_o  ( ruser_aligned[k*64 +: 64] ),
+            .cfg_i    ( '0                        ),
+            .cfg_rsp_o(                           )
         );
       end else begin : gen_mem_user
           assign ruser_aligned[k*64 +: 64] = '0;

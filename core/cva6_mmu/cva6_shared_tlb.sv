@@ -484,14 +484,19 @@ module cva6_shared_tlb #(
       .empty_o(all_ways_valid)
   );
 
-  lfsr #(
-      .LfsrWidth(8),
-      .OutWidth ($clog2(SHARED_TLB_WAYS))
+  prim_lfsr #(
+      .LfsrDw     ( 8                       ),
+      .StateOutDw ( $clog2(SHARED_TLB_WAYS) )
   ) i_lfsr (
-      .clk_i (clk_i),
-      .rst_ni(rst_ni),
-      .en_i  (update_lfsr),
-      .out_o (rnd_way)
+      .clk_i  (clk_i),
+      .rst_ni (rst_ni),
+
+      .seed_en_i (1'b0),
+      .seed_i    ('0),
+      .entropy_i ('0),
+
+      .lfsr_en_i (update_lfsr),
+      .state_o   (rnd_way)
   );
 
   ///////////////////////////////////////////////////////
