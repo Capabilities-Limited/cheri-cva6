@@ -1891,7 +1891,8 @@ module cva6
     if (~rst_ni) begin
       cycles <= 0;
     end else begin
-      byte mode = "";
+      byte mode;
+      mode = "";
       if (CVA6Cfg.DebugEn && debug_mode) mode = "D";
       else begin
         case (priv_lvl)

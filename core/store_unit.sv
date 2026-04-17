@@ -131,6 +131,7 @@ module store_unit
             4'b1101: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[23:0], data[63:24]};
             4'b1110: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[15:0], data[63:16]};
             4'b1111: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = {data[7:0], data[63:8]};
+            default: data_tmp[CVA6Cfg.CLEN-1:CVA6Cfg.XLEN] = '0;
           endcase
         end
         if (CVA6Cfg.IS_XLEN64) begin
