@@ -380,6 +380,7 @@ module load_store_unit
     assign dcache_req_ports_o[0].address_index = '0;
     assign dcache_req_ports_o[0].address_tag   = '0;
     assign dcache_req_ports_o[0].data_wdata    = '0;
+    assign dcache_req_ports_o[0].data_wuser    = '0;
     assign dcache_req_ports_o[0].data_req      = 1'b0;
     assign dcache_req_ports_o[0].data_be       = '1;
     assign dcache_req_ports_o[0].data_size     = 2'b11;
@@ -387,6 +388,7 @@ module load_store_unit
     assign dcache_req_ports_o[0].data_wuser    = '0;
     assign dcache_req_ports_o[0].kill_req      = '0;
     assign dcache_req_ports_o[0].tag_valid     = 1'b0;
+    assign dcache_req_ports_o[0].strip_tag     = 1'b0;
 
     assign itlb_miss_o                         = 1'b0;
     assign dtlb_miss_o                         = 1'b0;
