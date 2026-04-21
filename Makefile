@@ -104,7 +104,7 @@ endif
 # target takes one of the following cva6 hardware configuration:
 # cv64a6_imafdc_sv39, cv32a6_imac_sv0, cv32a6_imac_sv32, cv32a6_imafc_sv32, cv32a6_ima_sv32_fpga
 # Changing the default target to cv32a60x for Step1 verification
-target     ?= cv64a6_imafdczcheri_sv39
+target     ?= cv64a6_imafdczcheri_sv39_hpdcache_wb
 ifneq (,$(findstring cv64,$(target)))
 	XLEN ?= 64
 else
