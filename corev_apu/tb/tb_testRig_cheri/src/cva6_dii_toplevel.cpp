@@ -409,7 +409,7 @@ rvfi_pkt_t readRVFI_0(Variane_testharness_dii *top) {
          .rvfi_rd_addr = top->rvfi_trap_o_0 ? 0 : top->rvfi_rd_addr_o_0 ,
          .rvfi_trap = top->rvfi_trap_o_0 ,
          .rvfi_halt = 0 ,
-         .rvfi_intr = top->rvfi_intr_o_0 
+         .rvfi_intr = top->rvfi_intr_o_0
      };
     return execpacket;
 }
@@ -433,7 +433,7 @@ rvfi_pkt_t readRVFI_1(Variane_testharness_dii *top) {
          .rvfi_rd_addr = top->rvfi_trap_o_1 ? 0 : top->rvfi_rd_addr_o_1 ,
          .rvfi_trap = top->rvfi_trap_o_1 ,
          .rvfi_halt = 0 ,
-         .rvfi_intr = top->rvfi_intr_o_1 
+         .rvfi_intr = top->rvfi_intr_o_1
      };
     return execpacket;
 }
