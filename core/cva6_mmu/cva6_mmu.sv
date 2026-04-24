@@ -63,7 +63,7 @@ module cva6_mmu
     // Cycle 1
     output logic lsu_valid_o,  // translation is valid
     output logic [CVA6Cfg.PLEN-1:0] lsu_paddr_o,  // translated address
-    output logic lsu_strip_tag_o,  // strip tag from result capability, happens when PTE.CR = PTE.CRM = PTE.CRG = 0;
+    output logic lsu_allow_tag_o,  // If clear, strip tag from result capability, happens when PTE.CR = PTE.CRM = PTE.CRG = 0;
 
     output exception_t lsu_exception_o,  // address translation threw an exception
     // General control signals
@@ -545,7 +545,7 @@ module cva6_mmu
       };
 
     // Cheri pte checks
-    lsu_strip_tag_o = 1'b0;
+    lsu_allow_tag_o = 1'b1;  // Tags allowed by default, e.g. if translation disabled
     cheri_cap_err   = 1'b0;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
@@ -606,7 +606,7 @@ module cva6_mmu
 
       if (CVA6Cfg.CheriPresent) begin
         // Check if strip tag is needed on capability loads
-        lsu_strip_tag_o = !dtlb_pte_q.cw;
+        lsu_allow_tag_o = dtlb_pte_q.cw;
       end
 
       // ---------
