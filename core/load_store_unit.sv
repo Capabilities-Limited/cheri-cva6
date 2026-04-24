@@ -1064,31 +1064,31 @@ module load_store_unit
   // ------------------
   // new data arrives here
   lsu_ctrl_t lsu_req_i;
-  logic ld_cap;
-  logic ld_clr_tag;
-  logic ld_clr_elevate;
-  logic ld_clr_cap_level;
-  logic ld_clr_load_mutable;
-  logic [CVA6Cfg.REGLEN-1:0] st_data;
-  cva6_cheri_pkg::cap_reg_t fu_data_check_cap;
-  cva6_cheri_pkg::cap_reg_t st_data_cap;
+  logic lsu_req_ld_cap;
+  logic lsu_req_ld_clr_tag;
+  logic lsu_req_ld_clr_elevate;
+  logic lsu_req_ld_clr_cap_level;
+  logic lsu_req_ld_clr_load_mutable;
+  logic [CVA6Cfg.REGLEN-1:0] lsu_req_st_data;
+  cva6_cheri_pkg::cap_reg_t lsu_req_check_cap;
+  cva6_cheri_pkg::cap_reg_t lsu_req_st_data_cap;
   if (CVA6Cfg.CheriPresent) begin
-    assign fu_data_check_cap = fu_data_i.use_ddc ? ddc_i : fu_data_i.operand_a;
-    assign st_data_cap = fu_data_i.operand_b;
-    assign ld_cap = ((fu_data_i.fu == LOAD) && (fu_data_i.operation inside{ariane_pkg::LC})) || ((fu_data_i.fu == STORE) && fu_data_i.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
-    assign ld_clr_tag = !(fu_data_check_cap.hperms.permit_load && fu_data_check_cap.hperms.permit_cap) && ld_cap;
-    assign ld_clr_elevate = !fu_data_check_cap.hperms.permit_elevate_level && ld_cap && !ld_clr_tag;
-    assign ld_clr_cap_level = ld_clr_elevate && !fu_data_check_cap.hperms.cap_level;
-    assign ld_clr_load_mutable = !fu_data_check_cap.hperms.permit_load_mutable && ld_cap;
-    assign st_data[CVA6Cfg.REGLEN-2:0] = st_data_cap[CVA6Cfg.REGLEN-2:0];
-    assign st_data[CVA6Cfg.REGLEN-1] = st_data_cap.tag & fu_data_check_cap.hperms.permit_store & fu_data_check_cap.hperms.permit_cap & (fu_data_check_cap.hperms.permit_store_level | st_data_cap.hperms.cap_level);
+    assign lsu_req_check_cap = fu_data_i.use_ddc ? ddc_i : fu_data_i.operand_a;
+    assign lsu_req_st_data_cap = fu_data_i.operand_b;
+    assign lsu_req_ld_cap = ((fu_data_i.fu == LOAD) && (fu_data_i.operation inside{ariane_pkg::LC})) || ((fu_data_i.fu == STORE) && fu_data_i.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
+    assign lsu_req_ld_clr_tag = !(lsu_req_check_cap.hperms.permit_load && lsu_req_check_cap.hperms.permit_cap) && lsu_req_ld_cap;
+    assign lsu_req_ld_clr_elevate = !lsu_req_check_cap.hperms.permit_elevate_level && lsu_req_ld_cap && !lsu_req_ld_clr_tag;
+    assign lsu_req_ld_clr_cap_level = lsu_req_ld_clr_elevate && !lsu_req_check_cap.hperms.cap_level;
+    assign lsu_req_ld_clr_load_mutable = !lsu_req_check_cap.hperms.permit_load_mutable && lsu_req_ld_cap;
+    assign lsu_req_st_data[CVA6Cfg.REGLEN-2:0] = lsu_req_st_data_cap[CVA6Cfg.REGLEN-2:0];
+    assign lsu_req_st_data[CVA6Cfg.REGLEN-1] = lsu_req_st_data_cap.tag & lsu_req_check_cap.hperms.permit_store & lsu_req_check_cap.hperms.permit_cap & (lsu_req_check_cap.hperms.permit_store_level | lsu_req_st_data_cap.hperms.cap_level);
   end else begin
-    assign ld_cap = 1'b0;
-    assign ld_clr_tag = 1'b0;
-    assign ld_clr_elevate = 1'b0;
-    assign ld_clr_cap_level = 1'b0;
-    assign ld_clr_load_mutable = 1'b0;
-    assign st_data = fu_data_i.operand_b;
+    assign lsu_req_ld_cap = 1'b0;
+    assign lsu_req_ld_clr_tag = 1'b0;
+    assign lsu_req_ld_clr_elevate = 1'b0;
+    assign lsu_req_ld_clr_cap_level = 1'b0;
+    assign lsu_req_ld_clr_load_mutable = 1'b0;
+    assign lsu_req_st_data = fu_data_i.operand_b;
   end
 
   assign lsu_req_i = {
@@ -1100,7 +1100,7 @@ module load_store_unit
     overflow,
     g_overflow,
     fu_data_i.operand_a,
-    st_data,
+    lsu_req_st_data,
     be_i,
     fu_data_i.fu,
     fu_data_i.operation,
@@ -1109,10 +1109,10 @@ module load_store_unit
     1'b0,
     fu_data_i.rs1,
     fu_data_i.use_ddc,
-    ld_clr_tag,
-    ld_clr_elevate,
-    ld_clr_cap_level,
-    ld_clr_load_mutable
+    lsu_req_ld_clr_tag,
+    lsu_req_ld_clr_elevate,
+    lsu_req_ld_clr_cap_level,
+    lsu_req_ld_clr_load_mutable
   };
 
   lsu_bypass #(
