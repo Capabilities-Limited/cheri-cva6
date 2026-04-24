@@ -624,7 +624,6 @@ module load_store_unit
       .req_port_o                      (dcache_req_ports_o[2])
   );
 
-  logic ld_allow_tag, ld_allow_tag_o;
   // ------------------
   // Load Unit
   // ------------------
@@ -645,7 +644,6 @@ module load_store_unit
       .valid_o                 (ld_valid),
       .trans_id_o              (ld_trans_id),
       .result_o                (ld_result),
-      .allow_tag_o             (ld_allow_tag),
       .ex_o                    (ld_ex),
       // MMU port
       .translation_req_o       (ld_translation_req),
@@ -676,19 +674,16 @@ module load_store_unit
 
   // amount of pipeline registers inserted for load/store return path
   // can be tuned to trade-off IPC vs. cycle time
-  logic [CVA6Cfg.REGLEN-1:0] load_result_shifted;
+
   shift_reg #(
-      .dtype(logic [$bits({ld_valid, ld_trans_id, ld_result, ld_ex, ld_allow_tag}) - 1:0]),
+      .dtype(logic [$bits({ld_valid, ld_trans_id, ld_result, ld_ex}) - 1:0]),
       .Depth(CVA6Cfg.NrLoadPipeRegs)
   ) i_pipe_reg_load (
       .clk_i,
       .rst_ni,
-      .d_i({ld_valid, ld_trans_id, ld_result, ld_ex, ld_allow_tag}),
-      .d_o({load_valid_o, load_trans_id_o, load_result_shifted, load_exception_o, ld_allow_tag_o})
+      .d_i({ld_valid, ld_trans_id, ld_result, ld_ex}),
+      .d_o({load_valid_o, load_trans_id_o, load_result_o, load_exception_o})
   );
-  assign load_result_o = {
-    load_result_shifted[CVA6Cfg.REGLEN-1] & ld_allow_tag_o, load_result_shifted[CVA6Cfg.REGLEN-2:0]
-  };
 
   shift_reg #(
       .dtype(logic [$bits(st_valid) + $bits(st_trans_id) + $bits(st_result) + $bits(st_ex) - 1:0]),
