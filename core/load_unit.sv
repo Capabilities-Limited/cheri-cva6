@@ -654,22 +654,24 @@ module load_unit
         end
       end
     endcase
-    if (CVA6Cfg.CheriPresent && (!req_port_i.data_allow_tag || !ldbuf_rdata.allow_tag)) begin
-      result_o[CVA6Cfg.REGLEN-1] = 1'b0;
-    end
-    if (result_o[CVA6Cfg.REGLEN-1]) begin
-      automatic cva6_cheri_pkg::cap_reg_t result_cap = result_o;
-      if (!ldbuf_rdata.allow_elevate && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
-        result_cap.hperms.permit_elevate_level = 1'b0;
+    if (CVA6Cfg.CheriPresent) begin
+      if (!req_port_i.data_allow_tag || !ldbuf_rdata.allow_tag) begin
+        result_o[CVA6Cfg.REGLEN-1] = 1'b0;
       end
-      if (!ldbuf_rdata.allow_cap_level) begin
-        result_cap.hperms.cap_level = 1'b0;
+      if (result_o[CVA6Cfg.REGLEN-1]) begin
+        automatic cva6_cheri_pkg::cap_reg_t result_cap = result_o;
+        if (!ldbuf_rdata.allow_elevate && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
+          result_cap.hperms.permit_elevate_level = 1'b0;
+        end
+        if (!ldbuf_rdata.allow_cap_level) begin
+          result_cap.hperms.cap_level = 1'b0;
+        end
+        if (!ldbuf_rdata.allow_load_mutable && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
+          result_cap.hperms.permit_load_mutable = 1'b0;
+          result_cap.hperms.permit_store = 1'b0;
+        end
+        result_o = result_cap;
       end
-      if (!ldbuf_rdata.allow_load_mutable && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
-        result_cap.hperms.permit_load_mutable = 1'b0;
-        result_cap.hperms.permit_store = 1'b0;
-      end
-      result_o = result_cap;
     end
   end
   // end result mux fast
