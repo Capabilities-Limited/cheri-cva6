@@ -47,8 +47,8 @@ module load_unit
     output logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_o,
     // Load result - ISSUE_STAGE
     output logic [CVA6Cfg.REGLEN-1:0] result_o,
-    // Load result - strip CHERI Tag - ISSUE_STAGE
-    output logic strip_tag_o,
+    // Load result - allow CHERI Tag - ISSUE_STAGE
+    output logic allow_tag_o,
     // Load exception - ISSUE_STAGE
     output exception_t ex_o,
     // Request address translation - MMU
@@ -66,7 +66,7 @@ module load_unit
     // Physical address - MMU
     input logic [CVA6Cfg.PLEN-1:0] paddr_i,
     // Strip capability tag on load - MMU
-    input logic strip_tag_i,
+    input logic allow_tag_i,
     // Excepted which appears before load - MMU
     input exception_t ex_i,
     // Data TLB hit - MMU
@@ -105,13 +105,13 @@ module load_unit
   // in order to decouple the response interface from the request interface,
   // we need a a buffer which can hold all inflight memory load requests
   typedef struct packed {
-    logic [CVA6Cfg.TRANS_ID_BITS-1:0]    trans_id;          // scoreboard identifier
-    logic [CVA6Cfg.CLEN_ALIGN_BYTES-1:0] address_offset;    // least significant bits of the address
-    fu_op                                operation;         // type of load
-    logic                                clr_tag;
-    logic                                clr_elevate;
-    logic                                clr_cap_level;
-    logic                                clr_load_mutable;
+    logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;  // scoreboard identifier
+    logic [CVA6Cfg.CLEN_ALIGN_BYTES-1:0] address_offset;  // least significant bits of the address
+    fu_op operation;  // type of load
+    logic allow_tag;
+    logic allow_elevate;
+    logic allow_cap_level;
+    logic allow_load_mutable;
   } ldbuf_t;
 
 
@@ -230,10 +230,10 @@ module load_unit
     lsu_ctrl_i.trans_id,
     lsu_ctrl_i.vaddr[CVA6Cfg.CLEN_ALIGN_BYTES-1:0],
     lsu_ctrl_i.operation,
-    lsu_ctrl_i.clr_tag,
-    lsu_ctrl_i.clr_elevate,
-    lsu_ctrl_i.clr_cap_level,
-    lsu_ctrl_i.clr_load_mutable
+    lsu_ctrl_i.allow_tag,
+    lsu_ctrl_i.allow_elevate,
+    lsu_ctrl_i.allow_cap_level,
+    lsu_ctrl_i.allow_load_mutable
   };
   // output address
   // we can now output the lower 12 bit as the index to the cache
@@ -246,8 +246,8 @@ module load_unit
   assign req_port_o.data_id = ldbuf_windex;
   // user field not used
   assign req_port_o.data_wuser = '0;
-  // strip tag request
-  assign req_port_o.strip_tag = CVA6Cfg.CheriPresent ? strip_tag_i : 1'b0;
+  // Allow tags in response
+  assign req_port_o.allow_tag = CVA6Cfg.CheriPresent ? allow_tag_i : 1'b0;
   // directly forward exception fields (valid bit is set below)
   always_comb begin : ex_o_select
     ex_o.cause = ex_i.cause;
@@ -288,7 +288,7 @@ module load_unit
   assign stall_ni = (inflight_stores || not_commit_time) && (paddr_ni && CVA6Cfg.NonIdemPotenceEn);
   assign cap_translation_req = (CVA6Cfg.CheriPresent) ? lsu_ctrl_i.operation inside {ariane_pkg::LC} : 1'b0;
 
-  assign translation_req_is_cap_o = cap_translation_req & !ldbuf_rdata.clr_tag;
+  assign translation_req_is_cap_o = cap_translation_req & ldbuf_rdata.allow_tag;
 
   // ---------------
   // Load Control
@@ -656,16 +656,16 @@ module load_unit
         end
       end
     endcase
-    strip_tag_o = (CVA6Cfg.CheriPresent && (req_port_i.data_strip_tag || ldbuf_rdata.clr_tag)) ? 1'b1 : 1'b0;
+    allow_tag_o = CVA6Cfg.CheriPresent ? req_port_i.data_allow_tag && ldbuf_rdata.allow_tag : 1'b0;
     if (result_o[CVA6Cfg.REGLEN-1]) begin
       automatic cva6_cheri_pkg::cap_reg_t result_cap = result_o;
-      if (ldbuf_rdata.clr_elevate && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
+      if (!ldbuf_rdata.allow_elevate && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
         result_cap.hperms.permit_elevate_level = 1'b0;
       end
-      if (ldbuf_rdata.clr_cap_level) begin
+      if (!ldbuf_rdata.allow_cap_level) begin
         result_cap.hperms.cap_level = 1'b0;
       end
-      if (ldbuf_rdata.clr_load_mutable && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
+      if (!ldbuf_rdata.allow_load_mutable && result_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
         result_cap.hperms.permit_load_mutable = 1'b0;
         result_cap.hperms.permit_store = 1'b0;
       end

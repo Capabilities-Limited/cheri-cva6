@@ -74,7 +74,7 @@ module wt_dcache_ctrl
   logic [DCACHE_CL_IDX_WIDTH-1:0] address_idx_d, address_idx_q;
   logic [CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] address_off_d, address_off_q;
   logic [CVA6Cfg.DcacheIdWidth-1:0] id_d, id_q;
-  logic strip_tag_d, strip_tag_q;
+  logic allow_tag_d, allow_tag_q;
   logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] vld_data_d, vld_data_q;
   logic save_tag, rd_req_d, rd_req_q, rd_ack_d, rd_ack_q;
   logic [CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0] data_size_d, data_size_q;
@@ -89,7 +89,7 @@ module wt_dcache_ctrl
   assign address_idx_d = (req_port_o.data_gnt) ? req_port_i.address_index[CVA6Cfg.DCACHE_INDEX_WIDTH-1:CVA6Cfg.DCACHE_OFFSET_WIDTH] : address_idx_q;
   assign address_off_d = (req_port_o.data_gnt) ? req_port_i.address_index[CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0]                  : address_off_q;
   assign id_d = (req_port_o.data_gnt) ? req_port_i.data_id : id_q;
-  assign strip_tag_d = (CVA6Cfg.CheriPresent) ? ((save_tag) ? req_port_i.strip_tag : strip_tag_q) : '0;
+  assign allow_tag_d = (CVA6Cfg.CheriPresent) ? ((save_tag) ? req_port_i.allow_tag : allow_tag_q) : '0;
   assign data_size_d = (req_port_o.data_gnt) ? req_port_i.data_size : data_size_q;
   assign rd_tag_o = address_tag_d;
   assign rd_idx_o = address_idx_d;
@@ -131,7 +131,7 @@ module wt_dcache_ctrl
     miss_req_o                = 1'b0;
     req_port_o.data_rvalid    = 1'b0;
     req_port_o.data_gnt       = 1'b0;
-    req_port_o.data_strip_tag = CVA6Cfg.CheriPresent ? strip_tag_q : '0;
+    req_port_o.data_allow_tag = CVA6Cfg.CheriPresent ? allow_tag_q : '0;
 
     // interfaces
     unique case (state_q)
@@ -170,9 +170,9 @@ module wt_dcache_ctrl
             state_d = IDLE;
             req_port_o.data_rvalid = 1'b1;
             // In case there is a hit while reading the tag
-            // we should get the strip tag from the request input
+            // we should see if the request input allows tags
             if (state_q != REPLAY_READ)
-              req_port_o.data_strip_tag = CVA6Cfg.CheriPresent ? req_port_i.strip_tag : '0;
+              req_port_o.data_allow_tag = CVA6Cfg.CheriPresent ? req_port_i.allow_tag : '0;
             // we can handle another request
             if (rd_ack_i && req_port_i.data_req) begin
               state_d = READ;
@@ -267,7 +267,7 @@ module wt_dcache_ctrl
       address_idx_q <= '0;
       address_off_q <= '0;
       id_q          <= '0;
-      if (CVA6Cfg.CheriPresent) strip_tag_q <= '0;
+      if (CVA6Cfg.CheriPresent) allow_tag_q <= '0;
       vld_data_q  <= '0;
       data_size_q <= '0;
       rd_req_q    <= '0;
@@ -278,7 +278,7 @@ module wt_dcache_ctrl
       address_idx_q <= address_idx_d;
       address_off_q <= address_off_d;
       id_q          <= id_d;
-      if (CVA6Cfg.CheriPresent) strip_tag_q <= strip_tag_d;
+      if (CVA6Cfg.CheriPresent) allow_tag_q <= allow_tag_d;
       vld_data_q  <= vld_data_d;
       data_size_q <= data_size_d;
       rd_req_q    <= rd_req_d;

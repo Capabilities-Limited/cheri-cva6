@@ -229,7 +229,7 @@ module load_store_unit
   logic [CVA6Cfg.VLEN-1:0] mmu_vaddr, cva6_mmu_vaddr, acc_mmu_vaddr;
   logic [CVA6Cfg.PLEN-1:0] mmu_paddr, cva6_mmu_paddr, acc_mmu_paddr, lsu_paddr;
   logic [CVA6Cfg.VLEN-1:0] tval_vaddr;
-  logic                    cva6_mmu_strip_tag;
+  logic                    cva6_mmu_allow_tag;
   logic [            31:0] mmu_tinst;
   logic                    mmu_hs_ld_st_inst;
   logic                    mmu_hlvx_inst;
@@ -314,7 +314,7 @@ module load_store_unit
 
         .lsu_valid_o    (pmp_translation_valid),
         .lsu_paddr_o    (lsu_paddr),
-        .lsu_strip_tag_o(cva6_mmu_strip_tag),
+        .lsu_allow_tag_o(cva6_mmu_allow_tag),
         .lsu_exception_o(mmu_exception),
 
         .priv_lvl_i      (priv_lvl_i),
@@ -395,7 +395,7 @@ module load_store_unit
     assign dcache_req_ports_o[0].data_wuser    = '0;
     assign dcache_req_ports_o[0].kill_req      = '0;
     assign dcache_req_ports_o[0].tag_valid     = 1'b0;
-    assign dcache_req_ports_o[0].strip_tag     = 1'b0;
+    assign dcache_req_ports_o[0].allow_tag     = 1'b0;
 
     assign itlb_miss_o                         = 1'b0;
     assign dtlb_miss_o                         = 1'b0;
@@ -624,7 +624,7 @@ module load_store_unit
       .req_port_o                      (dcache_req_ports_o[2])
   );
 
-  logic ld_strip_tag, ld_strip_tag_o;
+  logic ld_allow_tag, ld_allow_tag_o;
   // ------------------
   // Load Unit
   // ------------------
@@ -645,7 +645,7 @@ module load_store_unit
       .valid_o                 (ld_valid),
       .trans_id_o              (ld_trans_id),
       .result_o                (ld_result),
-      .strip_tag_o             (ld_strip_tag),
+      .allow_tag_o             (ld_allow_tag),
       .ex_o                    (ld_ex),
       // MMU port
       .translation_req_o       (ld_translation_req),
@@ -655,7 +655,7 @@ module load_store_unit
       .hs_ld_st_inst_o         (ld_hs_ld_st_inst),
       .hlvx_inst_o             (ld_hlvx_inst),
       .paddr_i                 (cva6_mmu_paddr),
-      .strip_tag_i             (cva6_mmu_strip_tag),
+      .allow_tag_i             (cva6_mmu_allow_tag),
       .ex_i                    (cva6_mmu_exception),
       .dtlb_hit_i              (cva6_dtlb_hit),
       .dtlb_ppn_i              (cva6_dtlb_ppn),
@@ -678,16 +678,16 @@ module load_store_unit
   // can be tuned to trade-off IPC vs. cycle time
   logic [CVA6Cfg.REGLEN-1:0] load_result_shifted;
   shift_reg #(
-      .dtype(logic [$bits({ld_valid, ld_trans_id, ld_result, ld_ex, ld_strip_tag}) - 1:0]),
+      .dtype(logic [$bits({ld_valid, ld_trans_id, ld_result, ld_ex, ld_allow_tag}) - 1:0]),
       .Depth(CVA6Cfg.NrLoadPipeRegs)
   ) i_pipe_reg_load (
       .clk_i,
       .rst_ni,
-      .d_i({ld_valid, ld_trans_id, ld_result, ld_ex, ld_strip_tag}),
-      .d_o({load_valid_o, load_trans_id_o, load_result_shifted, load_exception_o, ld_strip_tag_o})
+      .d_i({ld_valid, ld_trans_id, ld_result, ld_ex, ld_allow_tag}),
+      .d_o({load_valid_o, load_trans_id_o, load_result_shifted, load_exception_o, ld_allow_tag_o})
   );
   assign load_result_o = {
-    load_result_shifted[CVA6Cfg.REGLEN-1] & !ld_strip_tag_o, load_result_shifted[CVA6Cfg.REGLEN-2:0]
+    load_result_shifted[CVA6Cfg.REGLEN-1] & ld_allow_tag_o, load_result_shifted[CVA6Cfg.REGLEN-2:0]
   };
 
   shift_reg #(
@@ -1065,10 +1065,10 @@ module load_store_unit
   // new data arrives here
   lsu_ctrl_t lsu_req_i;
   logic lsu_req_ld_cap;
-  logic lsu_req_ld_clr_tag;
-  logic lsu_req_ld_clr_elevate;
-  logic lsu_req_ld_clr_cap_level;
-  logic lsu_req_ld_clr_load_mutable;
+  logic lsu_req_ld_allow_tag;
+  logic lsu_req_ld_allow_elevate;
+  logic lsu_req_ld_allow_cap_level;
+  logic lsu_req_ld_allow_load_mutable;
   logic [CVA6Cfg.REGLEN-1:0] lsu_req_st_data;
   cva6_cheri_pkg::cap_reg_t lsu_req_check_cap;
   cva6_cheri_pkg::cap_reg_t lsu_req_st_data_cap;
@@ -1076,18 +1076,18 @@ module load_store_unit
     assign lsu_req_check_cap = fu_data_i.use_ddc ? ddc_i : fu_data_i.operand_a;
     assign lsu_req_st_data_cap = fu_data_i.operand_b;
     assign lsu_req_ld_cap = ((fu_data_i.fu == LOAD) && (fu_data_i.operation inside{ariane_pkg::LC})) || ((fu_data_i.fu == STORE) && fu_data_i.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
-    assign lsu_req_ld_clr_tag = !(lsu_req_check_cap.hperms.permit_load && lsu_req_check_cap.hperms.permit_cap) && lsu_req_ld_cap;
-    assign lsu_req_ld_clr_elevate = !lsu_req_check_cap.hperms.permit_elevate_level && lsu_req_ld_cap && !lsu_req_ld_clr_tag;
-    assign lsu_req_ld_clr_cap_level = lsu_req_ld_clr_elevate && !lsu_req_check_cap.hperms.cap_level;
-    assign lsu_req_ld_clr_load_mutable = !lsu_req_check_cap.hperms.permit_load_mutable && lsu_req_ld_cap;
+    assign lsu_req_ld_allow_tag = lsu_req_check_cap.hperms.permit_load && lsu_req_check_cap.hperms.permit_cap && lsu_req_ld_cap;
+    assign lsu_req_ld_allow_elevate = lsu_req_check_cap.hperms.permit_elevate_level;
+    assign lsu_req_ld_allow_cap_level = lsu_req_ld_allow_elevate || lsu_req_check_cap.hperms.cap_level;
+    assign lsu_req_ld_allow_load_mutable = lsu_req_check_cap.hperms.permit_load_mutable;
     assign lsu_req_st_data[CVA6Cfg.REGLEN-2:0] = lsu_req_st_data_cap[CVA6Cfg.REGLEN-2:0];
     assign lsu_req_st_data[CVA6Cfg.REGLEN-1] = lsu_req_st_data_cap.tag & lsu_req_check_cap.hperms.permit_store & lsu_req_check_cap.hperms.permit_cap & (lsu_req_check_cap.hperms.permit_store_level | lsu_req_st_data_cap.hperms.cap_level);
   end else begin
     assign lsu_req_ld_cap = 1'b0;
-    assign lsu_req_ld_clr_tag = 1'b0;
-    assign lsu_req_ld_clr_elevate = 1'b0;
-    assign lsu_req_ld_clr_cap_level = 1'b0;
-    assign lsu_req_ld_clr_load_mutable = 1'b0;
+    assign lsu_req_ld_allow_tag = 1'b0;
+    assign lsu_req_ld_allow_elevate = 1'b0;
+    assign lsu_req_ld_allow_cap_level = 1'b0;
+    assign lsu_req_ld_allow_load_mutable = 1'b0;
     assign lsu_req_st_data = fu_data_i.operand_b;
   end
 
@@ -1109,10 +1109,10 @@ module load_store_unit
     1'b0,
     fu_data_i.rs1,
     fu_data_i.use_ddc,
-    lsu_req_ld_clr_tag,
-    lsu_req_ld_clr_elevate,
-    lsu_req_ld_clr_cap_level,
-    lsu_req_ld_clr_load_mutable
+    lsu_req_ld_allow_tag,
+    lsu_req_ld_allow_elevate,
+    lsu_req_ld_allow_cap_level,
+    lsu_req_ld_allow_load_mutable
   };
 
   lsu_bypass #(
