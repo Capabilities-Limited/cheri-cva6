@@ -501,7 +501,7 @@ module issue_read_operands
     always_comb begin : pcc_bounds
       automatic cva6_cheri_pkg::addrw_t pcc_base;
       automatic cva6_cheri_pkg::addrwe_t pcc_top;
-      cva6_cheri_pkg::cap_reg_t pcc_cur = pcc_q[pcc_gen_q];
+      automatic cva6_cheri_pkg::cap_reg_t pcc_cur = pcc_q[pcc_gen_q];
       automatic logic pcc_bounds_root;
       pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_cur);
       pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_cur, pcc_meta);
