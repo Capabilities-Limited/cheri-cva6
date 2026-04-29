@@ -492,7 +492,7 @@ module issue_read_operands
     // Update PCC with correct int mode
     always_comb begin : pcc_int_mode
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_q[pcc_gen_q], issue_instr_i[i].int_mode);
+        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_n[pcc_gen_n], issue_instr_i[i].int_mode);
       end
     end
 
