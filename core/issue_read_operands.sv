@@ -493,7 +493,7 @@ module issue_read_operands
     always_comb begin : pcc_int_mode
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
         // Unsafely set the address without representability check; relies on proper bounds check passing.
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_addr(pcc_q[pcc_gen_q], issue_instr_i[i].pc);
+        pcc[i] = cva6_cheri_pkg::set_cap_reg_addr(pcc_n[pcc_gen_n], issue_instr_i[i].pc);
         pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc[i], issue_instr_i[i].int_mode);
       end
     end
