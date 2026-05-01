@@ -76,7 +76,7 @@ package cva6_config_pkg;
 
   localparam CVA6ConfigMmuPresent = 1;
 
-  localparam CVA6ConfigRvfiTrace = 0;
+  localparam CVA6ConfigRvfiTrace = 1;
 
   localparam config_pkg::cva6_user_cfg_t cva6_cfg = '{
       XLEN: unsigned'(CVA6ConfigXlen),
