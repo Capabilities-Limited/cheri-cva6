@@ -67,9 +67,6 @@ module rvfi_tracer #(
   final $fclose(f);
 
   logic [31:0] cycles;
-  // Generate the trace based on RVFI
-  logic [63:0] pc64;
-  string cause;
   logic[31:0] end_of_test_d;
   logic[31:0] end_of_test_q;
 
@@ -134,10 +131,10 @@ module rvfi_tracer #(
       end_of_test_q <= end_of_test_d;
 
       for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
-        pc64 = {{CVA6Cfg.XLEN-CVA6Cfg.VLEN{rvfi_i[i].pc_rdata[CVA6Cfg.VLEN-1]}}, rvfi_i[i].pc_rdata};
+        automatic logic [63:0] pc64 = {{CVA6Cfg.XLEN-CVA6Cfg.VLEN{rvfi_i[i].pc_rdata[CVA6Cfg.VLEN-1]}}, rvfi_i[i].pc_rdata};
         // print the instruction information if the instruction is valid or a trap is taken
         if (rvfi_i[i].valid) begin
-          logic dest_is_fp;
+          automatic logic dest_is_fp;
           // Instruction information
           if (rvfi_i[i].intr[2]) begin
             $fwrite(f, "core   INTERRUPT 0: 0x%h (0x%h) DASM(%h)\n",
@@ -190,6 +187,7 @@ module rvfi_tracer #(
           $fwrite(f, "\n");
         end else begin
           if (rvfi_i[i].trap) begin
+            automatic string cause;
             case (rvfi_i[i].cause)
               32'h0: cause = "INSTR_ADDR_MISALIGNED";
               32'h1: cause = "INSTR_ACCESS_FAULT";
