@@ -70,8 +70,8 @@ module rvfi_tracer #(
   // Generate the trace based on RVFI
   logic [63:0] pc64;
   string cause;
-  logic[31:0] end_of_test_q;
   logic[31:0] end_of_test_d;
+  logic[31:0] end_of_test_q;
 
   function automatic logic fp_instr_writes_gpr(logic [31:0] insn);
     logic [6:0] opcode;
@@ -106,10 +106,9 @@ module rvfi_tracer #(
     return 1'b0;
   endfunction
 
-  assign end_of_test_o = end_of_test_d;
+  assign end_of_test_o = end_of_test_q;
 
-  always_ff @(posedge clk_i) begin
-    end_of_test_q <= (rst_ni && (end_of_test_d[0] == 1'b1)) ? end_of_test_d : 0;
+  always_comb begin
     for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
       pc64 = {{CVA6Cfg.XLEN-CVA6Cfg.VLEN{rvfi_i[i].pc_rdata[CVA6Cfg.VLEN-1]}}, rvfi_i[i].pc_rdata};
       // print the instruction information if the instruction is valid or a trap is taken
@@ -165,7 +164,7 @@ module rvfi_tracer #(
             if (TOHOST_ADDR != '0 &&
                 rvfi_i[i].mem_paddr == TOHOST_ADDR &&
                 rvfi_i[i].mem_wdata[0] == 1'b1) begin
-              end_of_test_q <= rvfi_i[i].mem_wdata[31:0];
+              end_of_test_d = rvfi_i[i].mem_wdata[31:0];
               $display("*** [rvfi_tracer] INFO: Simulation terminated after %d cycles!\n", cycles);
             end
           end
@@ -193,14 +192,18 @@ module rvfi_tracer #(
       end
     end
 
-    if (~rst_ni)
-      cycles <= 0;
-    else
-      cycles <= cycles+1;
     if (cycles > SIM_FINISH)
-      end_of_test_q <= 32'hffff_ffff;
+      end_of_test_d = 32'hffff_ffff;
+  end
 
-    end_of_test_d <= end_of_test_q;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (~rst_ni) begin
+      cycles <= 0;
+      end_of_test_q <= 0;
+    end else begin
+      cycles <= cycles+1;
+      end_of_test_q <= end_of_test_d;
+    end
   end
 
 
