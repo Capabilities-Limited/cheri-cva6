@@ -250,7 +250,7 @@ module issue_read_operands
 
   // PCC signals : we only have one as we only allow one PCC change at a time
   logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
-  logic pcc_jump_change_valid_n, pcc_jump_change_valid_q, pcc_gen_n, pcc_gen_q;
+  logic pcc_gen_n, pcc_gen_q;
   cva6_cheri_pkg::cap_reg_t pcc[CVA6Cfg.NrIssuePorts-1:0];
   cva6_cheri_pkg::cap_meta_data_t pcc_meta;
 
@@ -793,7 +793,7 @@ module issue_read_operands
     end
 
     // Stall while there is an outstanding change to bounds.
-    if (CVA6Cfg.CheriPresent && (pcc_jump_change_valid_n || pcc_jump_change_valid_q))
+    if (CVA6Cfg.CheriPresent && pcc_gen_q==1 && resolved_branch_i.valid && resolved_branch_i.is_pcc_change)
       stall_raw[0] = 1'b1;
   end
 
@@ -809,26 +809,21 @@ module issue_read_operands
   // PCC logic
   if (CVA6Cfg.CheriPresent) begin
     always_comb begin : pcc_select
-      pcc_jump_change_valid_n = pcc_jump_change_valid_q;
       pcc_gen_n = pcc_gen_q;
       pcc_n = pcc_q;
 
       if (eret_i) begin
-        pcc_jump_change_valid_n = 1'b0;
         pcc_n[pcc_gen_q] = epc_i;
       end else if (set_pc_commit_i) begin
-        pcc_jump_change_valid_n = 1'b0;
         pcc_n[pcc_gen_q] = pcc_commit_i;
       end else if (ex_valid_i) begin
-        pcc_jump_change_valid_n = 1'b0;
         pcc_n[pcc_gen_q] = trap_vector_base_i;
-      end else if (pcc_jump_change_valid_q && backend_empty_i) begin // XXX This case shouldn't be necessary
-        pcc_jump_change_valid_n = 1'b0;
-        pcc_n[pcc_gen_q] = pcc_q[1];
+      end else if (pcc_gen_q==1 && backend_empty_i) begin
+        pcc_gen_n = 0;
+        pcc_n[0] = pcc_q[pcc_gen_q];
       end else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
-        pcc_jump_change_valid_n = 1'b1;
-        pcc_gen_n = pcc_gen_q+1; // Probably one bit, so equivelant to !pcc_gen_q.
-        pcc_n[pcc_gen_n] = resolved_branch_i.target_address;
+        pcc_gen_n = 1;
+        pcc_n[1] = resolved_branch_i.target_address;
       end
     end
   end
@@ -1260,7 +1255,6 @@ module issue_read_operands
       pc_o <= '0;
       if (CVA6Cfg.CheriPresent) begin
         pcc_q[0] <= REG_ROOT;
-        pcc_jump_change_valid_q <= '0;
         pcc_gen_q <= 0;
       end
       is_zcmt_o                <= '0;
@@ -1277,7 +1271,6 @@ module issue_read_operands
       end
       if (CVA6Cfg.CheriPresent) begin
         pcc_q <= pcc_n;
-        pcc_jump_change_valid_q <= pcc_jump_change_valid_n;
         pcc_gen_q <= pcc_gen_n;
       end
       pc_o <= pc_n;
