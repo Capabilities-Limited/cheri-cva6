@@ -792,8 +792,8 @@ module issue_read_operands
     end
 
     // Stall while there is an outstanding change to bounds.
-    /*if (CVA6Cfg.CheriPresent && (pcc_jump_change_valid_n || pcc_jump_change_valid_q))
-      stall_raw[0] = 1'b1;*/
+    if (CVA6Cfg.CheriPresent && (pcc_jump_change_valid_n || pcc_jump_change_valid_q))
+      stall_raw[0] = 1'b1;
   end
 
   // third operand from fp regfile or gp regfile if NR_RGPR_PORTS == 3
@@ -821,10 +821,10 @@ module issue_read_operands
       end else if (ex_valid_i) begin
         pcc_jump_change_valid_n = 1'b0;
         pcc_n[pcc_gen_q] = trap_vector_base_i;
-      end /*else if (pcc_jump_change_valid_q && backend_empty_i) begin // XXX This case shouldn't be necessary
+      end else if (pcc_jump_change_valid_q && backend_empty_i) begin // XXX This case shouldn't be necessary
         pcc_jump_change_valid_n = 1'b0;
         pcc_n[pcc_gen_q] = pcc_q[1];
-      end */else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
+      end else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
         pcc_jump_change_valid_n = 1'b1;
         pcc_gen_n = pcc_gen_q + 1;  // Probably one bit, so equivelant to !pcc_gen_q.
         pcc_n[pcc_gen_n] = resolved_branch_i.target_address;
