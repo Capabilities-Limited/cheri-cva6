@@ -528,9 +528,9 @@ module cva6_rvfi
       ) && wdata[i] == 1) ? '0 : commit_instr_rs1[i];
       rvfi_instr_o[i].rs2_addr <= rs2_addr;
       rvfi_instr_o[i].rd_addr <= rd_addr;
-      rvfi_instr_o[i].rd_wdata <= (rd_addr == 0) ? '0 : (CVA6Cfg.FpPresent && is_rd_fpr(
+      rvfi_instr_o[i].rd_wdata <= (CVA6Cfg.FpPresent && is_rd_fpr(
           commit_instr_op[i]
-      )) ? commit_instr_result[i] : wdata[i];
+      )) ? commit_instr_result[i] : (rd_addr == 0) ? '0 : wdata[i];
       rvfi_instr_o[i].pc_rdata <= commit_instr_pc[i];
       if (commit_instr == 32'h30200073 && !exception) begin
         rvfi_instr_o[i].pc_wdata <= csr.mepc_q[63:0];
