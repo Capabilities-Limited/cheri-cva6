@@ -108,11 +108,80 @@ module rvfi_tracer #(
   always_comb begin
     for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
       if (rvfi_i[i].valid) begin
-        if (rvfi_i[i].mem_wmask != 0) begin
-          if (TOHOST_ADDR != '0 &&
-              rvfi_i[i].mem_paddr == TOHOST_ADDR &&
-              rvfi_i[i].mem_wdata[0] == 1'b1) begin
-            end_of_test_d = rvfi_i[i].mem_wdata[31:0];
+        logic dest_is_fp;
+        // Instruction information
+        if (rvfi_i[i].intr[2]) begin
+           $fwrite(f, "core   INTERRUPT 0: 0x%h (0x%h) DASM(%h)\n",
+             pc64, rvfi_i[i].insn, rvfi_i[i].insn);
+        end
+        else begin
+           $fwrite(f, "core   0: 0x%h (0x%h) DASM(%h)\n",
+             pc64, rvfi_i[i].insn, rvfi_i[i].insn);
+        end
+        // Destination register information
+        if (rvfi_i[i].insn[1:0] != 2'b11) begin
+          $fwrite(f, "%h 0x%h (0x%h)",
+            rvfi_i[i].mode, pc64, rvfi_i[i].insn[15:0]);
+        end else begin
+          $fwrite(f, "%h 0x%h (0x%h)",
+            rvfi_i[i].mode, pc64, rvfi_i[i].insn);
+        end
+        // Decode instruction to know if destination register is FP register.
+        // Handle both uncompressed and compressed instructions.
+        dest_is_fp = 1'b0;
+        if ( rvfi_i[i].insn[6:0] == 7'b1001111 ||
+             rvfi_i[i].insn[6:0] == 7'b1001011 ||
+             rvfi_i[i].insn[6:0] == 7'b1000111 ||
+             rvfi_i[i].insn[6:0] == 7'b1000011 ||
+             rvfi_i[i].insn[6:0] == 7'b0000111 ||
+            (rvfi_i[i].insn[6:0] == 7'b1010011 && rvfi_i[i].insn[31:26] != 6'b111000
+                                               && rvfi_i[i].insn[31:26] != 6'b101000
+                                               && rvfi_i[i].insn[31:26] != 6'b110000) ||
+            (rvfi_i[i].insn[0] == 1'b0 && ((rvfi_i[i].insn[15:13] == 3'b001 && CVA6Cfg.XLEN == 64) ||
+                                           (rvfi_i[i].insn[15:13] == 3'b011 && CVA6Cfg.XLEN == 32) ))) begin
+          if (fp_instr_writes_gpr(rvfi_i[i].insn)) begin
+            dest_is_fp = 1'b0;
+          end else begin
+            dest_is_fp = 1'b1;
+          end
+        end
+
+        if (dest_is_fp) begin
+          $fwrite(f, " f%d 0x%h", rvfi_i[i].rd_addr, rvfi_i[i].rd_wdata);
+        end else if (rvfi_i[i].rd_addr != 0) begin
+          $fwrite(f, " x%d 0x%h", rvfi_i[i].rd_addr, rvfi_i[i].rd_wdata);
+          if (rvfi_i[i].mem_rmask != 0) begin
+            $fwrite(f, " mem 0x%h", rvfi_i[i].mem_addr);
+          end
+        end else begin
+          if (rvfi_i[i].mem_wmask != 0) begin
+            $fwrite(f, " mem 0x%h 0x%h", rvfi_i[i].mem_addr, rvfi_i[i].mem_wdata);
+            if (TOHOST_ADDR != '0 &&
+                rvfi_i[i].mem_paddr == TOHOST_ADDR &&
+                rvfi_i[i].mem_wdata[0] == 1'b1) begin
+              end_of_test_d = rvfi_i[i].mem_wdata[31:0];
+              $display("*** [rvfi_tracer] INFO: Simulation terminated after %d cycles!\n", cycles);
+            end
+          end
+        end
+        $fwrite(f, "\n");
+      end else begin
+        if (rvfi_i[i].trap) begin
+          case (rvfi_i[i].cause)
+            32'h0: cause = "INSTR_ADDR_MISALIGNED";
+            32'h1: cause = "INSTR_ACCESS_FAULT";
+            32'h2: cause = "ILLEGAL_INSTR";
+            32'h3: cause = "BREAKPOINT";
+            32'h4: cause = "LD_ADDR_MISALIGNED";
+            32'h5: cause = "LD_ACCESS_FAULT";
+            32'h6: cause = "ST_ADDR_MISALIGNED";
+            32'h7: cause = "ST_ACCESS_FAULT";
+            32'hb: cause = "ENV_CALL_MMODE";
+          endcase;
+          if (rvfi_i[i].insn[1:0] != 2'b11) begin
+            $fwrite(f, "%s exception @ 0x%h (0x%h)\n", cause, pc64, rvfi_i[i].insn[15:0]);
+          end else begin
+            $fwrite(f, "%s exception @ 0x%h (0x%h)\n", cause, pc64, rvfi_i[i].insn);
           end
         end
       end
@@ -129,84 +198,6 @@ module rvfi_tracer #(
     end else begin
       cycles <= cycles+1;
       end_of_test_q <= end_of_test_d;
-
-      for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
-        automatic logic [63:0] pc64 = {{CVA6Cfg.XLEN-CVA6Cfg.VLEN{rvfi_i[i].pc_rdata[CVA6Cfg.VLEN-1]}}, rvfi_i[i].pc_rdata};
-        // print the instruction information if the instruction is valid or a trap is taken
-        if (rvfi_i[i].valid) begin
-          automatic logic dest_is_fp;
-          // Instruction information
-          if (rvfi_i[i].intr[2]) begin
-            $fwrite(f, "core   INTERRUPT 0: 0x%h (0x%h) DASM(%h)\n",
-              pc64, rvfi_i[i].insn, rvfi_i[i].insn);
-          end
-          else begin
-            $fwrite(f, "core   0: 0x%h (0x%h) DASM(%h)\n",
-              pc64, rvfi_i[i].insn, rvfi_i[i].insn);
-          end
-          // Destination register information
-          if (rvfi_i[i].insn[1:0] != 2'b11) begin
-            $fwrite(f, "%h 0x%h (0x%h)",
-              rvfi_i[i].mode, pc64, rvfi_i[i].insn[15:0]);
-          end else begin
-            $fwrite(f, "%h 0x%h (0x%h)",
-              rvfi_i[i].mode, pc64, rvfi_i[i].insn);
-          end
-          // Decode instruction to know if destination register is FP register.
-          // Handle both uncompressed and compressed instructions.
-          dest_is_fp = 1'b0;
-          if ( rvfi_i[i].insn[6:0] == 7'b1001111 ||
-              rvfi_i[i].insn[6:0] == 7'b1001011 ||
-              rvfi_i[i].insn[6:0] == 7'b1000111 ||
-              rvfi_i[i].insn[6:0] == 7'b1000011 ||
-              rvfi_i[i].insn[6:0] == 7'b0000111 ||
-              (rvfi_i[i].insn[6:0] == 7'b1010011 && rvfi_i[i].insn[31:26] != 6'b111000
-                                                && rvfi_i[i].insn[31:26] != 6'b101000
-                                                && rvfi_i[i].insn[31:26] != 6'b110000) ||
-              (rvfi_i[i].insn[0] == 1'b0 && ((rvfi_i[i].insn[15:13] == 3'b001 && CVA6Cfg.XLEN == 64) ||
-                                            (rvfi_i[i].insn[15:13] == 3'b011 && CVA6Cfg.XLEN == 32) ))) begin
-            if (fp_instr_writes_gpr(rvfi_i[i].insn)) begin
-              dest_is_fp = 1'b0;
-            end else begin
-              dest_is_fp = 1'b1;
-            end
-          end
-
-          if (dest_is_fp) begin
-            $fwrite(f, " f%d 0x%h", rvfi_i[i].rd_addr, rvfi_i[i].rd_wdata[CVA6Cfg.XLEN-1:0]);
-          end else if (rvfi_i[i].rd_addr != 0) begin
-            $fwrite(f, " x%d 0x%h", rvfi_i[i].rd_addr, rvfi_i[i].rd_wdata[CVA6Cfg.XLEN-1:0]);
-            if (rvfi_i[i].mem_rmask != 0) begin
-              $fwrite(f, " mem 0x%h", rvfi_i[i].mem_addr);
-            end
-          end else begin
-            if (rvfi_i[i].mem_wmask != 0) begin
-              $fwrite(f, " mem 0x%h 0x%h", rvfi_i[i].mem_addr, rvfi_i[i].mem_wdata);
-            end
-          end
-          $fwrite(f, "\n");
-        end else begin
-          if (rvfi_i[i].trap) begin
-            automatic string cause;
-            case (rvfi_i[i].cause)
-              32'h0: cause = "INSTR_ADDR_MISALIGNED";
-              32'h1: cause = "INSTR_ACCESS_FAULT";
-              32'h2: cause = "ILLEGAL_INSTR";
-              32'h3: cause = "BREAKPOINT";
-              32'h4: cause = "LD_ADDR_MISALIGNED";
-              32'h5: cause = "LD_ACCESS_FAULT";
-              32'h6: cause = "ST_ADDR_MISALIGNED";
-              32'h7: cause = "ST_ACCESS_FAULT";
-              32'hb: cause = "ENV_CALL_MMODE";
-            endcase;
-            if (rvfi_i[i].insn[1:0] != 2'b11) begin
-              $fwrite(f, "%s exception @ 0x%h (0x%h)\n", cause, pc64, rvfi_i[i].insn[15:0]);
-            end else begin
-              $fwrite(f, "%s exception @ 0x%h (0x%h)\n", cause, pc64, rvfi_i[i].insn);
-            end
-          end
-        end
-      end
     end
   end
 
