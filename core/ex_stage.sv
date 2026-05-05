@@ -420,7 +420,7 @@ module ex_stage
       end
       flu_trans_id_o = mult_trans_id;
     end else if (|aes_valid_i) begin
-      flu_result_o = aes_result;
+      flu_result_o = x_to_reg(aes_result);
     end else if (|clu_valid_i) begin
       flu_result_o = clu_result;
     end
