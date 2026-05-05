@@ -195,6 +195,7 @@ module cva6
       logic [REG_ADDR_SIZE-1:0]         rs2;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;
       logic                             use_ddc;
+      logic [5:0]                       orig_instr_aes_bits;
     },
 
     localparam type icache_req_t = struct packed {
