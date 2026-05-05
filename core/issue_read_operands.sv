@@ -852,6 +852,12 @@ module issue_read_operands
       fu_data_n[i].rs2       = CVA6Cfg.CheriPresent ? issue_instr_i[i].rs2 : '0;
       fu_data_n[i].use_ddc   = CVA6Cfg.CheriPresent ? issue_instr_i[i].use_ddc : '0;
 
+      if (CVA6Cfg.ZKN) begin
+        fu_data_n[i].orig_instr_aes_bits = {orig_instr_i[i][31:30], orig_instr_i[i][23:20]};
+      end else begin
+        fu_data_n[i].orig_instr_aes_bits = '0;
+      end
+
       if (CVA6Cfg.RVH) begin
         tinst_n[i] = issue_instr_i[i].ex.tinst;
       end
@@ -1250,9 +1256,6 @@ module issue_read_operands
     end else begin
       fu_data_q <= fu_data_n;
       alu_bypass_q <= alu_bypass_n;
-      if (CVA6Cfg.ZKN) begin
-        orig_instr_aes_bits <= {orig_instr_i[0][31:30], orig_instr_i[0][23:20]};
-      end
       if (CVA6Cfg.RVH) begin
         tinst_q <= tinst_n;
       end
