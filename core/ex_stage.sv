@@ -415,12 +415,7 @@ module ex_stage
     end else if (|csr_valid_i) begin
       flu_result_o = csr_result;
     end else if (mult_valid) begin
-      if (CVA6Cfg.CheriPresent) begin
-        result = cva6_cheri_pkg::set_cap_reg_addr(result, mult_result);
-        flu_result_o = result;
-      end else begin
-        flu_result_o = {{(CVA6Cfg.REGLEN - CVA6Cfg.XLEN) {1'b0}}, mult_result};
-      end
+      flu_result_o   = x_to_reg(mult_result);
       flu_trans_id_o = mult_trans_id;
     end else if (|aes_valid_i) begin
       flu_result_o = x_to_reg(aes_result);
