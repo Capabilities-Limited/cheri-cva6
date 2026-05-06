@@ -491,9 +491,7 @@ module issue_read_operands
     // Update PCC with correct int mode
     always_comb begin : pcc_int_mode
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-        // Unsafely set the address without representability check; relies on proper bounds check passing.
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_addr(pcc_n[pcc_gen_n], issue_instr_i[i].pc);
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc[i], issue_instr_i[i].int_mode);
+        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_n[pcc_gen_n], issue_instr_i[i].int_mode);
       end
     end
 
@@ -875,7 +873,7 @@ module issue_read_operands
       // use the PC as operand a
       if (issue_instr_i[i].use_pc) begin
         if (CVA6Cfg.CheriPresent) begin
-          fu_data_n[i].operand_a = pcc[i];
+          fu_data_n[i].operand_a = cva6_cheri_pkg::set_cap_reg_addr(pcc[i], issue_instr_i[i].pc);
         end else begin
           fu_data_n[i].operand_a = {
             {CVA6Cfg.XLEN - CVA6Cfg.VLEN{issue_instr_i[i].pc[CVA6Cfg.VLEN-1]}}, issue_instr_i[i].pc
