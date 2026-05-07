@@ -247,7 +247,7 @@ module cva6_hpdcache_if_adapter
         end else begin
           amo_data = {{64{1'b0}}, {2{amo_data[0+:32]}}};
         end
-        if (cva6_amo_req_i.size == 3'b100) begin
+        if (CVA6Cfg.CheriPresent && cva6_amo_req_i.size == 3'b100) begin
           amo_data = cva6_amo_req_i.operand_b[0+:128];
           amo_data_be = 16'hffff;
         end else begin
