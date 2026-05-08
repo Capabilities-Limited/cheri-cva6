@@ -825,7 +825,7 @@ module issue_read_operands
       end else if (ex_valid_i) begin
         pcc_gen_n = 0;
         pcc_n[0]  = trap_vector_base_i;
-      end else if ((pcc_gen_q==1 && pcc_gen_commit_i==1) | backend_empty_i) begin // Reset pcc_gen_n to 0 when we are committing instructions from 1 (all of the old generation is flushed)
+      end else if (pcc_gen_q==1 && ((pcc_gen_commit_i==1) | backend_empty_i)) begin // Reset pcc_gen_n to 0 when we are committing instructions from 1 (all of the old generation is flushed)
         pcc_gen_n = 0;
         pcc_n[0]  = pcc_q[1];
       end else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
