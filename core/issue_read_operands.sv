@@ -151,6 +151,8 @@ module issue_read_operands
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
     // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
     input logic set_pc_commit_i,
+    // PCC generation of the instruction that is committing - COMMIT_STAGE
+    input logic pcc_gen_commit_i,
     // Exception event - COMMIT
     input logic ex_valid_i,
     // Mispredict event and next PC - EXECUTE
@@ -790,9 +792,13 @@ module issue_read_operands
 
     end
 
-    // Stall while there is an outstanding change to bounds.
-    /*if (CVA6Cfg.CheriPresent && (pcc_jump_change_valid_n || pcc_jump_change_valid_q))
-      stall_raw[0] = 1'b1;*/
+    if (CVA6Cfg.CheriPresent) begin
+      // Stall jump to a new PCC when there is another outstanding pcc change.
+      if (pcc_gen_q==1) begin
+        if (issue_instr_i[0].op inside {ariane_pkg::CJALR}) stall_raw[0] = 1'b1;
+        if (issue_instr_i[1].op inside {ariane_pkg::CJALR}) stall_raw[1] = 1'b1;
+      end
+    end
   end
 
   // third operand from fp regfile or gp regfile if NR_RGPR_PORTS == 3
@@ -811,15 +817,18 @@ module issue_read_operands
       pcc_n = pcc_q;
 
       if (eret_i) begin
-        pcc_n[pcc_gen_q] = epc_i;
-      end else if (set_pc_commit_i) begin
-        pcc_n[pcc_gen_q] = pcc_commit_i;
-      end else if (ex_valid_i) begin
-        pcc_n[pcc_gen_q] = trap_vector_base_i;
-      /*end else if (pcc_gen_q==1 && backend_empty_i) begin
         pcc_gen_n = 0;
-        pcc_n[0] = pcc_q[pcc_gen_q];
-      end */ else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
+        pcc_n[0] = epc_i;
+      end else if (set_pc_commit_i) begin
+        pcc_gen_n = 0;
+        pcc_n[0] = pcc_commit_i;
+      end else if (ex_valid_i) begin
+        pcc_gen_n = 0;
+        pcc_n[0] = trap_vector_base_i;
+      end else if (pcc_gen_q==1 && pcc_gen_commit_i==1) begin // Reset pcc_gen_n to 0 when we are committing instructions from 1 (all of the old generation is flushed)
+        pcc_gen_n = 0;
+        pcc_n[0] = pcc_q[1];
+      end else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
         pcc_gen_n = 1;
         pcc_n[1] = resolved_branch_i.target_address;
       end

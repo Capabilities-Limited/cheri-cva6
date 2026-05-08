@@ -352,6 +352,7 @@ module issue_stage
       .we_fpr_i,
       .pcc_commit_i,
       .set_pc_commit_i,
+      .pcc_gen_commit_i(commit_instr_o[0].pcc_gen),
       .ex_valid_i,
       .resolved_branch_i,
       .trap_vector_base_i,
