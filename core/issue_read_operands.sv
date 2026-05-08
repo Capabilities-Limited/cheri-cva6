@@ -791,14 +791,14 @@ module issue_read_operands
       end
 
     end
-
+/*
     if (CVA6Cfg.CheriPresent) begin
       // Stall jump to a new PCC when there is another outstanding pcc change.
       if (pcc_gen_q==1) begin
         if (issue_instr_i[0].op inside {ariane_pkg::CJALR}) stall_raw[0] = 1'b1;
         if (issue_instr_i[1].op inside {ariane_pkg::CJALR}) stall_raw[1] = 1'b1;
       end
-    end
+    end*/
   end
 
   // third operand from fp regfile or gp regfile if NR_RGPR_PORTS == 3
@@ -1262,6 +1262,7 @@ module issue_read_operands
       pc_o <= '0;
       if (CVA6Cfg.CheriPresent) begin
         pcc_q[0] <= REG_ROOT;
+        pcc_q[1] <= REG_ROOT; // Should not be depended upon.
         pcc_gen_q <= 0;
       end
       is_zcmt_o                <= '0;
