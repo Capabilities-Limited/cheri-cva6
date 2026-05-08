@@ -325,17 +325,34 @@ package ariane_pkg;
     CSR_CLEAR,
     // CLU functions
     // 39 Capability-Inspection Instructions
-    GCPERM, GCTYPE, GCBASE, GCLEN, GCTAG, GCMODE, GCHI,
+    GCPERM,
+    GCTYPE,
+    GCBASE,
+    GCLEN,
+    GCTAG,
+    GCMODE,
+    GCHI,
     // 46 Capability-Modification Instructions
-    ACPERM, SCMODE, SCHI, SCADDR, CADD, SCBNDSR,
+    ACPERM,
+    SCMODE,
+    SCHI,
+    SCADDR,
+    CADD,
+    SCBNDSR,
     // 52
-    SCBNDS, CBLD, SENTRY,
+    SCBNDS,
+    CBLD,
+    SENTRY,
     // 55 Pointer-Arithmetic Instructions
     CMV,
     // 56 Pointer-Comparison Instructions
-    SCSS, SCEQ,
+    SCSS,
+    SCEQ,
     // 58 Control-Flow Instructions
-    MODESW_CAP, MODESW_INT, CJAL, CJALR,
+    MODESW_CAP,
+    MODESW_INT,
+    CJAL,
+    CJALR,
     // 62 Adjusting to Compressed Capability Precision Instructions
     CRAM,
     // LSU functions
@@ -738,32 +755,32 @@ package ariane_pkg;
   // completion by asserting ack.
   // TODO: fix this
   typedef struct packed {
-    logic        req;        // this request is valid
-    amo_t        amo_op;     // atomic memory operation to perform
-    logic [2:0]  size;       // 2'b10 --> word operation, 2'b11 --> double word operation
-    logic [63:0] operand_a;  // address
-    logic [CLEN-1:0] operand_b; // data as layouted in the register
-    logic                   cap_vld;
+    logic            req;        // this request is valid
+    amo_t            amo_op;     // atomic memory operation to perform
+    logic [2:0]      size;       // 2'b10 --> word operation, 2'b11 --> double word operation
+    logic [63:0]     operand_a;  // address
+    logic [CLEN-1:0] operand_b;  // data as layouted in the register
+    logic            cap_vld;
   } amo_req_t;
 
   // AMO response coming from cache.
   // TODO: fix this
   typedef struct packed {
-    logic        ack;     // response is valid
-    logic [CLEN-1:0] result; // sign-extended, result
-    logic        cap_vld;
+    logic            ack;      // response is valid
+    logic [CLEN-1:0] result;   // sign-extended, result
+    logic            cap_vld;
   } amo_resp_t;
 
   localparam RVFI = cva6_config_pkg::CVA6ConfigRvfiTrace;
 
-  function automatic logic is_cap (fu_op op);
-        case (op) inside
-            LC, SC, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
-                return 1'b1;
-            end
-            default: return 1'b0;
-        endcase
-    endfunction
+  function automatic logic is_cap(fu_op op);
+    case (op) inside
+      LC, SC, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
+        return 1'b1;
+      end
+      default: return 1'b0;
+    endcase
+  endfunction
   // ----------------------
   // Arithmetic Functions
   // ----------------------
@@ -784,77 +801,77 @@ package ariane_pkg;
       // 8-bytes size
       3'b011: begin
         case (addr[3:0])
-          4'b0000:  return 16'b0000_0000_1111_1111;
-          4'b0001:  return 16'b0000_0001_1111_1110;
-          4'b0010:  return 16'b0000_0011_1111_1100;
-          4'b0011:  return 16'b0000_0111_1111_1000;
-          4'b0100:  return 16'b0000_1111_1111_0000;
-          4'b0101:  return 16'b0001_1111_1110_0000;
-          4'b0110:  return 16'b0011_1111_1100_0000;
-          4'b0111:  return 16'b0111_1111_1000_0000;
-          4'b1000:  return 16'b1111_1111_0000_0000;
+          4'b0000: return 16'b0000_0000_1111_1111;
+          4'b0001: return 16'b0000_0001_1111_1110;
+          4'b0010: return 16'b0000_0011_1111_1100;
+          4'b0011: return 16'b0000_0111_1111_1000;
+          4'b0100: return 16'b0000_1111_1111_0000;
+          4'b0101: return 16'b0001_1111_1110_0000;
+          4'b0110: return 16'b0011_1111_1100_0000;
+          4'b0111: return 16'b0111_1111_1000_0000;
+          4'b1000: return 16'b1111_1111_0000_0000;
           default: ;  // Do nothing
         endcase
       end
       // 4-bytes size
       3'b010: begin
         case (addr[3:0])
-          4'b0000:  return 16'b0000_0000_0000_1111;
-          4'b0001:  return 16'b0000_0000_0001_1110;
-          4'b0010:  return 16'b0000_0000_0011_1100;
-          4'b0011:  return 16'b0000_0000_0111_1000;
-          4'b0100:  return 16'b0000_0000_1111_0000;
-          4'b0101:  return 16'b0000_0001_1110_0000;
-          4'b0110:  return 16'b0000_0011_1100_0000;
-          4'b0111:  return 16'b0000_0111_1000_0000;
-          4'b1000:  return 16'b0000_1111_0000_0000;
-          4'b1001:  return 16'b0001_1110_0000_0000;
-          4'b1010:  return 16'b0011_1100_0000_0000;
-          4'b1011:  return 16'b0111_1000_0000_0000;
-          4'b1100:  return 16'b1111_0000_0000_0000;
+          4'b0000: return 16'b0000_0000_0000_1111;
+          4'b0001: return 16'b0000_0000_0001_1110;
+          4'b0010: return 16'b0000_0000_0011_1100;
+          4'b0011: return 16'b0000_0000_0111_1000;
+          4'b0100: return 16'b0000_0000_1111_0000;
+          4'b0101: return 16'b0000_0001_1110_0000;
+          4'b0110: return 16'b0000_0011_1100_0000;
+          4'b0111: return 16'b0000_0111_1000_0000;
+          4'b1000: return 16'b0000_1111_0000_0000;
+          4'b1001: return 16'b0001_1110_0000_0000;
+          4'b1010: return 16'b0011_1100_0000_0000;
+          4'b1011: return 16'b0111_1000_0000_0000;
+          4'b1100: return 16'b1111_0000_0000_0000;
           default: ;  // Do nothing
         endcase
       end
-       // 2-bytes size
+      // 2-bytes size
       3'b001: begin
         case (addr[3:0])
-          4'b0000:  return 16'b0000_0000_0000_0011;
-          4'b0001:  return 16'b0000_0000_0000_0110;
-          4'b0010:  return 16'b0000_0000_0000_1100;
-          4'b0011:  return 16'b0000_0000_0001_1000;
-          4'b0100:  return 16'b0000_0000_0011_0000;
-          4'b0101:  return 16'b0000_0000_0110_0000;
-          4'b0110:  return 16'b0000_0000_1100_0000;
-          4'b0111:  return 16'b0000_0001_1000_0000;
-          4'b1000:  return 16'b0000_0011_0000_0000;
-          4'b1001:  return 16'b0000_0110_0000_0000;
-          4'b1010:  return 16'b0000_1100_0000_0000;
-          4'b1011:  return 16'b0001_1000_0000_0000;
-          4'b1100:  return 16'b0011_0000_0000_0000;
-          4'b1101:  return 16'b0110_0000_0000_0000;
-          4'b1110:  return 16'b1100_0000_0000_0000;
+          4'b0000: return 16'b0000_0000_0000_0011;
+          4'b0001: return 16'b0000_0000_0000_0110;
+          4'b0010: return 16'b0000_0000_0000_1100;
+          4'b0011: return 16'b0000_0000_0001_1000;
+          4'b0100: return 16'b0000_0000_0011_0000;
+          4'b0101: return 16'b0000_0000_0110_0000;
+          4'b0110: return 16'b0000_0000_1100_0000;
+          4'b0111: return 16'b0000_0001_1000_0000;
+          4'b1000: return 16'b0000_0011_0000_0000;
+          4'b1001: return 16'b0000_0110_0000_0000;
+          4'b1010: return 16'b0000_1100_0000_0000;
+          4'b1011: return 16'b0001_1000_0000_0000;
+          4'b1100: return 16'b0011_0000_0000_0000;
+          4'b1101: return 16'b0110_0000_0000_0000;
+          4'b1110: return 16'b1100_0000_0000_0000;
           default: ;  // Do nothing
         endcase
       end
       // 1-byte size
       3'b000: begin
         case (addr[3:0])
-          4'b0000:  return 16'b0000_0000_0000_0001;
-          4'b0001:  return 16'b0000_0000_0000_0010;
-          4'b0010:  return 16'b0000_0000_0000_0100;
-          4'b0011:  return 16'b0000_0000_0000_1000;
-          4'b0100:  return 16'b0000_0000_0001_0000;
-          4'b0101:  return 16'b0000_0000_0010_0000;
-          4'b0110:  return 16'b0000_0000_0100_0000;
-          4'b0111:  return 16'b0000_0000_1000_0000;
-          4'b1000:  return 16'b0000_0001_0000_0000;
-          4'b1001:  return 16'b0000_0010_0000_0000;
-          4'b1010:  return 16'b0000_0100_0000_0000;
-          4'b1011:  return 16'b0000_1000_0000_0000;
-          4'b1100:  return 16'b0001_0000_0000_0000;
-          4'b1101:  return 16'b0010_0000_0000_0000;
-          4'b1110:  return 16'b0100_0000_0000_0000;
-          4'b1111:  return 16'b1000_0000_0000_0000;
+          4'b0000: return 16'b0000_0000_0000_0001;
+          4'b0001: return 16'b0000_0000_0000_0010;
+          4'b0010: return 16'b0000_0000_0000_0100;
+          4'b0011: return 16'b0000_0000_0000_1000;
+          4'b0100: return 16'b0000_0000_0001_0000;
+          4'b0101: return 16'b0000_0000_0010_0000;
+          4'b0110: return 16'b0000_0000_0100_0000;
+          4'b0111: return 16'b0000_0000_1000_0000;
+          4'b1000: return 16'b0000_0001_0000_0000;
+          4'b1001: return 16'b0000_0010_0000_0000;
+          4'b1010: return 16'b0000_0100_0000_0000;
+          4'b1011: return 16'b0000_1000_0000_0000;
+          4'b1100: return 16'b0001_0000_0000_0000;
+          4'b1101: return 16'b0010_0000_0000_0000;
+          4'b1110: return 16'b0100_0000_0000_0000;
+          4'b1111: return 16'b1000_0000_0000_0000;
           default: ;  // Do nothing
         endcase
       end
@@ -961,7 +978,7 @@ package ariane_pkg;
       LH, LHU, HLV_H, HLV_HU, HLVX_HU, SH, HSV_H, FLH, FSH, AMO_LRH, AMO_SCH: return 3'b001;
       LB, LBU, HLV_B, HLV_BU, SB, HSV_B, FLB, FSB, AMO_LRB, AMO_SCB:          return 3'b000;
       CBO_CLEAN, CBO_FLUSH, CBO_INVAL:                                        return 3'b000;
-      default:                                              return 3'b000;
+      default:                                                                return 3'b000;
     endcase
   endfunction
   // ----------------------

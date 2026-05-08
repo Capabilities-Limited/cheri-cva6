@@ -31,7 +31,7 @@ package cva6_config_pkg;
   localparam CVA6ConfigRVZcheripurecap = 1;
   localparam CVA6ConfigRVZcherihybrid = 1;
 
-   localparam CVA6ConfigCheriCapTagWidth = 1;
+  localparam CVA6ConfigCheriCapTagWidth = 1;
   localparam CVA6ConfigRVFI_DII = 0;
 
   localparam CVA6ConfigAxiIdWidth = 4;

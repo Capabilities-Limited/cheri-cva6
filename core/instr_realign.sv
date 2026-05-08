@@ -78,7 +78,7 @@ module instr_realign
 
       valid_o[0] = valid_i;
       instr_o[0] = unaligned_q ? {data_i[15:0], unaligned_instr_q} : data_i[31:0];
-      addr_o[0] = unaligned_q ? unaligned_address_q : address_i;
+      addr_o[0]  = unaligned_q ? unaligned_address_q : address_i;
       if (CVA6Cfg.RVFI_DII) dii_id_o[0] = unaligned_q ? unaligned_dii_id_q : dii_id_i;
 
       if (CVA6Cfg.INSTR_PER_FETCH != 1) begin
@@ -133,16 +133,16 @@ module instr_realign
       unaligned_instr_d   = unaligned_instr_q;
       if (CVA6Cfg.RVFI_DII) unaligned_dii_id_d = unaligned_dii_id_q;
 
-      valid_o             = '0;
-      instr_o[0]          = '0;
-      addr_o[0]           = '0;
-      if (CVA6Cfg.RVFI_DII) dii_id_o[0]         = '0;
-      instr_o[1]          = '0;
-      addr_o[1]           = '0;
-      instr_o[2]          = '0;
-      addr_o[2]           = '0;
-      instr_o[3]          = {16'b0, data_i[63:48]};
-      addr_o[3]           = {address_i[CVA6Cfg.VLEN-1:3], 3'b110};
+      valid_o    = '0;
+      instr_o[0] = '0;
+      addr_o[0]  = '0;
+      if (CVA6Cfg.RVFI_DII) dii_id_o[0] = '0;
+      instr_o[1] = '0;
+      addr_o[1]  = '0;
+      instr_o[2] = '0;
+      addr_o[2]  = '0;
+      instr_o[3] = {16'b0, data_i[63:48]};
+      addr_o[3]  = {address_i[CVA6Cfg.VLEN-1:3], 3'b110};
 
       if (CVA6Cfg.RVFI_DII) begin
         dii_id_o[0] = unaligned_q ? unaligned_dii_id_q : dii_id_i;
@@ -381,12 +381,12 @@ module instr_realign
       unaligned_q         <= 1'b0;
       unaligned_address_q <= '0;
       unaligned_instr_q   <= '0;
-      if (CVA6Cfg.RVFI_DII) unaligned_dii_id_q  <= '0;
+      if (CVA6Cfg.RVFI_DII) unaligned_dii_id_q <= '0;
     end else begin
       if (valid_i) begin
         unaligned_address_q <= unaligned_address_d;
-        if (CVA6Cfg.RVFI_DII) unaligned_dii_id_q  <= unaligned_dii_id_d;
-        unaligned_instr_q   <= unaligned_instr_d;
+        if (CVA6Cfg.RVFI_DII) unaligned_dii_id_q <= unaligned_dii_id_d;
+        unaligned_instr_q <= unaligned_instr_d;
       end
 
       if (flush_i) begin

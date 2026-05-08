@@ -395,7 +395,7 @@ module alu
     if (CVA6Cfg.CheriPresent) begin
       unique case (fu_data_i.operation)
         // AUIPCC capability mode
-        AUIPCC: result_o = adder_result;
+        AUIPCC:  result_o = adder_result;
         default: ;  // default case to suppress unique warning
       endcase
     end

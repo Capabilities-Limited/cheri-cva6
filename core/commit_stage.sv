@@ -124,9 +124,13 @@ module commit_stage
 
   always_comb begin : prepare_pc_o
     // Recalculate the PCC with correct address. Representability check not required because this was in-bounds at issue.
-    automatic cva6_cheri_pkg::cap_pcc_t pcc_o = cva6_cheri_pkg::set_cap_reg_addr(pcc_i, commit_instr_i[0].pc);
+    automatic
+    cva6_cheri_pkg::cap_pcc_t
+    pcc_o = cva6_cheri_pkg::set_cap_reg_addr(
+        pcc_i, commit_instr_i[0].pc
+    );
     pcc_o = cva6_cheri_pkg::set_cap_reg_flags(pcc_o, commit_instr_i[0].int_mode);
-    pc_o = pcc_o;
+    pc_o  = pcc_o;
   end
   if (CVA6Cfg.RVFI_DII) assign dii_id_o = commit_instr_i[0].dii_id;
   // Dirty the FP state if we are committing anything related to the FPU
@@ -166,7 +170,8 @@ module commit_stage
     commit_lsu_o = 1'b0;
     commit_csr_o = 1'b0;
     // amos will commit on port 0
-    wdata_o[0] = (CVA6Cfg.RVA && amo_resp_i.ack) ? cva6_cheri_pkg::cap_mem_to_cap_reg({amo_resp_i.cap_vld, amo_resp_i.result[CVA6Cfg.CLEN-1:0]}) : commit_instr_i[0].result;
+    wdata_o[0] = (CVA6Cfg.RVA && amo_resp_i.ack) ? cva6_cheri_pkg::cap_mem_to_cap_reg(
+        {amo_resp_i.cap_vld, amo_resp_i.result[CVA6Cfg.CLEN-1:0]}) : commit_instr_i[0].result;
 
     csr_op_o = ADD;  // this corresponds to a CSR NOP
     csr_wdata_o = {CVA6Cfg.REGLEN{1'b0}};
@@ -220,7 +225,9 @@ module commit_stage
           if (commit_instr_i[0].fu inside {FPU, FPU_VEC}) begin
             if (!commit_drop_i[0]) begin
               // write the CSR with potential exception flags from retiring floating point instruction
-              csr_wdata_o[CVA6Cfg.XLEN-1:0] = {{CVA6Cfg.XLEN - 5{1'b0}}, commit_instr_i[0].ex.cause[4:0]};
+              csr_wdata_o[CVA6Cfg.XLEN-1:0] = {
+                {CVA6Cfg.XLEN - 5{1'b0}}, commit_instr_i[0].ex.cause[4:0]
+              };
               csr_write_fflags_o = 1'b1;
             end
           end
@@ -370,7 +377,10 @@ module commit_stage
                     {CVA6Cfg.XLEN - 5{1'b0}},
                     (commit_instr_i[0].ex.cause[4:0] | commit_instr_i[1].ex.cause[4:0])
                   };
-                else csr_wdata_o[CVA6Cfg.XLEN-1:0] = {{CVA6Cfg.XLEN - 5{1'b0}}, commit_instr_i[1].ex.cause[4:0]};
+                else
+                  csr_wdata_o[CVA6Cfg.XLEN-1:0] = {
+                    {CVA6Cfg.XLEN - 5{1'b0}}, commit_instr_i[1].ex.cause[4:0]
+                  };
                 csr_write_fflags_o = 1'b1;
               end
             end
@@ -406,7 +416,7 @@ module commit_stage
       // check for CSR exception
       // ------------------------
       if (csr_exception_i.valid) begin
-        exception_o      = csr_exception_i;
+        exception_o = csr_exception_i;
         if (!CVA6Cfg.CheriPresent || csr_exception_i.cause != cva6_cheri_pkg::CAP_EXCEPTION) begin
           // if no earlier exception happened the commit instruction will still contain
           // the instruction bits from the ID stage. If a earlier exception happened we don't care
