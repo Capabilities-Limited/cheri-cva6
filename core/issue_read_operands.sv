@@ -1258,8 +1258,7 @@ module issue_read_operands
         pcc_jump_change_q <= pcc_jump_change_n;
       end
       if (CVA6Cfg.RVZCMT) is_zcmt_o <= issue_instr_i[0].is_zcmt;
-        else is_zcmt_o <= '0;
-      end
+      else is_zcmt_o <= '0;
       x_transaction_rejected_o <= x_transaction_rejected_n;
     end
   end
