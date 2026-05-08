@@ -791,8 +791,8 @@ module issue_read_operands
     end
 
     // Stall while there is an outstanding change to bounds.
-    if (CVA6Cfg.CheriPresent && pcc_gen_q==1 && resolved_branch_i.valid && resolved_branch_i.is_pcc_change)
-      stall_raw[0] = 1'b1;
+    /*if (CVA6Cfg.CheriPresent && (pcc_jump_change_valid_n || pcc_jump_change_valid_q))
+      stall_raw[0] = 1'b1;*/
   end
 
   // third operand from fp regfile or gp regfile if NR_RGPR_PORTS == 3
@@ -816,10 +816,10 @@ module issue_read_operands
         pcc_n[pcc_gen_q] = pcc_commit_i;
       end else if (ex_valid_i) begin
         pcc_n[pcc_gen_q] = trap_vector_base_i;
-      end else if (pcc_gen_q==1 && backend_empty_i) begin
+      /*end else if (pcc_gen_q==1 && backend_empty_i) begin
         pcc_gen_n = 0;
         pcc_n[0] = pcc_q[pcc_gen_q];
-      end else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
+      end */ else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
         pcc_gen_n = 1;
         pcc_n[1] = resolved_branch_i.target_address;
       end
