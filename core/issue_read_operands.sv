@@ -252,7 +252,7 @@ module issue_read_operands
 
   // PCC signals : we only have one as we only allow one PCC change at a time
   logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
-  logic pcc_gen_n, pcc_gen_q;
+  logic pcc_gen_n, pcc_gen_q, pcc_changing_n, pcc_changing_q;
   cva6_cheri_pkg::cap_reg_t pcc[CVA6Cfg.NrIssuePorts-1:0];
   cva6_cheri_pkg::cap_meta_data_t pcc_meta;
 
@@ -794,7 +794,7 @@ module issue_read_operands
 
     if (CVA6Cfg.CheriPresent) begin
       // Stall jump to a new PCC when there is another outstanding pcc change.
-      if (pcc_gen_q==1 && !backend_empty_i) begin
+      if (pcc_changing_q==1 && !backend_empty_i) begin
         if (issue_instr_i[0].op inside {ariane_pkg::CJALR}) stall_raw[0] = 1'b1;
         if (issue_instr_i[1].op inside {ariane_pkg::CJALR}) stall_raw[1] = 1'b1;
       end
@@ -814,24 +814,22 @@ module issue_read_operands
   // PCC logic
   if (CVA6Cfg.CheriPresent) begin
     always_comb begin : pcc_select
-      pcc_gen_n = pcc_gen_q;
+      pcc_gen_n = !pcc_gen_q;
+      pcc_changing_n = 1'b1;
       pcc_n = pcc_q;
 
-      if (eret_i) begin
-        pcc_gen_n = 0;
-        pcc_n[0] = epc_i;
-      end else if (set_pc_commit_i) begin
-        pcc_gen_n = 0;
-        pcc_n[0] = pcc_commit_i;
-      end else if (ex_valid_i) begin
-        pcc_gen_n = 0;
-        pcc_n[0] = trap_vector_base_i;
-      end else if (pcc_gen_q==1 && ((pcc_gen_commit_i==1) | backend_empty_i)) begin // Reset pcc_gen_n to 0 when we are committing instructions from 1 (all of the old generation is flushed)
-        pcc_gen_n = 0;
-        pcc_n[0] = pcc_q[1];
-      end else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
-        pcc_gen_n = 1;
-        pcc_n[1] = resolved_branch_i.target_address;
+      if (eret_i)
+        pcc_n[pcc_gen_n] = epc_i;
+      else if (set_pc_commit_i)
+        pcc_n[pcc_gen_n] = pcc_commit_i;
+      else if (ex_valid_i)
+        pcc_n[pcc_gen_n] = trap_vector_base_i;
+      else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change)
+        pcc_n[pcc_gen_n] = resolved_branch_i.target_address;
+      else begin
+        pcc_gen_n = pcc_gen_q; // If we're not changing pcc, don't change the generation either.
+        if ((pcc_gen_commit_i==pcc_gen_q) | backend_empty_i) pcc_changing_n = 0;
+        else pcc_changing_n = pcc_changing_q;
       end
     end
   end
@@ -1281,6 +1279,7 @@ module issue_read_operands
       if (CVA6Cfg.CheriPresent) begin
         pcc_q <= pcc_n;
         pcc_gen_q <= pcc_gen_n;
+        pcc_changing_q <= pcc_changing_n;
       end
       pc_o <= pc_n;
       is_compressed_instr_o <= is_compressed_instr_n;
