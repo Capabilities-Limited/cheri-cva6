@@ -813,19 +813,20 @@ module issue_read_operands
   // PCC logic
   if (CVA6Cfg.CheriPresent) begin
     always_comb begin : pcc_select
-      pcc_gen_n = !pcc_gen_q;
-      pcc_changing_n = 1'b1;
+      pcc_gen_n = pcc_gen_q;
+      pcc_changing_n = pcc_changing_q;
       pcc_n = pcc_q;
 
       if (eret_i) pcc_n[pcc_gen_n] = epc_i;
       else if (set_pc_commit_i) pcc_n[pcc_gen_n] = pcc_commit_i;
       else if (ex_valid_i) pcc_n[pcc_gen_n] = trap_vector_base_i;
-      else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change)
+      else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
+        pcc_gen_n = !pcc_gen_q;
+        pcc_changing_n = 1'b1;
         pcc_n[pcc_gen_n] = resolved_branch_i.target_address;
-      else begin
+      end else begin
         pcc_gen_n = pcc_gen_q;  // If we're not changing pcc, don't change the generation either.
         if ((pcc_gen_commit_i == pcc_gen_q) | backend_empty_i) pcc_changing_n = 0;
-        else pcc_changing_n = pcc_changing_q;
       end
     end
   end
