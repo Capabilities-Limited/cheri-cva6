@@ -124,10 +124,10 @@ module commit_stage
 
   // Recalculate the PCC with correct address. Representability check not required because this was in-bounds at issue.
   assign pc_o = cva6_cheri_pkg::set_cap_reg_flags(
-      cva6_cheri_pkg::set_cap_reg_addr(
-          pcc_i[commit_instr_i[0].pcc_gen], commit_instr_i[0].pc
-      ),
-      commit_instr_i[0].int_mode
+    cva6_cheri_pkg::set_cap_reg_addr(
+      pcc_i[commit_instr_i[0].pcc_gen], commit_instr_i[0].pc
+    ),
+    commit_instr_i[0].int_mode
   );
 
   if (CVA6Cfg.RVFI_DII) assign dii_id_o = commit_instr_i[0].dii_id;
