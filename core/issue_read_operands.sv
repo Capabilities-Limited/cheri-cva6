@@ -55,7 +55,7 @@ module issue_read_operands
     // Int mode flag in PCC register - ID_STAGE
     output logic int_mode_o,
     // Generation of PCC bounds - SCOREBOARD
-    output logic issue_pcc_gen_o,
+    output logic [CVA6Cfg.NrIssuePorts-1:0] issue_pcc_gen_o,
     // PCC exception - Execute
     output exception_t [CVA6Cfg.NrIssuePorts-1:0] issue_pcc_ex_o,
     // Backend Empty - scoreboard
@@ -346,7 +346,14 @@ module issue_read_operands
   assign cvxif_off_instr_o = CVA6Cfg.CvxifEn ? cvxif_off_instr_q : '0;
   assign stall_issue_o = stall_raw[0];
   assign tinst_o = CVA6Cfg.RVH ? tinst_q : '0;
-  assign issue_pcc_gen_o = pcc_gen_q;
+  // If there is a CJALR, it will flip the pcc_gen for the following instructions in the bundle.
+  for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
+    if (i == 0) assign issue_pcc_gen_o[i] = pcc_gen_q;
+    else
+      assign issue_pcc_gen_o[i] = (issue_instr_i[i-1].op == CJALR) ?
+                                        !issue_pcc_gen_o[i-1] :
+                                        issue_pcc_gen_o[i-1];
+  end
 
   // ALU bypass signals
   if (CVA6Cfg.ALUBypass) begin
@@ -426,17 +433,13 @@ module issue_read_operands
         NONE: fus_busy[1].none = 1'b1;
         CTRL_FLOW: begin
           if (CVA6Cfg.SpeculativeSb) begin
-            // If a capability jump is executing, PCC will have changed for the second slot, so block it.
-            if (issue_instr_i[0].op == CJAL) fus_busy[1] = '1;
-            else begin
-              // Issue speculative instruction, will be removed on BMISS
-              fus_busy[1].alu = 1'b1;
-              fus_busy[1].clu = 1'b1;
-              fus_busy[1].ctrl_flow = 1'b1;
-              fus_busy[1].csr = 1'b1;
-              // The store buffer cannot be partially flushed yet
-              fus_busy[1].store = 1'b1;
-            end
+            // Issue speculative instruction, will be removed on BMISS
+            fus_busy[1].alu = 1'b1;
+            fus_busy[1].clu = 1'b1;
+            fus_busy[1].ctrl_flow = 1'b1;
+            fus_busy[1].csr = 1'b1;
+            // The store buffer cannot be partially flushed yet
+            fus_busy[1].store = 1'b1;
           end else begin
             // There are no branch misses on a JAL
             if (issue_instr_i[0].op == ariane_pkg::ADD) begin

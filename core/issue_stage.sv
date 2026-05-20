@@ -214,7 +214,7 @@ module issue_stage
   logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_ack_iro_sb;
 
   logic                                               backend_empty;
-  logic                                               issue_pcc_gen;
+  logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_pcc_gen;
 
   exception_t        [CVA6Cfg.NrIssuePorts-1:0]       issue_pcc_ex;
 
