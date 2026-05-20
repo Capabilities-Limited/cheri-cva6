@@ -425,15 +425,19 @@ module issue_read_operands
         NONE: fus_busy[1].none = 1'b1;
         CTRL_FLOW: begin
           if (CVA6Cfg.SpeculativeSb) begin
-            // Issue speculative instruction, will be removed on BMISS
-            fus_busy[1].alu = 1'b1;
-            fus_busy[1].clu = 1'b1;
-            fus_busy[1].ctrl_flow = 1'b1;
-            fus_busy[1].csr = 1'b1;
-            // Speculative non-idempotent loads are not supported yet
-            fus_busy[1].load = 1'b1;
-            // The store buffer cannot be partially flushed yet
-            fus_busy[1].store = 1'b1;
+            // If a capability jump is executing, PCC will have changed for the second slot, so block it.
+            if (issue_instr_i[0].op == CJAL) fus_busy[1] = '1;
+            else begin
+              // Issue speculative instruction, will be removed on BMISS
+              fus_busy[1].alu = 1'b1;
+              fus_busy[1].clu = 1'b1;
+              fus_busy[1].ctrl_flow = 1'b1;
+              fus_busy[1].csr = 1'b1;
+              // Speculative non-idempotent loads are not supported yet
+              fus_busy[1].load = 1'b1;
+              // The store buffer cannot be partially flushed yet
+              fus_busy[1].store = 1'b1;
+            end
           end else begin
             // There are no branch misses on a JAL
             if (issue_instr_i[0].op == ariane_pkg::ADD) begin
