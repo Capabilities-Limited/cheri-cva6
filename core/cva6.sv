@@ -990,9 +990,8 @@ module cva6
       .commit_instr_o (commit_instr_id_commit),
       .commit_drop_o  (commit_drop_id_commit),
       .commit_ack_i   (commit_ack_commit_id),
-      .commit_pcc_o   (commit_pcc),
-      .pcc_commit_i   (pc_commit),
       .set_pc_commit_i(set_pc_ctrl_pcgen),
+      .pc_commit_o    (pc_commit),
 
       // Performance Counters
       .stall_issue_o        (stall_issue),
@@ -1189,8 +1188,7 @@ module cva6
       .we_gpr_o              (we_gpr_commit_id),
       .we_fpr_o              (we_fpr_commit_id),
       .amo_resp_i            (amo_resp),
-      .pcc_i                 (commit_pcc),
-      .pc_o                  (pc_commit),
+      .pc_o                  (),
       .dii_id_o              (dii_id_commit),
       .csr_op_o              (csr_op_commit_csr),
       .csr_op_is_imm_o       (csr_op_is_imm_commit_csr),
