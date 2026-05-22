@@ -58,10 +58,8 @@ module commit_stage
     output logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_o,
     // Result of AMO operation - CACHE
     input amo_resp_t amo_resp_i,
-    // Current PCC - ISSUE_STAGE
-    input logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_i,
     // PCC to be written on flush - FRONTEND_CSR_REGFILE_ISSUE_STAGE
-    output logic [CVA6Cfg.PCLEN-1:0] pc_o,
+    output logic [CVA6Cfg.VLEN-1:0] pc_o,
     // Last committed DII ID - FRONTEND
     output logic [CVA6Cfg.DIIIDLEN-1 : 0] dii_id_o,
     // Decoded CSR operation - CSR_REGFILE
@@ -122,13 +120,7 @@ module commit_stage
     assign waddr_o[i] = commit_instr_i[i].rd;
   end
 
-  // Recalculate the PCC with correct address. Representability check not required because this was in-bounds at issue.
-  assign pc_o = cva6_cheri_pkg::set_cap_reg_flags(
-      cva6_cheri_pkg::set_cap_reg_addr(
-          pcc_i[commit_instr_i[0].pcc_gen], commit_instr_i[0].pc
-      ),
-      commit_instr_i[0].int_mode
-  );
+  assign pc_o = commit_instr_i[0].pc;
 
   if (CVA6Cfg.RVFI_DII) assign dii_id_o = commit_instr_i[0].dii_id;
   // Dirty the FP state if we are committing anything related to the FPU

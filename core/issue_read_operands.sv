@@ -56,8 +56,6 @@ module issue_read_operands
     output logic int_mode_o,
     // Generation of PCC bounds - SCOREBOARD
     output logic [CVA6Cfg.NrIssuePorts-1:0] issue_pcc_gen_o,
-    // PCC exception - Execute
-    output exception_t [CVA6Cfg.NrIssuePorts-1:0] issue_pcc_ex_o,
     // Backend Empty - scoreboard
     input logic backend_empty_i,
     // Forwarding - SCOREBOARD
@@ -146,11 +144,13 @@ module issue_read_operands
     // FPR write enable - COMMIT_STAGE
     input logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_i,
     // Last committed pcc change - COMMIT_STAGE
-    output logic [1:0][CVA6Cfg.PCLEN-1:0] commit_pcc_o,
+    output logic [1:0][CVA6Cfg.PCLEN-1:0] pccs_o,
     // Program counter capability last committed - COMMIT_STAGE
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
     // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
     input logic set_pc_commit_i,
+    // Instruction 0 is committing - COMMIT_STAGE
+    input logic commit_valid_i,
     // PCC generation of the instruction that is committing - COMMIT_STAGE
     input logic pcc_gen_commit_i,
     // Exception event - COMMIT
@@ -376,8 +376,8 @@ module issue_read_operands
     assign use_alu2 = '0;
   end
 
-  assign int_mode_o   = cva6_cheri_pkg::get_cap_reg_flags(pcc_q[pcc_gen_q]);
-  assign commit_pcc_o = pcc_q;
+  assign int_mode_o = cva6_cheri_pkg::get_cap_reg_flags(pcc_q[pcc_gen_q]);
+  assign pccs_o = pcc_q;
   // ---------------
   // Issue Stage
   // ---------------
@@ -495,12 +495,14 @@ module issue_read_operands
       endcase
     end
   end
-
+  /*
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
     // Update PCC with correct int mode
     always_comb begin : pcc_int_mode
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_n[pcc_gen_n], issue_instr_i[i].int_mode);
+        // XXX pcc_q cannot have the up-to-date PCC for an instruction after a CJALR issued in the same
+        // bundle.  This check needs to effectively be done later in the pipeline.
+        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_q[issue_pcc_gen_o[i]], issue_instr_i[i].int_mode);
       end
     end
 
@@ -558,7 +560,7 @@ module issue_read_operands
       end
     end
   end
-
+*/
   // select the right busy signal
   // this obviously depends on the functional unit we need
   for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
@@ -824,16 +826,15 @@ module issue_read_operands
       pcc_changing_n = pcc_changing_q;
       pcc_n = pcc_q;
 
-      if (eret_i) pcc_n[pcc_gen_n] = epc_i;
-      else if (set_pc_commit_i) pcc_n[pcc_gen_n] = pcc_commit_i;
-      else if (ex_valid_i) pcc_n[pcc_gen_n] = trap_vector_base_i;
+      if (eret_i) pcc_n[pcc_gen_q] = epc_i;
+      else if (set_pc_commit_i) pcc_n[pcc_gen_q] = pcc_commit_i;
+      else if (ex_valid_i) pcc_n[pcc_gen_q] = trap_vector_base_i;
       else if (resolved_branch_i.valid && resolved_branch_i.is_pcc_change) begin
         pcc_gen_n = !pcc_gen_q;
         pcc_changing_n = 1'b1;
         pcc_n[pcc_gen_n] = resolved_branch_i.target_address;
       end else begin
-        pcc_gen_n = pcc_gen_q;  // If we're not changing pcc, don't change the generation either.
-        if ((pcc_gen_commit_i == pcc_gen_q) | backend_empty_i) pcc_changing_n = 0;
+        if ((pcc_gen_commit_i == pcc_gen_q && commit_valid_i) | backend_empty_i) pcc_changing_n = 0;
       end
     end
   end

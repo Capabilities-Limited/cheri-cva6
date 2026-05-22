@@ -69,8 +69,6 @@ module scoreboard #(
     input  logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_ack_i,
     // Currently being issued PCC bounds/perms generation
     input  logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_pcc_gen_i,
-    // An exception has been detected in issue_read_operands - ISSUE_READ_OPERANDS
-    input  exception_t        [CVA6Cfg.NrIssuePorts-1:0]       issue_pcc_ex_i,
     // The next instruction to be issued is also the next to be committed - ISSUE_READ_OPERANDS
     output logic                                               backend_empty_o,
     // Forwarding - ISSUE_READ_OPERANDS
@@ -181,9 +179,6 @@ module scoreboard #(
         automatic scoreboard_entry_t new_sbe = decoded_instr_i[i];
         if (CVA6Cfg.CheriPresent) begin
           new_sbe.pcc_gen = issue_pcc_gen_i[i];
-          if (issue_pcc_ex_i[i].valid && !(CVA6Cfg.DebugEn && new_sbe.ex.valid && new_sbe.ex.cause == riscv::DEBUG_REQUEST)) begin
-            new_sbe.ex = issue_pcc_ex_i[i];
-          end
         end
         // the decoded instruction we put in there is valid (1st bit)
         // increase the issue counter and advance issue pointer
