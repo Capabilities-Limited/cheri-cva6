@@ -735,9 +735,11 @@ module issue_read_operands
 
     if (CVA6Cfg.CheriPresent) begin
       // Stall jump to a new PCC when there is another outstanding pcc change.
-      if (pcc_changing_q && !backend_empty_i) begin
-        if (issue_instr_i[0].op inside {ariane_pkg::CJALR}) stall_raw[0] = 1'b1;
-        if (issue_instr_i[1].op inside {ariane_pkg::CJALR}) stall_raw[1] = 1'b1;
+      if (pcc_changing_q/* && !backend_empty_i */) begin
+        stall_raw[0] = 1'b1;
+        stall_raw[1] = 1'b1;
+        //if (issue_instr_i[0].op inside {ariane_pkg::CJALR}) stall_raw[0] = 1'b1;
+        //if (issue_instr_i[1].op inside {ariane_pkg::CJALR}) stall_raw[1] = 1'b1;
       end
     end
 
@@ -771,7 +773,7 @@ module issue_read_operands
         pcc_n[pcc_gen_n] = resolved_branch_i.target_address;
       end
       // In any case, if the backend is empty or we're committing the current generation, reset pcc_changing_g.
-      if ((pcc_gen_commit_i==pcc_gen_n && commit_valid_i) | backend_empty_i) pcc_changing_n = 0;
+      if (/*(pcc_gen_commit_i==pcc_gen_n && commit_valid_i) |*/ backend_empty_i) pcc_changing_n = 0;
     end
   end
 
