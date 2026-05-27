@@ -253,8 +253,6 @@ module issue_read_operands
   // PCC signals : we only have one as we only allow one PCC change at a time
   logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
   logic pcc_gen_n, pcc_gen_q, pcc_changing_n, pcc_changing_q;
-  cva6_cheri_pkg::cap_reg_t pcc[CVA6Cfg.NrIssuePorts-1:0];
-  cva6_cheri_pkg::cap_meta_data_t pcc_meta;
 
   // forwarding signals
   logic [CVA6Cfg.NrIssuePorts-1:0] forward_rs1, forward_rs2, forward_rs3;
@@ -737,7 +735,7 @@ module issue_read_operands
 
     if (CVA6Cfg.CheriPresent) begin
       // Stall jump to a new PCC when there is another outstanding pcc change.
-      if (pcc_changing_q==1 && !backend_empty_i) begin
+      if (pcc_changing_q && !backend_empty_i) begin
         if (issue_instr_i[0].op inside {ariane_pkg::CJALR}) stall_raw[0] = 1'b1;
         if (issue_instr_i[1].op inside {ariane_pkg::CJALR}) stall_raw[1] = 1'b1;
       end
@@ -771,9 +769,9 @@ module issue_read_operands
         pcc_gen_n = !pcc_gen_q;
         pcc_changing_n = 1'b1;
         pcc_n[pcc_gen_n] = resolved_branch_i.target_address;
-      end else begin
-        if ((pcc_gen_commit_i==pcc_gen_q && commit_valid_i) | backend_empty_i) pcc_changing_n = 0;
       end
+      // In any case, if the backend is empty or we're committing the current generation, reset pcc_changing_g.
+      if ((pcc_gen_commit_i==pcc_gen_n && commit_valid_i) | backend_empty_i) pcc_changing_n = 0;
     end
   end
 
