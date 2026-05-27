@@ -495,72 +495,7 @@ module issue_read_operands
       endcase
     end
   end
-/*
-  if (CVA6Cfg.CheriPresent) begin : gen_cheri_pcc_checks
-    // Update PCC with correct int mode
-    always_comb begin : pcc_int_mode
-      for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-        // XXX pcc_q cannot have the up-to-date PCC for an instruction after a CJALR issued in the same
-        // bundle.  This check needs to effectively be done later in the pipeline.
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_q[issue_pcc_gen_o[i]], issue_instr_i[i].int_mode);
-      end
-    end
 
-    // check PCC bounds
-    always_comb begin : pcc_bounds
-      automatic cva6_cheri_pkg::addrw_t pcc_base;
-      automatic cva6_cheri_pkg::addrwe_t pcc_top;
-      automatic cva6_cheri_pkg::cap_reg_t pcc_cur = pcc_q[pcc_gen_q];
-      automatic logic pcc_bounds_root;
-      pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_cur);
-      pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc_cur, pcc_meta);
-      pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc_cur, pcc_meta);
-      pcc_bounds_root = cva6_cheri_pkg::are_cap_reg_bounds_root(pcc_cur, pcc_meta);
-      issue_pcc_ex_o = '0;
-      // Check PCC bounds every instruction
-      for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-        automatic logic [CVA6Cfg.VLEN-1:0] next_pc_off;
-        automatic logic [CVA6Cfg.VLEN-1:0] next_pc_addr;
-        automatic logic next_pc_carry;
-        automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
-        cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
-        next_pc_off = ((issue_instr_i[i].is_compressed) ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2} : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4});
-        {next_pc_carry, next_pc_addr} = {1'b0, issue_instr_i[i].pc} + {1'b0, next_pc_off};
-        if((cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i[i].pc)) < pcc_base) || ({1'b0,cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top) || (next_pc_carry && !pcc_bounds_root)) begin
-          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
-          issue_pcc_ex_o[i].tval2 = cheri_tval2;
-          issue_pcc_ex_o[i].valid = 1'b1;
-        end
-        if (issue_instr_i[i].needs_asr && !pcc_cur.hperms.access_sys_regs) begin
-          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-          issue_pcc_ex_o[i].tval2 = cheri_tval2;
-          issue_pcc_ex_o[i].valid = 1'b1;
-        end
-        if (!pcc_cur.hperms.permit_execute) begin
-          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-          issue_pcc_ex_o[i].tval2 = cheri_tval2;
-          issue_pcc_ex_o[i].valid = 1'b1;
-        end
-        if ((pcc_cur.otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc_cur.tag) begin
-          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
-          issue_pcc_ex_o[i].tval2 = cheri_tval2;
-          issue_pcc_ex_o[i].valid = 1'b1;
-        end
-        if (!pcc_cur.tag) begin
-          issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-          issue_pcc_ex_o[i].tval2 = cheri_tval2;
-          issue_pcc_ex_o[i].valid = 1'b1;
-        end
-        if (!issue_instr_valid_i[i] || debug_mode_i) issue_pcc_ex_o[i].valid = 1'b0;
-      end
-    end
-  end
-*/
   // select the right busy signal
   // this obviously depends on the functional unit we need
   for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
@@ -890,7 +825,9 @@ module issue_read_operands
       // use the PC as operand a
       if (issue_instr_i[i].use_pc) begin
         if (CVA6Cfg.CheriPresent) begin
-          fu_data_n[i].operand_a = cva6_cheri_pkg::set_cap_reg_addr(pcc[i], issue_instr_i[i].pc);
+          fu_data_n[i].operand_a = cva6_cheri_pkg::set_cap_reg_addr(
+                                     cva6_cheri_pkg::set_cap_reg_flags(pcc_q[issue_pcc_gen_o[i]], issue_instr_i[i].int_mode)
+                                   , issue_instr_i[i].pc);
         end else begin
           fu_data_n[i].operand_a = {
             {CVA6Cfg.XLEN - CVA6Cfg.VLEN{issue_instr_i[i].pc[CVA6Cfg.VLEN-1]}}, issue_instr_i[i].pc
