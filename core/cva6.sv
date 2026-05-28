@@ -149,7 +149,6 @@ module cva6
       logic [CVA6Cfg.PCLEN-1:0] target_address;  // target address at which to jump, or not
       logic is_mispredict;  // set if this was a mis-predict
       logic is_taken;  // branch is taken
-      logic is_pcc_change;  // with CHERI: set if the branch changes PCC metadata
       cf_t cf_type;  // Type of control flow change
     },
 

@@ -104,7 +104,6 @@ module branch_unit #(
     resolved_branch_o.is_taken = 1'b0;
     resolved_branch_o.valid = branch_valid_i;
     resolved_branch_o.is_mispredict = 1'b0;
-    resolved_branch_o.is_pcc_change = 1'b0;
     resolved_branch_o.cf_type = branch_predict_i.cf;
     // calculate target address simple 64 bit addition
     target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
@@ -122,7 +121,6 @@ module branch_unit #(
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
           target_address =
               cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
-          resolved_branch_o.is_pcc_change = 1'b1;
           // If jumping into intmode, we must have been in capmode, so always mispredict
           if (cva6_cheri_pkg::get_cap_reg_flags(target_address) == 1'b1)
             resolved_branch_o.is_mispredict = branch_valid_i;
