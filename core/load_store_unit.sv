@@ -1075,7 +1075,7 @@ module load_store_unit
   if (CVA6Cfg.CheriPresent) begin
     assign fu_data_check_cap = fu_data_i.use_ddc ? ddc_i : fu_data_i.operand_a;
     assign st_data_cap = fu_data_i.operand_b;
-    assign ld_cap = ((lsu_ctrl.fu == LOAD) && (lsu_ctrl.operation inside{ariane_pkg::LC})) || ((lsu_ctrl.fu == STORE) && lsu_ctrl.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
+    assign ld_cap = ((fu_data_i.fu == LOAD) && (fu_data_i.operation inside{ariane_pkg::LC})) || ((fu_data_i.fu == STORE) && fu_data_i.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
     assign ld_clr_tag = !(fu_data_check_cap.hperms.permit_load && fu_data_check_cap.hperms.permit_cap) && ld_cap;
     assign ld_clr_elevate = !fu_data_check_cap.hperms.permit_elevate_level && ld_cap && !ld_clr_tag;
     assign ld_clr_cap_level = ld_clr_elevate && !fu_data_check_cap.hperms.cap_level;
