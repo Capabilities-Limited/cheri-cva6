@@ -149,6 +149,7 @@ module cva6
       logic [CVA6Cfg.PCLEN-1:0] target_address;  // target address at which to jump, or not
       logic is_mispredict;  // set if this was a mis-predict
       logic is_taken;  // branch is taken
+      logic pcc_gen;  // with CHERI: set if the branch changes PCC metadata
       cf_t cf_type;  // Type of control flow change
     },
 
@@ -191,16 +192,17 @@ module cva6
     localparam type cbo_t = logic [7:0],
 
     localparam type fu_data_t = struct packed {
-      fu_t                              fu;
-      fu_op                             operation;
-      logic [CVA6Cfg.REGLEN-1:0]        operand_a;
-      logic [CVA6Cfg.REGLEN-1:0]        operand_b;
-      logic [CVA6Cfg.XLEN-1:0]          imm;
-      logic [REG_ADDR_SIZE-1:0]         rs1;
-      logic [REG_ADDR_SIZE-1:0]         rs2;
+      fu_t fu;
+      fu_op operation;
+      logic [CVA6Cfg.REGLEN-1:0] operand_a;
+      logic [CVA6Cfg.REGLEN-1:0] operand_b;
+      logic [CVA6Cfg.XLEN-1:0] imm;
+      logic [REG_ADDR_SIZE-1:0] rs1;
+      logic [REG_ADDR_SIZE-1:0] rs2;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;
-      logic                             use_ddc;
-      logic [5:0]                       orig_instr_aes_bits;
+      logic use_ddc;
+      logic pcc_gen;  // generation of pcc for this prediction
+      logic [5:0] orig_instr_aes_bits;
     },
 
     localparam type icache_req_t = struct packed {

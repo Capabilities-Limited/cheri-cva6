@@ -118,6 +118,10 @@ module branch_unit #(
       // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
       if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
         branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(next_pc, cva6_cheri_pkg::SENTRY_CAP);
+        resolved_branch_o.pcc_gen =
+            (fu_data_i.operation == ariane_pkg::CJALR)
+                ? !fu_data_i.pcc_gen
+                :  fu_data_i.pcc_gen;
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
           target_address =
               cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);

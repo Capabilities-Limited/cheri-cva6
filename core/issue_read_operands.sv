@@ -253,7 +253,8 @@ module issue_read_operands
 
   // PCC signals : we only have one as we only allow one PCC change at a time
   logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
-  logic pcc_gen_n, pcc_gen_q, pcc_changing_n, pcc_changing_q;
+  logic [CVA6Cfg.NrIssuePorts:0] pcc_gen_n;
+  logic pcc_gen_q, pcc_changing_n, pcc_changing_q;
 
   // forwarding signals
   logic [CVA6Cfg.NrIssuePorts-1:0] forward_rs1, forward_rs2, forward_rs3;
@@ -345,13 +346,11 @@ module issue_read_operands
   assign stall_issue_o = stall_raw[0];
   assign tinst_o = CVA6Cfg.RVH ? tinst_q : '0;
   // If there is a CJALR, it will flip the pcc_gen for the following instructions in the bundle.
-  for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-    if (i == 0) assign issue_pcc_gen_o[i] = pcc_gen_q;
-    else
-      assign issue_pcc_gen_o[i] = (issue_instr_i[i-1].op == CJALR) ?
-                                        !issue_pcc_gen_o[i-1] :
-                                        issue_pcc_gen_o[i-1];
+  assign pcc_gen_n[0] = pcc_gen_q;
+  for (genvar i = 1; i <= CVA6Cfg.NrIssuePorts; i++) begin
+    assign pcc_gen_n[i] = (issue_ack[i-1] && issue_instr_i[i-1].op == CJALR) ? !pcc_gen_n[i-1] : pcc_gen_n[i-1];
   end
+  assign issue_pcc_gen_o = pcc_gen_n[CVA6Cfg.NrIssuePorts-1:0];
 
   // ALU bypass signals
   if (CVA6Cfg.ALUBypass) begin
@@ -755,20 +754,18 @@ module issue_read_operands
   // PCC logic
   if (CVA6Cfg.CheriPresent) begin
     always_comb begin : pcc_select
-      pcc_gen_n = pcc_gen_q;
-      pcc_changing_n = pcc_changing_q;
       pcc_n = pcc_q;
 
-      if (eret_i) pcc_n[pcc_gen_q] = epc_i;
-      else if (set_pc_commit_i) pcc_n[pcc_gen_q] = pcc_commit_i;
-      else if (ex_valid_i) pcc_n[pcc_gen_q] = trap_vector_base_i;
-      else if (resolved_branch_i.valid && (resolved_branch_i.cf_type inside {ariane_pkg::JumpR, ariane_pkg::Return})) begin
-        pcc_gen_n = !pcc_gen_q;
-        pcc_changing_n = 1'b1;
-        pcc_n[pcc_gen_n] = resolved_branch_i.target_address;
-      end
-      // In any case, if the backend is empty or we're committing the current generation, reset pcc_changing_g.
-      if ((pcc_gen_commit_i == pcc_gen_n && commit_valid_i) | backend_empty_i) pcc_changing_n = 0;
+      if (eret_i) pcc_n = '{2{epc_i}};
+      else if (set_pc_commit_i) pcc_n = '{2{pcc_commit_i}};
+      else if (ex_valid_i) pcc_n = '{2{trap_vector_base_i}};
+      else if (resolved_branch_i.valid)
+        pcc_n[resolved_branch_i.pcc_gen] = resolved_branch_i.target_address;
+
+      // If the backend is empty or we're committing the current generation, reset pcc_changing_g.
+      pcc_changing_n = pcc_changing_q;
+      if (pcc_gen_q != pcc_gen_n[CVA6Cfg.NrIssuePorts]) pcc_changing_n = 1;
+      if ((pcc_gen_commit_i == pcc_gen_q && commit_valid_i) | backend_empty_i) pcc_changing_n = 0;
     end
   end
 
@@ -795,6 +792,7 @@ module issue_read_operands
       fu_data_n[i].rs1       = CVA6Cfg.CheriPresent ? issue_instr_i[i].rs1 : '0;
       fu_data_n[i].rs2       = CVA6Cfg.CheriPresent ? issue_instr_i[i].rs2 : '0;
       fu_data_n[i].use_ddc   = CVA6Cfg.CheriPresent ? issue_instr_i[i].use_ddc : '0;
+      fu_data_n[i].pcc_gen   = CVA6Cfg.CheriPresent ? issue_pcc_gen_o[i] : '0;
 
       if (CVA6Cfg.ZKN) begin
         fu_data_n[i].orig_instr_aes_bits = {orig_instr_i[i][31:30], orig_instr_i[i][23:20]};
@@ -1165,7 +1163,7 @@ module issue_read_operands
     branch_predict_n = {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
     if (CVA6Cfg.SuperscalarEn) begin
       if (issue_instr_i[1].fu == CTRL_FLOW) begin
-        pc_n = pcc_n[pcc_gen_n];
+        pc_n = pcc_n[issue_pcc_gen_o[1]];
         // Unsafe, but this instruction will not commit if its PC is out-of-bounds
         pc_n = cva6_cheri_pkg::set_cap_reg_addr(pc_n, issue_instr_i[1].pc);
         pc_n = cva6_cheri_pkg::set_cap_reg_flags(pc_n, issue_instr_i[1].int_mode);
@@ -1175,7 +1173,7 @@ module issue_read_operands
       end
     end
     if (issue_instr_i[0].fu == CTRL_FLOW) begin
-      pc_n = pcc_n[pcc_gen_n];
+      pc_n = pcc_n[issue_pcc_gen_o[0]];
       // Unsafe, but this instruction will not commit if its PC is out-of-bounds
       pc_n = cva6_cheri_pkg::set_cap_reg_addr(pc_n, issue_instr_i[0].pc);
       pc_n = cva6_cheri_pkg::set_cap_reg_flags(pc_n, issue_instr_i[0].int_mode);
@@ -1221,7 +1219,7 @@ module issue_read_operands
       if (CVA6Cfg.RVFI_DII) dii_id_o <= dii_id_n;
       if (CVA6Cfg.CheriPresent) begin
         pcc_q <= pcc_n;
-        pcc_gen_q <= pcc_gen_n;
+        pcc_gen_q <= pcc_gen_n[CVA6Cfg.NrIssuePorts];
         pcc_changing_q <= pcc_changing_n;
       end
       if (CVA6Cfg.RVZCMT) is_zcmt_o <= issue_instr_i[0].is_zcmt;
