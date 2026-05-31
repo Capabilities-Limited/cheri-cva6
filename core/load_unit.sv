@@ -132,12 +132,10 @@ module load_unit
   logic      ldbuf_w;
   ldbuf_t    ldbuf_wdata;
   ldbuf_id_t ldbuf_windex;
-  ldbuf_id_t ldbuf_cap_ex_windex_q, ldbuf_cap_ex_windex_d;
   logic      ldbuf_r;
   ldbuf_t    ldbuf_rdata;
   ldbuf_id_t ldbuf_rindex;
   ldbuf_id_t ldbuf_last_id_q;
-  exception_t [CVA6Cfg.NrLoadBufEntries-1:0] cheri_ex_q, cheri_ex_d;
 
   assign ldbuf_full = &ldbuf_valid_q;
 
@@ -165,8 +163,6 @@ module load_unit
   always_comb begin : ldbuf_comb
     ldbuf_flushed_d = ldbuf_flushed_q;
     ldbuf_valid_d   = ldbuf_valid_q;
-    if (CVA6Cfg.CheriPresent) ldbuf_cap_ex_windex_d = ldbuf_cap_ex_windex_q;
-    else ldbuf_cap_ex_windex_d = 1'b0;
 
     //  In case of flush, raise the flushed flag in all slots.
     if (flush_i) begin
@@ -181,7 +177,6 @@ module load_unit
     if (ldbuf_w) begin
       ldbuf_flushed_d[ldbuf_windex] = 1'b0;
       ldbuf_valid_d[ldbuf_windex]   = 1'b1;
-      if (CVA6Cfg.CheriPresent) ldbuf_cap_ex_windex_d = ldbuf_windex;
     end
   end
 
@@ -197,16 +192,6 @@ module load_unit
       if (ldbuf_w) begin
         ldbuf_last_id_q       <= ldbuf_windex;
         ldbuf_q[ldbuf_windex] <= ldbuf_wdata;
-      end
-    end
-  end
-
-  if (CVA6Cfg.CheriPresent) begin : gen_cheri_ex
-    always_ff @(posedge clk_i or negedge rst_ni) begin : cheri_ff
-      if (!rst_ni) begin
-        cheri_ex_q <= '0;
-      end else begin
-        cheri_ex_q <= cheri_ex_d;
       end
     end
   end
@@ -260,15 +245,6 @@ module load_unit
     end
     if (CVA6Cfg.CheriPresent) begin
       ex_o.tval2 = ex_i.tval2;
-      if (ldbuf_rdata.operation == ariane_pkg::LC && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid) begin
-        ex_o.cause = cheri_ex_q[ldbuf_rindex].cause;
-        ex_o.tval  = cheri_ex_q[ldbuf_rindex].tval;
-        ex_o.tval2 = cheri_ex_q[ldbuf_rindex].tval2;
-        if (CVA6Cfg.RVH) begin
-          ex_o.tinst = cheri_ex_q[ldbuf_rindex].tinst;
-          ex_o.gva   = cheri_ex_q[ldbuf_rindex].gva;
-        end
-      end
     end
   end
 
@@ -304,12 +280,11 @@ module load_unit
     req_port_o.data_be   = lsu_ctrl_i.be;
     req_port_o.data_size = extract_transfer_size(lsu_ctrl_i.operation);
     pop_ld_o             = 1'b0;
-    if (CVA6Cfg.CheriPresent) cheri_ex_d = cheri_ex_q;
 
     // In IDLE and SEND_TAG states, this unit can accept a new load request
     // when the load buffer is not full or if there is a response and the
     // load buffer is in fall-through mode
-    accept_req = (valid_i && (!ldbuf_full || (LDBUF_FALLTHROUGH && ldbuf_r)));
+    accept_req           = (valid_i && (!ldbuf_full || (LDBUF_FALLTHROUGH && ldbuf_r)));
 
     case (state_q)
       IDLE: begin
@@ -323,7 +298,6 @@ module load_unit
             if (!page_offset_matches_i) begin
               // make a load request to memory
               req_port_o.data_req = 1'b1;
-              if (CVA6Cfg.CheriPresent) cheri_ex_d[ldbuf_windex] = '0;
               // we got no data grant so wait for the grant before sending the tag
               if (!req_port_i.data_gnt) begin
                 state_d = WAIT_GNT;
@@ -379,7 +353,6 @@ module load_unit
         translation_req_o   = 1'b1;
         // keep the request up
         req_port_o.data_req = 1'b1;
-        if (CVA6Cfg.CheriPresent) cheri_ex_d[ldbuf_windex] = '0;
         // we finally got a data grant
         if (req_port_i.data_gnt) begin
           // so we send the tag in the next cycle
@@ -414,7 +387,6 @@ module load_unit
             if (!page_offset_matches_i) begin
               // make a load request to memory
               req_port_o.data_req = 1'b1;
-              if (CVA6Cfg.CheriPresent) cheri_ex_d[ldbuf_windex] = '0;
               // we got no data grant so wait for the grant before sending the tag
               if (!req_port_i.data_gnt) begin
                 state_d = WAIT_GNT;
@@ -524,8 +496,6 @@ module load_unit
       // if the response corresponds to the last request, check that we are not killing it
       if ((ldbuf_last_id_q != ldbuf_rindex) || !req_port_o.kill_req) begin
         valid_o = 1'b1;
-        if (ldbuf_rdata.operation inside {ariane_pkg::LC} && result_o[CVA6Cfg.REGLEN-1] && cheri_ex_q[ldbuf_rindex].valid && CVA6Cfg.CheriPresent)
-          ex_o.valid = 1'b1;
       end
       // the output is also valid if we got an exception. An exception arrives one cycle after
       // dtlb_hit_i is asserted, i.e. when we are in SEND_TAG. Otherwise, the exception
@@ -559,10 +529,8 @@ module load_unit
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
       state_q <= IDLE;
-      if (CVA6Cfg.CheriPresent) ldbuf_cap_ex_windex_q <= 1'b0;
     end else begin
       state_q <= state_d;
-      if (CVA6Cfg.CheriPresent) ldbuf_cap_ex_windex_q <= ldbuf_cap_ex_windex_d;
     end
   end
 
