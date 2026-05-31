@@ -125,13 +125,12 @@ module wt_dcache_ctrl
 
   always_comb begin : p_fsm
     // default assignment
-    state_d                   = state_q;
-    save_tag                  = 1'b0;
-    rd_req_o                  = 1'b0;
-    miss_req_o                = 1'b0;
-    req_port_o.data_rvalid    = 1'b0;
-    req_port_o.data_gnt       = 1'b0;
-    req_port_o.data_allow_tag = CVA6Cfg.CheriPresent ? allow_tag_q : '0;
+    state_d                = state_q;
+    save_tag               = 1'b0;
+    rd_req_o               = 1'b0;
+    miss_req_o             = 1'b0;
+    req_port_o.data_rvalid = 1'b0;
+    req_port_o.data_gnt    = 1'b0;
 
     // interfaces
     unique case (state_q)
@@ -169,10 +168,6 @@ module wt_dcache_ctrl
           end else if ((|rd_hit_oh_i) && cache_en_i) begin
             state_d = IDLE;
             req_port_o.data_rvalid = 1'b1;
-            // In case there is a hit while reading the tag
-            // we should see if the request input allows tags
-            if (state_q != REPLAY_READ)
-              req_port_o.data_allow_tag = CVA6Cfg.CheriPresent ? req_port_i.allow_tag : '0;
             // we can handle another request
             if (rd_ack_i && req_port_i.data_req) begin
               state_d = READ;
