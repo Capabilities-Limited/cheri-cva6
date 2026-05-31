@@ -395,7 +395,6 @@ module load_store_unit
     assign dcache_req_ports_o[0].data_wuser    = '0;
     assign dcache_req_ports_o[0].kill_req      = '0;
     assign dcache_req_ports_o[0].tag_valid     = 1'b0;
-    assign dcache_req_ports_o[0].allow_tag     = 1'b0;
 
     assign itlb_miss_o                         = 1'b0;
     assign dtlb_miss_o                         = 1'b0;
@@ -653,7 +652,7 @@ module load_store_unit
       .hs_ld_st_inst_o         (ld_hs_ld_st_inst),
       .hlvx_inst_o             (ld_hlvx_inst),
       .paddr_i                 (cva6_mmu_paddr),
-      .allow_tag_i             (cva6_mmu_allow_tag),
+      .allow_tag_mmu_i         (cva6_mmu_allow_tag),
       .ex_i                    (cva6_mmu_exception),
       .dtlb_hit_i              (cva6_dtlb_hit),
       .dtlb_ppn_i              (cva6_dtlb_ppn),

@@ -64,7 +64,7 @@ module load_unit
     // Physical address - MMU
     input logic [CVA6Cfg.PLEN-1:0] paddr_i,
     // Strip capability tag on load - MMU
-    input logic allow_tag_i,
+    input logic allow_tag_mmu_i,
     // Excepted which appears before load - MMU
     input exception_t ex_i,
     // Data TLB hit - MMU
@@ -112,6 +112,10 @@ module load_unit
     logic allow_load_mutable;
   } ldbuf_t;
 
+  // additionally add a buffer for information that also needs to be
+  // tracked, but came a cycle late due to the TLB delay
+  typedef struct packed {logic allow_tag_mmu;} ldbuf_tlb_info_t;
+
 
   // to support a throughput of one load per cycle, if the number of entries
   // of the load buffer is 1, implement a fall-through mode. This however
@@ -128,14 +132,19 @@ module load_unit
   logic [CVA6Cfg.NrLoadBufEntries-1:0] ldbuf_flushed_q, ldbuf_flushed_d;
   ldbuf_t [CVA6Cfg.NrLoadBufEntries-1:0] ldbuf_q;
   logic ldbuf_empty, ldbuf_full;
-  ldbuf_id_t ldbuf_free_index;
-  logic      ldbuf_w;
-  ldbuf_t    ldbuf_wdata;
-  ldbuf_id_t ldbuf_windex;
-  logic      ldbuf_r;
-  ldbuf_t    ldbuf_rdata;
-  ldbuf_id_t ldbuf_rindex;
-  ldbuf_id_t ldbuf_last_id_q;
+  ldbuf_id_t                                      ldbuf_free_index;
+  logic                                           ldbuf_w;
+  ldbuf_t                                         ldbuf_wdata;
+  ldbuf_id_t                                      ldbuf_windex;
+  logic                                           ldbuf_r;
+  ldbuf_t                                         ldbuf_rdata;
+  ldbuf_id_t                                      ldbuf_rindex;
+  ldbuf_id_t                                      ldbuf_last_id_q;
+
+  ldbuf_tlb_info_t [CVA6Cfg.NrLoadBufEntries-1:0] ldbuf_tlb_info_q;
+  ldbuf_tlb_info_t                                ldbuf_tlb_info_wdata;
+  ldbuf_tlb_info_t                                ldbuf_tlb_info_rdata;
+  logic                                           ldbuf_prev_w_q;
 
   assign ldbuf_full = &ldbuf_valid_q;
 
@@ -186,12 +195,22 @@ module load_unit
       ldbuf_valid_q   <= '0;
       ldbuf_last_id_q <= '0;
       ldbuf_q         <= '0;
+      if (CVA6Cfg.CheriPresent) begin
+        ldbuf_prev_w_q   <= 1'b0;
+        ldbuf_tlb_info_q <= '0;
+      end
     end else begin
       ldbuf_flushed_q <= ldbuf_flushed_d;
       ldbuf_valid_q   <= ldbuf_valid_d;
       if (ldbuf_w) begin
         ldbuf_last_id_q       <= ldbuf_windex;
         ldbuf_q[ldbuf_windex] <= ldbuf_wdata;
+      end
+      if (CVA6Cfg.CheriPresent) begin
+        ldbuf_prev_w_q <= ldbuf_w;
+        if (ldbuf_prev_w_q) begin
+          ldbuf_tlb_info_q[ldbuf_last_id_q] <= ldbuf_tlb_info_wdata;
+        end
       end
     end
   end
@@ -218,6 +237,11 @@ module load_unit
     lsu_ctrl_i.allow_cap_level,
     lsu_ctrl_i.allow_load_mutable
   };
+  if (CVA6Cfg.CheriPresent) begin
+    assign ldbuf_tlb_info_wdata = {allow_tag_mmu_i};
+  end else begin
+    assign ldbuf_tlb_info_wdata = '0;
+  end
   // output address
   // we can now output the lower 12 bit as the index to the cache
   assign req_port_o.address_index = lsu_ctrl_i.vaddr[CVA6Cfg.DCACHE_INDEX_WIDTH-1:0];
@@ -229,8 +253,6 @@ module load_unit
   assign req_port_o.data_id = ldbuf_windex;
   // user field not used
   assign req_port_o.data_wuser = '0;
-  // Allow tags in response
-  assign req_port_o.allow_tag = CVA6Cfg.CheriPresent ? allow_tag_i : 1'b0;
   // directly forward exception fields (valid bit is set below)
   always_comb begin : ex_o_select
     ex_o.cause = ex_i.cause;
@@ -482,6 +504,13 @@ module load_unit
   // ---------------
   assign ldbuf_rindex = (CVA6Cfg.NrLoadBufEntries > 1) ? ldbuf_id_t'(req_port_i.data_rid) : 1'b0,
       ldbuf_rdata = ldbuf_q[ldbuf_rindex];
+  if (CVA6Cfg.CheriPresent) begin
+    assign ldbuf_tlb_info_rdata = ldbuf_prev_w_q && (ldbuf_rindex == ldbuf_last_id_q) ?
+                                    ldbuf_tlb_info_wdata
+                                  : ldbuf_tlb_info_q[ldbuf_rindex];
+  end else begin
+    assign ldbuf_tlb_info_rdata = '0;
+  end
 
   // decoupled rvalid process
   always_comb begin : rvalid_output
@@ -623,7 +652,7 @@ module load_unit
       end
     endcase
     if (CVA6Cfg.CheriPresent) begin
-      if (!req_port_i.data_allow_tag || !ldbuf_rdata.allow_tag) begin
+      if (!ldbuf_rdata.allow_tag || !ldbuf_tlb_info_rdata.allow_tag_mmu) begin
         result_o[CVA6Cfg.REGLEN-1] = 1'b0;
       end
       if (result_o[CVA6Cfg.REGLEN-1]) begin
