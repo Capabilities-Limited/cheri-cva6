@@ -254,6 +254,7 @@ module issue_read_operands
   logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
   logic [CVA6Cfg.NrIssuePorts:0] pcc_gen_n;
   logic pcc_gen_q, pcc_changing_n, pcc_changing_q;
+  logic pcc_gen_mispredict_flush, pcc_gen_mispredict;
 
   // forwarding signals
   logic [CVA6Cfg.NrIssuePorts-1:0] forward_rs1, forward_rs2, forward_rs3;
@@ -760,8 +761,13 @@ module issue_read_operands
       if (eret_i) pcc_n = '{2{epc_i}};
       else if (set_pc_commit_i) pcc_n = '{2{pcc_commit_i}};
       else if (ex_valid_i) pcc_n = '{2{trap_vector_base_i}};
-      else if (resolved_branch_i.valid && resolved_branch_i.cf_type inside {ariane_pkg::JumpR, ariane_pkg::Return})
+      else if (resolved_branch_i.valid && resolved_branch_i.cf_type inside {ariane_pkg::JumpR, ariane_pkg::Return}) begin
         pcc_n[resolved_branch_i.pcc_gen] = resolved_branch_i.target_address;
+        if (resolved_branch_i.is_mispredict) begin
+          pcc_gen_mispredict_flush = 1'b1;
+          pcc_gen_mispredict = resolved_branch_i.pcc_gen;
+        end
+      end
 
       // If the backend is empty or we're committing the current generation, reset pcc_changing_g.
       pcc_changing_n = pcc_changing_q;
@@ -1217,7 +1223,7 @@ module issue_read_operands
       end
       if (CVA6Cfg.CheriPresent) begin
         pcc_q <= pcc_n;
-        pcc_gen_q <= pcc_gen_n[CVA6Cfg.NrIssuePorts];
+        pcc_gen_q <= (pcc_gen_mispredict_flush) ? pcc_gen_mispredict:pcc_gen_n[CVA6Cfg.NrIssuePorts];
         pcc_changing_q <= pcc_changing_n;
       end
       pc_o <= pc_n;
