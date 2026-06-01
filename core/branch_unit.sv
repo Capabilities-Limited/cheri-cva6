@@ -105,9 +105,13 @@ module branch_unit #(
     resolved_branch_o.valid = branch_valid_i;
     resolved_branch_o.is_mispredict = 1'b0;
     resolved_branch_o.cf_type = branch_predict_i.cf;
+    resolved_branch_o.pcc_gen = fu_data_i.pcc_gen;
     // calculate target address simple 64 bit addition
     target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
-    if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
+    if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) begin
+      target_address[0] = 1'b0;
+      resolved_branch_o.pcc_gen = ~fu_data_i.pcc_gen;
+    end
     if (CVA6Cfg.CheriPresent) begin
       target_address = cva6_cheri_pkg::set_cap_reg_address(
         jump_base_cap,
@@ -118,10 +122,6 @@ module branch_unit #(
       // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
       if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
         branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(next_pc, cva6_cheri_pkg::SENTRY_CAP);
-        resolved_branch_o.pcc_gen =
-            (fu_data_i.operation == ariane_pkg::CJALR)
-                ? !fu_data_i.pcc_gen
-                :  fu_data_i.pcc_gen;
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
           target_address =
               cva6_cheri_pkg::set_cap_reg_otype(target_address, cva6_cheri_pkg::UNSEALED_CAP);
