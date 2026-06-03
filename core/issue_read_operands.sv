@@ -255,7 +255,7 @@ module issue_read_operands
   logic [1:0][CVA6Cfg.PCLEN-1:0] pcc_n, pcc_q;
   logic [CVA6Cfg.NrIssuePorts:0] pcc_gen_n;
   logic pcc_gen_q, pcc_changing_n, pcc_changing_q;
-  logic pcc_gen_mispredict_flush, pcc_gen_mispredict;
+  logic pcc_gen_mispredict_flush;
 
   // forwarding signals
   logic [CVA6Cfg.NrIssuePorts-1:0] forward_rs1, forward_rs2, forward_rs3;
@@ -756,6 +756,7 @@ module issue_read_operands
   if (CVA6Cfg.CheriPresent) begin
     always_comb begin : pcc_select
       pcc_n = pcc_q;
+      pcc_gen_mispredict_flush = 1'b0;
 
       if (eret_i) pcc_n = '{2{epc_i}};
       else if (set_pc_commit_i) pcc_n = '{2{pcc_commit_i}};
@@ -764,7 +765,6 @@ module issue_read_operands
         pcc_n[resolved_branch_i.pcc_gen] = resolved_branch_i.target_address;
         if (resolved_branch_i.is_mispredict) begin
           pcc_gen_mispredict_flush = 1'b1;
-          pcc_gen_mispredict = resolved_branch_i.pcc_gen;
         end
       end
 
@@ -826,7 +826,7 @@ module issue_read_operands
         if (CVA6Cfg.CheriPresent) begin
           fu_data_n[i].operand_a = cva6_cheri_pkg::set_cap_reg_addr(
             cva6_cheri_pkg::set_cap_reg_flags(
-              pcc_q[issue_pcc_gen_o[i]], issue_instr_i[i].int_mode
+              pcc_n[issue_pcc_gen_o[i]], issue_instr_i[i].int_mode
             )
             , issue_instr_i[i].pc
           );
@@ -1225,7 +1225,7 @@ module issue_read_operands
       if (CVA6Cfg.RVFI_DII) dii_id_o <= dii_id_n;
       if (CVA6Cfg.CheriPresent) begin
         pcc_q <= pcc_n;
-        pcc_gen_q <= (pcc_gen_mispredict_flush) ? pcc_gen_mispredict:pcc_gen_n[CVA6Cfg.NrIssuePorts];
+        pcc_gen_q <= (pcc_gen_mispredict_flush) ? resolved_branch_i.pcc_gen:pcc_gen_n[CVA6Cfg.NrIssuePorts];
         pcc_changing_q <= pcc_changing_n;
       end
       if (CVA6Cfg.RVZCMT) is_zcmt_o <= issue_instr_i[0].is_zcmt;
