@@ -2258,6 +2258,8 @@ module csr_regfile
             if (!csr_write_cap) csr_update_cap_prelegal = ddc_q;
             csr_update_allow_sealed = csr_write_cap;
             ddc_d = csr_update_cap_postlegal;
+            // Flush the pipeline in case a later instruction has read DDC
+            flush_o = 1'b1;
           end else begin
             update_access_exception = 1'b1;
           end
