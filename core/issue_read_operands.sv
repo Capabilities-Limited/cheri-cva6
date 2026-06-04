@@ -767,7 +767,7 @@ module issue_read_operands
       // If the backend is empty or we're committing the current generation, reset pcc_changing_g.
       pcc_changing_n = pcc_changing_q;
       if (pcc_gen_q != pcc_gen_n[CVA6Cfg.NrIssuePorts]) pcc_changing_n = 1;
-      if ((pcc_gen_commit_i==pcc_gen_q && commit_valid_i) | backend_empty_i) pcc_changing_n = 0;
+      else if ((pcc_gen_commit_i == pcc_gen_q && commit_valid_i) | backend_empty_i) pcc_changing_n = 0;
     end
   end
 
