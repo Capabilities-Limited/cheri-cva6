@@ -102,7 +102,7 @@ module branch_unit #(
     resolve_branch_o = 1'b0;
     resolved_branch_o.target_address = '0;
     resolved_branch_o.is_taken = 1'b0;
-    resolved_branch_o.valid = branch_valid_i;
+    resolved_branch_o.valid = branch_valid_i && !branch_exception_o.valid;
     resolved_branch_o.is_mispredict = 1'b0;
     resolved_branch_o.cf_type = branch_predict_i.cf;
     resolved_branch_o.pcc_gen = fu_data_i.pcc_gen;
