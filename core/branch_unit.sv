@@ -110,8 +110,9 @@ module branch_unit #(
     target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
     if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) begin
       target_address[0] = 1'b0;
-      resolved_branch_o.pcc_gen = ~fu_data_i.pcc_gen;
     end
+    if (fu_data_i.operation inside {ariane_pkg::CJALR})
+      resolved_branch_o.pcc_gen = ~fu_data_i.pcc_gen;
     if (CVA6Cfg.CheriPresent) begin
       target_address = cva6_cheri_pkg::set_cap_reg_address(
         jump_base_cap,
