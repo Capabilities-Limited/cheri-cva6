@@ -2098,7 +2098,7 @@ module decoder
       // if we didn't already get an exception save the instruction here as we may need it
       // in the commit stage if we got a access exception to one of the CSR registers
       if (CVA6Cfg.CvxifEn || CVA6Cfg.RVF)
-        orig_instr_o = (is_compressed_i) ? {{CVA6Cfg.XLEN-16{1'b0}}, compressed_instr_i} : {{CVA6Cfg.XLEN-32{1'b0}}, instruction_i};
+        orig_instr_o = (is_compressed_i) ? {16'b0, compressed_instr_i} : instruction_i;
       if (CVA6Cfg.TvalEn) begin
         instruction_o.ex.tval = (is_compressed_i) ? {{CVA6Cfg.XLEN-16{1'b0}}, compressed_instr_i} : {{CVA6Cfg.XLEN-32{1'b0}}, instruction_i};
       end else instruction_o.ex.tval = '0;
