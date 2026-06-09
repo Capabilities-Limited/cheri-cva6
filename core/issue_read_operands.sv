@@ -1221,6 +1221,7 @@ module issue_read_operands
     pc_n = pcc_q;
     is_compressed_instr_n = 1'b0;
     branch_predict_n = {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
+    dii_id_n = dii_id_o;
     if (CVA6Cfg.SuperscalarEn) begin
       if (issue_instr_i[1].fu == CTRL_FLOW) begin
         pc_n = cva6_cheri_pkg::set_cap_reg_address(pcc[1], issue_instr_i[1].pc, pcc_meta);
