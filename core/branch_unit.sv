@@ -241,7 +241,7 @@ module branch_unit #(
       if (cheri_fault) begin
         branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
         branch_exception_o.tval  = '0;
-        branch_exception_o.tval2 = {'0, cheri_tval2};
+        branch_exception_o.tval2 = CVA6Cfg.GPLEN'(cva6_cheri_pkg::embed_cap_tval2(cheri_tval2));
         branch_exception_o.valid = 1'b1;
       end
     end
