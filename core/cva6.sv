@@ -188,7 +188,7 @@ module cva6
     },
 
 
-    localparam type cbo_t = logic [7:0],
+    localparam type cbo_t = logic [$bits(fu_op)-1:0],
 
     localparam type fu_data_t = struct packed {
       fu_t                              fu;
