@@ -21,7 +21,7 @@
 module sram_cache #(
     parameter DATA_WIDTH = 64,
     parameter USER_WIDTH = 1,
-    parameter USER_EN    = 0,
+    parameter USER_EN = 0,
     parameter NUM_WORDS  = 1024,
     parameter SIM_INIT   = "none",
     parameter BYTE_ACCESS = 1,
@@ -39,7 +39,7 @@ module sram_cache #(
    output logic [USER_WIDTH-1:0]         ruser_o,
    output logic [DATA_WIDTH-1:0]         rdata_o
 );
-  localparam DATA_AND_USER_WIDTH = USER_EN ? DATA_WIDTH + USER_WIDTH : DATA_WIDTH;
+  localparam DATA_AND_USER_WIDTH = USER_EN > 0 ? DATA_WIDTH + USER_WIDTH : DATA_WIDTH;
   if (TECHNO_CUT) begin : gen_techno_cut
     if (USER_EN > 0) begin
       logic [DATA_WIDTH + USER_WIDTH-1:0] wdata_user;
