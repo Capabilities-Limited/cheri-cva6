@@ -2020,7 +2020,6 @@ module decoder
         {{CVA6Cfg.XLEN - 9{1'b0}}, instruction_i[25] ? {instruction_i[24:20], 4'b0} : {4'b0, instruction_i[24:20]}}
       : {CVA6Cfg.XLEN{1'b0}};
 
-    // TODO-cheri: make cheri optional
     instruction_o.result = '{default: 0};
     // NOIMM, IIMM, SIMM, SBIMM, UIMM, JIMM, RS3
     // select immediate
@@ -2073,7 +2072,7 @@ module decoder
 
     if (CVA6Cfg.EnableAccelerator) begin
       if (is_accel) begin
-        instruction_o.result[CVA6Cfg.XLEN-1:0] = acc_instruction.result;
+        instruction_o.result[CVA6Cfg.XLEN-1:0] = reg_to_x(acc_instruction.result);
         instruction_o.use_imm = acc_instruction.use_imm;
       end
     end
