@@ -324,8 +324,8 @@ module issue_read_operands
   for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
     assign rs1_forwarding_o[i] = fu_data_n[i].operand_a;  //forwarding or unregistered rs1 value
     assign rs2_forwarding_o[i] = fu_data_n[i].operand_b;  //forwarding or unregistered rs2 value
-    assign rvfi_rs1_o[i] = fu_data_n[i].operand_a;
-    assign rvfi_rs2_o[i] = fu_data_n[i].operand_b;
+    assign rvfi_rs1_o[i] = reg_to_x(fu_data_n[i].operand_a);
+    assign rvfi_rs2_o[i] = reg_to_x(fu_data_n[i].operand_b);
   end
 
   assign alu_bypass_o = alu_bypass_q;
