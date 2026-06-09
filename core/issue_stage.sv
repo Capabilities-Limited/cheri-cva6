@@ -223,8 +223,8 @@ module issue_stage
   always_comb begin
     for (int i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
       commit_instr_o[i] = commit_instr[i];
-      //if (commit_pcc_ex[i].valid)
-      //  commit_instr_o[i].ex = commit_pcc_ex[i];
+      if (commit_pcc_ex[i].valid)
+        commit_instr_o[i].ex = commit_pcc_ex[i];
     end
   end
   assign pc_commit_o = cva6_cheri_pkg::set_cap_reg_flags(
