@@ -1285,7 +1285,7 @@ module issue_read_operands
   end
 
   for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-    assert property (@(posedge clk_i) (branch_valid_q) |-> (!$isunknown(
+    assert property (@(posedge clk_i) (branch_valid_q[i]) |-> (!$isunknown(
         fu_data_q[i].operand_a
     ) && !$isunknown(
         fu_data_q[i].operand_b
