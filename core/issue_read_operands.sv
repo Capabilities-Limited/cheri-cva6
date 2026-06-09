@@ -243,7 +243,7 @@ module issue_read_operands
 
   logic [ CVA6Cfg.NrIssuePorts-1:0][           CVA6Cfg.REGLEN-1:0] rs1_res;
   logic [ CVA6Cfg.NrIssuePorts-1:0][           CVA6Cfg.REGLEN-1:0] rs2_res;
-  logic [ CVA6Cfg.NrIssuePorts-1:0][           CVA6Cfg.REGLEN-1:0] rs3_res;
+  logic [ CVA6Cfg.NrIssuePorts-1:0][             CVA6Cfg.XLEN-1:0] rs3_res;
 
   logic [CVA6Cfg.NrIssuePorts-1:0][31:0] tinst_n, tinst_q;  // transformed instruction
 
@@ -683,9 +683,9 @@ module issue_read_operands
     assign rs3_valid[i] = fwd_res_valid[idx_hzd_rs3[i]];
 
     if (CVA6Cfg.NrRgprPorts == 3) begin
-      assign rs3_res[i] = x_to_reg(rs3[i][CVA6Cfg.XLEN-1:0]);
+      assign rs3_res[i] = rs3[i][CVA6Cfg.XLEN-1:0];
     end else begin
-      assign rs3_res[i] = x_to_reg(rs3[i][CVA6Cfg.FLen-1:0]);
+      assign rs3_res[i] = rs3[i][CVA6Cfg.FLen-1:0];
     end
   end
 
@@ -845,11 +845,12 @@ module issue_read_operands
       // for FP operations, the imm field can also be the third operand from the regfile
       if (OPERANDS_PER_INSTR == 3) begin
         fu_data_n[i].imm = (CVA6Cfg.FpPresent && is_imm_fpr(issue_instr_i[i].op)) ?
-            {{CVA6Cfg.XLEN - CVA6Cfg.FLen{1'b0}}, operand_c_regfile[i]} :
-            issue_instr_i[i].op == OFFLOAD ? operand_c_regfile[i] : issue_instr_i[i].result;
+            {{CVA6Cfg.XLEN - CVA6Cfg.FLen{1'b0}}, operand_c_regfile[i]} : issue_instr_i[i].op ==
+            OFFLOAD ? operand_c_regfile[i] : reg_to_x(issue_instr_i[i].result);
       end else begin
         fu_data_n[i].imm = (CVA6Cfg.FpPresent && is_imm_fpr(issue_instr_i[i].op)) ?
-            {{CVA6Cfg.XLEN - CVA6Cfg.FLen{1'b0}}, operand_c_regfile[i]} : issue_instr_i[i].result;
+            {{CVA6Cfg.XLEN - CVA6Cfg.FLen{1'b0}}, operand_c_regfile[i]} :
+            reg_to_x(issue_instr_i[i].result);
       end
       fu_data_n[i].trans_id  = issue_instr_i[i].trans_id;
       fu_data_n[i].fu        = issue_instr_i[i].fu;
