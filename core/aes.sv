@@ -197,43 +197,49 @@ module aes
     // AES instructions
     if (CVA6Cfg.ZKN && CVA6Cfg.RVB) begin
       if (CVA6Cfg.IS_XLEN32) begin
+        automatic logic [31:0] result32;
+        result32 = '0;
         unique case (fu_data_i.operation)
-          AES32ESI: result_o = aes32esi_gen;
-          AES32ESMI: result_o = aes32esmi_gen;
-          AES32DSI: result_o = aes32dsi_gen;
-          AES32DSMI: result_o = aes32dsmi_gen;
-          SHA256SIG0: result_o = sha256sig0_gen;
-          SHA256SIG1: result_o = sha256sig1_gen;
-          SHA256SUM0: result_o = sha256sum0_gen;
-          SHA256SUM1: result_o = sha256sum1_gen;
-          SHA512SIG0H: result_o = sha512sig0h_gen;
-          SHA512SIG0L: result_o = sha512sig0l_gen;
-          SHA512SIG1H: result_o = sha512sig1h_gen;
-          SHA512SIG1L: result_o = sha512sig1l_gen;
-          SHA512SUM0R: result_o = sha512sum0r_gen;
-          SHA512SUM1R: result_o = sha512sum1r_gen;
+          AES32ESI: result32 = aes32esi_gen;
+          AES32ESMI: result32 = aes32esmi_gen;
+          AES32DSI: result32 = aes32dsi_gen;
+          AES32DSMI: result32 = aes32dsmi_gen;
+          SHA256SIG0: result32 = sha256sig0_gen;
+          SHA256SIG1: result32 = sha256sig1_gen;
+          SHA256SUM0: result32 = sha256sum0_gen;
+          SHA256SUM1: result32 = sha256sum1_gen;
+          SHA512SIG0H: result32 = sha512sig0h_gen;
+          SHA512SIG0L: result32 = sha512sig0l_gen;
+          SHA512SIG1H: result32 = sha512sig1h_gen;
+          SHA512SIG1L: result32 = sha512sig1l_gen;
+          SHA512SUM0R: result32 = sha512sum0r_gen;
+          SHA512SUM1R: result32 = sha512sum1r_gen;
           default: ;
         endcase
+        result_o[31:0] = result32;
       end
       if (CVA6Cfg.IS_XLEN64) begin
+        automatic logic [63:0] result64;
+        result64 = '0;
         unique case (fu_data_i.operation)
-          AES64ES: result_o = aes64es_gen;
-          AES64ESM: result_o = aes64esm_gen;
-          AES64DS: result_o = aes64ds_gen;
-          AES64DSM: result_o = aes64dsm_gen;
-          AES64IM: result_o = aes64im_gen;
-          AES64KS1I: result_o = aes64ks1i_gen;
-          AES64KS2: result_o = aes64ks2_gen;
-          SHA256SIG0: result_o = {{32{sha256sig0_gen[31]}}, sha256sig0_gen};
-          SHA256SIG1: result_o = {{32{sha256sig1_gen[31]}}, sha256sig1_gen};
-          SHA256SUM0: result_o = {{32{sha256sum0_gen[31]}}, sha256sum0_gen};
-          SHA256SUM1: result_o = {{32{sha256sum1_gen[31]}}, sha256sum1_gen};
-          SHA512SIG0: result_o = sha512sig0_gen;
-          SHA512SIG1: result_o = sha512sig1_gen;
-          SHA512SUM0: result_o = sha512sum0_gen;
-          SHA512SUM1: result_o = sha512sum1_gen;
+          AES64ES: result64 = aes64es_gen;
+          AES64ESM: result64 = aes64esm_gen;
+          AES64DS: result64 = aes64ds_gen;
+          AES64DSM: result64 = aes64dsm_gen;
+          AES64IM: result64 = aes64im_gen;
+          AES64KS1I: result64 = aes64ks1i_gen;
+          AES64KS2: result64 = aes64ks2_gen;
+          SHA256SIG0: result64 = {{32{sha256sig0_gen[31]}}, sha256sig0_gen};
+          SHA256SIG1: result64 = {{32{sha256sig1_gen[31]}}, sha256sig1_gen};
+          SHA256SUM0: result64 = {{32{sha256sum0_gen[31]}}, sha256sum0_gen};
+          SHA256SUM1: result64 = {{32{sha256sum1_gen[31]}}, sha256sum1_gen};
+          SHA512SIG0: result64 = sha512sig0_gen;
+          SHA512SIG1: result64 = sha512sig1_gen;
+          SHA512SUM0: result64 = sha512sum0_gen;
+          SHA512SUM1: result64 = sha512sum1_gen;
           default: ;
         endcase
+        result_o = result64[CVA6Cfg.XLEN-1:0];
       end
     end
   end
