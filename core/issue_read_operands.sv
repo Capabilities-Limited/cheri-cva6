@@ -302,10 +302,12 @@ module issue_read_operands
   );
   if (OPERANDS_PER_INSTR == 3) begin
     assign rs_valid = {~stall_rs3[0], ~stall_rs2[0], ~stall_rs1[0]};
-    assign rs = {fu_data_n[0].imm, fu_data_n[0].operand_b, fu_data_n[0].operand_a};
+    assign rs = {
+      fu_data_n[0].imm, reg_to_x(fu_data_n[0].operand_b), reg_to_x(fu_data_n[0].operand_a)
+    };
   end else begin
     assign rs_valid = {~stall_rs2[0], ~stall_rs1[0]};
-    assign rs = {fu_data_n[0].operand_b, fu_data_n[0].operand_a};
+    assign rs = {reg_to_x(fu_data_n[0].operand_b), reg_to_x(fu_data_n[0].operand_a)};
   end
 
   // TODO check only for 1st instruction ??
