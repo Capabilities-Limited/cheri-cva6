@@ -155,7 +155,7 @@ module cva6_hpdcache_subsystem
       .icache_drsp_t(icache_drsp_t),
       .icache_req_t(icache_req_t),
       .icache_rtrn_t(icache_rtrn_t),
-      .RdTxId(ICACHE_RDTXID)
+      .RdTxId(hpdcache_mem_id_t'(ICACHE_RDTXID))
   ) i_cva6_icache (
       .clk_i         (clk_i),
       .rst_ni        (rst_ni),
