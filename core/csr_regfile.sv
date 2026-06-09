@@ -2973,7 +2973,7 @@ module csr_regfile
       cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
       csr_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
       csr_exception_o.tval = '0;
-      csr_exception_o.tval2 = {'0, cheri_tval2};
+      csr_exception_o.tval2 = CVA6Cfg.GPLEN'(cva6_cheri_pkg::embed_cap_tval2(cheri_tval2));
       csr_exception_o.valid = 1'b1;
     end
   end

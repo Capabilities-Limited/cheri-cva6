@@ -85,11 +85,20 @@ package cva6_cheri_pkg;
       * CHERI exception tval layout fields
       */
   typedef struct packed {
-    logic [3:0]  fault_type;   /* Type of check being performed */
-    logic [11:0] wpri;
-    logic [3:0]  fault_cause;  /* Reason for failed check */
-    logic [1:0]  ignored;      /* Bottom two bits are sliced off */
+    logic [3:0] fault_type;   /* Type of check being performed */
+    logic [3:0] fault_cause;  /* Reason for failed check */
   } cap_tval2_t;
+
+  function automatic logic [cva6_config_pkg::CVA6ConfigXlen-1:0] embed_cap_tval2(
+      cap_tval2_t cap_tval2);
+    return {
+      {cva6_config_pkg::CVA6ConfigXlen - 22{1'b0}},
+      cap_tval2.fault_type,
+      12'b0,
+      cap_tval2.fault_cause,
+      2'b0
+    };
+  endfunction
 
   /**
       * Capability encoded architectural permission bits

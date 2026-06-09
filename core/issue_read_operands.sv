@@ -543,7 +543,7 @@ module issue_read_operands
         end
         if (cheri_fault) begin
           issue_pcc_ex_o[i].cause = cva6_cheri_pkg::CAP_EXCEPTION;
-          issue_pcc_ex_o[i].tval2 = cheri_tval2;
+          issue_pcc_ex_o[i].tval2 = CVA6Cfg.GPLEN'(cva6_cheri_pkg::embed_cap_tval2(cheri_tval2));
           issue_pcc_ex_o[i].valid = 1'b1;
         end
         if (!issue_instr_valid_i[i] || debug_mode_i) issue_pcc_ex_o[i].valid = 1'b0;
