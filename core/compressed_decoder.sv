@@ -941,7 +941,7 @@ module compressed_decoder #(
           riscv::OpcodeC2Fsdsp: begin
             if (CVA6Cfg.CheriPresent && !int_mode_i) begin
               instr_o = {
-                3'b0,
+                2'b0,
                 instr_i[10:7],
                 instr_i[12],
                 instr_i[6:2],
