@@ -272,7 +272,7 @@ module alu
     genvar i, m, n, q;
     for (i = 0; i < (CVA6Cfg.XLEN / 8); i++) begin : brev8_xperm8_gen
       // Generating xperm8_result by extracting bytes from operand a based on indices from operand b
-      assign xperm8_result[i << 3 +: 8] = (operand_b[i << 3 +: 8] < (CVA6Cfg.XLEN / 8)) ? operand_a[operand_b[i << 3 +: 8] << 3 +: 8] : 8'b0;
+      assign xperm8_result[i << 3 +: 8] = ({24'b0, operand_b[i << 3 +: 8]} < (CVA6Cfg.XLEN / 8)) ? operand_a[operand_b[i << 3 +: 6] << 3 +: 8] : 8'b0;
       // Generate brev8_reversed by reversing bits within each byte
       for (m = 0; m < 8; m++) begin : reverse_bits
         // Reversing the order of bits within a single byte
@@ -281,7 +281,7 @@ module alu
     end
     for (q = 0; q < (CVA6Cfg.XLEN / 4); q++) begin : xperm4_gen
       // Generating xperm4_result by extracting nibbles from operand a based on indices from operand b
-      assign xperm4_result[q << 2 +: 4] = (operand_b[q << 2 +: 4] < (CVA6Cfg.XLEN / 4)) ? operand_a[{2'b0, operand_b[q << 2 +: 4]} << 2 +: 4] : 4'b0;
+      assign xperm4_result[q << 2 +: 4] = ({28'b0, operand_b[q << 2 +: 4]} < (CVA6Cfg.XLEN / 4)) ? operand_a[{2'b0, operand_b[q << 2 +: 4]} << 2 +: 4] : 4'b0;
     end
     if (CVA6Cfg.IS_XLEN32) begin
       // Generate zip and unzip results
