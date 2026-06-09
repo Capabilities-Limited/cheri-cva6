@@ -460,7 +460,7 @@ module csr_regfile
         if (CVA6Cfg.DebugEn) csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, dcsr_q};
         else read_access_exception = 1'b1;
         riscv::CSR_DPC:
-        if (CVA6Cfg.DebugEn) csr_rdata = dpc_q;
+        if (CVA6Cfg.DebugEn) csr_rdata = reg_to_x(dpc_q);
         else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
         if (CVA6Cfg.DebugEn) begin
