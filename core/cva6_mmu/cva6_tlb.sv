@@ -283,10 +283,6 @@ module cva6_tlb
   logic gpaddr_to_be_flushed_is0;  // indicates that the GPADDR provided is 0, active high
   logic flush_addr_napot_match;
   logic flush_addr_matches;
-  logic [CVA6Cfg.VpnLen-1:0] temp_stored_vpn;
-  logic [CVA6Cfg.VpnLen-1:0] flush_vpn_masked;
-  logic [CVA6Cfg.VpnLen-1:0] stored_vpn_masked;
-  logic [CVA6Cfg.VpnLen-1:0] vpn_to_store;
 
   assign asid_to_be_flushed_is0   = ~(|asid_to_be_flushed_i);
   assign vaddr_to_be_flushed_is0  = ~(|vaddr_to_be_flushed_i);
@@ -301,6 +297,10 @@ module cva6_tlb
     content_n = content_q;
 
     for (int unsigned i = 0; i < TLB_ENTRIES; i++) begin
+      automatic logic [CVA6Cfg.VpnLen-1:0] temp_stored_vpn;
+      automatic logic [CVA6Cfg.VpnLen-1:0] flush_vpn_masked;
+      automatic logic [CVA6Cfg.VpnLen-1:0] stored_vpn_masked;
+      automatic logic [CVA6Cfg.VpnLen-1:0] vpn_to_store;
 
 
       if (CVA6Cfg.RVH) begin
