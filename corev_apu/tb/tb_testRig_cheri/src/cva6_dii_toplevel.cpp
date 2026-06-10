@@ -22,17 +22,17 @@
 
 #include "verilator.h"
 #include "verilated.h"
-#include "Variane_testharness_dii.h"
+#include "Variane_testharness.h"
 #if (VERILATOR_VERSION_INTEGER >= 5000000)
   // Verilator v5 adds $root wrapper that provides rootp pointer.
-  #include "Variane_testharness_dii___024root.h"
+  #include "Variane_testharness___024root.h"
 #endif
 #if VM_TRACE_FST
 #include "verilated_fst_c.h"
 #else
 #include "verilated_vcd_c.h"
 #endif
-#include "Variane_testharness_dii__Dpi.h"
+#include "Variane_testharness__Dpi.h"
 
 #include <stdio.h>
 #include <iostream>
@@ -64,9 +64,9 @@ static const char *verilog_plusargs[] = {"time_out"};
 static int current_test_dii_start = 0;
 
 // Routine to fetch intructions from the Vengine
-rvfi_pkt_t readRVFI_0(Variane_testharness_dii *top);
-rvfi_pkt_t readRVFI_1(Variane_testharness_dii *top);
-void readTrace(Variane_testharness_dii *top, unsigned int *rvfi_id);
+rvfi_pkt_t readRVFI_0(Variane_testharness *top);
+rvfi_pkt_t readRVFI_1(Variane_testharness *top);
+void readTrace(Variane_testharness *top, unsigned int *rvfi_id);
 void sendReset(unsigned int rvfi_id);
 
 // Called by $time in Verilog converts to double, to match what SystemC does
@@ -223,7 +223,7 @@ done_processing:
   const char *vcd_file = NULL;
   Verilated::commandArgs(argc, argv);
 
-  Variane_testharness_dii* top(new Variane_testharness_dii);
+  Variane_testharness* top(new Variane_testharness);
 
 #if VM_TRACE
   Verilated::traceEverOn(true); // Verilator must compute traced signals
@@ -275,10 +275,10 @@ done_processing:
   // Preload memory.
 #if (VERILATOR_VERSION_INTEGER >= 5000000)
   // Verilator v5: Use rootp pointer and .data() accessor.
-#define MEM top->rootp->ariane_testharness_dii__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram.m_storage
+#define MEM top->rootp->ariane_testharness__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram.m_storage
 #else
   // Verilator v4
-#define MEM top->ariane_testharness_dii__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram
+#define MEM top->ariane_testharness__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram
 #endif
   long long addr;
   long long len;
@@ -360,7 +360,7 @@ int test_dii_start() {
   return current_test_dii_start;
 }
 
-void readTrace(Variane_testharness_dii *top, unsigned int *rvfi_id) {
+void readTrace(Variane_testharness *top, unsigned int *rvfi_id) {
   // read rvfi data and add packet to list of packets to send
   // the condition to read data here is that there is an rvfi valid signal
   // this deals with counting instructions that the core has finished executing
@@ -390,7 +390,7 @@ void sendReset(unsigned int rvfi_id) {
     put_rvfi_pkt_wrap(rvfi_id, &execpacket);
 }
 
-rvfi_pkt_t readRVFI_0(Variane_testharness_dii *top) {
+rvfi_pkt_t readRVFI_0(Variane_testharness *top) {
     rvfi_pkt_t execpacket = {
          .rvfi_order = top->rvfi_order_o_0 ,
          .rvfi_pc_rdata = top->rvfi_pc_rdata_o_0 ,
@@ -414,7 +414,7 @@ rvfi_pkt_t readRVFI_0(Variane_testharness_dii *top) {
     return execpacket;
 }
 
-rvfi_pkt_t readRVFI_1(Variane_testharness_dii *top) {
+rvfi_pkt_t readRVFI_1(Variane_testharness *top) {
     rvfi_pkt_t execpacket = {
          .rvfi_order = top->rvfi_order_o_1 ,
          .rvfi_pc_rdata = top->rvfi_pc_rdata_o_1 ,
