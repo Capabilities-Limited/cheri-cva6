@@ -178,8 +178,7 @@ src :=  $(root-dir)/core/include/$(target)_config_pkg.sv                        
         $(root-dir)/corev_apu/tb/cva6_cheri_tag_mem.sv                                                           \
         $(root-dir)/corev_apu/tb/ariane_peripherals.sv                                                           \
         $(root-dir)/corev_apu/tb/rvfi_tracer.sv                                                                  \
-        $(root-dir)/corev_apu/tb/common/uart.sv                                                                  \
-        $(root-dir)/corev_apu/tb/tb_testRig_cheri/hdl/ariane_testharness_dii.sv
+        $(root-dir)/corev_apu/tb/common/uart.sv
 
 copro_src := core/cvxif_example/include/cvxif_instr_pkg.sv \
              $(wildcard core/cvxif_example/*.sv)
@@ -189,7 +188,7 @@ uart_src := $(wildcard corev_apu/fpga/src/apb_uart/src/*.vhd)
 uart_src := $(addprefix $(root-dir), $(uart_src))
 
 # look for testbenches
-tbs := corev_apu/tb/ariane_tb.sv corev_apu/tb/ariane_testharness.sv core/cva6_rvfi.sv corev_apu/tb/tb_testRig_cheri/hdl/ariane_testharness_dii.sv
+tbs := corev_apu/tb/ariane_tb.sv corev_apu/tb/ariane_testharness.sv
 
 tbs := $(addprefix $(root-dir), $(tbs))
 
@@ -236,7 +235,7 @@ verilate_command := $(verilator) --autoflush --no-timing $(root-dir)/verilator_c
                     -LDFLAGS "-L$(RISCV)/lib -Wl,-rpath,$(RISCV)/lib$(if $(PROFILE), -g -pg,) $(if $(DROMAJO), -L../corev_apu/tb/dromajo/src -ldromajo_cosim,) -lpthread" \
                     -CFLAGS "$(CFLAGS)$(if $(PROFILE), -g -pg,) $(if $(DROMAJO), -DDROMAJO=1,) -DVL_DEBUG"       \
                     -Wall --cc  --vpi                                                                            \
-                    $(list_incdir) --top-module ariane_testharness_dii                                           \
+                    $(list_incdir) --top-module ariane_testharness                                               \
                     --threads-dpi none                                                                           \
                     --Mdir $(ver-library) -O3                                                                    \
                     --exe ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/cva6_dii_toplevel.cpp ${root-dir}/corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils/rvfi_dii_utils.c \
@@ -247,7 +246,7 @@ verilate:
 	@echo "[Verilator] Building Model for TestRig CHERI"
 	@echo "$(root-dir)"
 	$(verilate_command)
-	cd $(ver-library) && $(MAKE) -j${NUM_JOBS} -f Variane_testharness_dii.mk
+	cd $(ver-library) && $(MAKE) -j${NUM_JOBS} -f Variane_testharness.mk
 
 clean:
 	rm -rf $(riscv-torture-dir)/output/test*
