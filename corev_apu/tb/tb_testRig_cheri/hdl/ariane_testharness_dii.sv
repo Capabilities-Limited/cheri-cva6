@@ -1,3 +1,4 @@
+// Copyright 2018 ETH Zurich and University of Bologna.
 // Copyright 2025 Bruno Sá and Zero-Day Labs.
 // Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
@@ -16,6 +17,7 @@
 
 `include "axi/assign.svh"
 `include "rvfi_types.svh"
+`include "iti_types.svh"
 `include "register_interface/assign.svh"
 `include "register_interface/typedef.svh"
 
@@ -30,9 +32,10 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   //
   parameter int unsigned AXI_USER_WIDTH    = CVA6Cfg.AxiUserWidth,
   parameter int unsigned AXI_USER_EN       = CVA6Cfg.AXI_USER_EN,
-  parameter int unsigned AXI_ADDRESS_WIDTH = CVA6Cfg.AxiAddrWidth,
-  parameter int unsigned AXI_DATA_WIDTH    = CVA6Cfg.AxiDataWidth,
-  parameter int unsigned NUM_WORDS         = 2**21,         // memory size
+  parameter int unsigned AXI_ADDRESS_WIDTH = 64,
+  parameter int unsigned AXI_DATA_WIDTH    = 64,
+  parameter bit          InclSimDTM        = CVA6Cfg.RVFI_DII ? 1'b1 : 1'b0,
+  parameter int unsigned NUM_WORDS         = CVA6Cfg.RVFI_DII ? 2**21 : 2**25, // memory size
   parameter bit          StallRandomOutput = 1'b0,
   parameter bit          StallRandomInput  = 1'b0
 ) (
@@ -92,6 +95,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   localparam type rvfi_csr_elmt_t = `RVFI_CSR_ELMT_T(CVA6Cfg);
   localparam type rvfi_csr_t = `RVFI_CSR_T(CVA6Cfg, rvfi_csr_elmt_t);
   localparam type rvfi_to_iti_t = `RVFI_TO_ITI_T(CVA6Cfg);
+  localparam type iti_to_encoder_t = `ITI_TO_ENCODER_T(CVA6Cfg);
 
   // RVFI PROBES
   localparam type rvfi_probes_instr_t = `RVFI_PROBES_INSTR_T(CVA6Cfg);
@@ -105,13 +109,43 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   logic        test_en;
   logic        ndmreset;
   logic        ndmreset_n;
+  logic        debug_req_core;
 
+  int          jtag_enable;
   logic        init_done;
+  logic [31:0] jtag_exit, dmi_exit;
   logic [31:0] rvfi_exit;
+  logic [31:0] tracer_exit;
+  logic [31:0] tandem_exit;
 
+  logic        jtag_TCK;
+  logic        jtag_TMS;
+  logic        jtag_TDI;
+  logic        jtag_TRSTn;
+  logic        jtag_TDO_data;
+  logic        jtag_TDO_driven;
+
+  logic        debug_req_valid;
   logic        debug_req_ready;
   logic        debug_resp_valid;
   logic        debug_resp_ready;
+
+  logic        jtag_req_valid;
+  logic [6:0]  jtag_req_bits_addr;
+  logic [1:0]  jtag_req_bits_op;
+  logic [31:0] jtag_req_bits_data;
+  logic        jtag_resp_ready;
+  logic        jtag_resp_valid;
+
+  logic        dmi_req_valid;
+  logic        dmi_resp_ready;
+  logic        dmi_resp_valid;
+
+  dm::dmi_req_t  jtag_dmi_req;
+  dm::dmi_req_t  dmi_req;
+
+  dm::dmi_req_t  debug_req;
+  dm::dmi_resp_t debug_resp;
 
   assign test_en = 1'b0;
 
@@ -144,8 +178,109 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
 
   logic debug_enable;
   initial begin
+    if (CVA6Cfg.RVFI_DII || !$value$plusargs("jtag_rbb_enable=%b", jtag_enable)) jtag_enable = 'h0;
+    if (CVA6Cfg.RVFI_DII || $test$plusargs("debug_disable")) debug_enable = 'h0; else debug_enable = 'h1;
     if (CVA6Cfg.XLEN != 32 & CVA6Cfg.XLEN != 64) $error("CVA6Cfg.XLEN different from 32 and 64");
   end
+
+  // debug if MUX
+  assign debug_req_valid     = (jtag_enable[0]) ? jtag_req_valid     : dmi_req_valid;
+  assign debug_resp_ready    = (jtag_enable[0]) ? jtag_resp_ready    : dmi_resp_ready;
+  assign debug_req           = (jtag_enable[0]) ? jtag_dmi_req       : dmi_req;
+  assign exit_o              = (jtag_enable[0]) ? jtag_exit          : (dmi_exit | rvfi_exit);
+  assign jtag_resp_valid     = (jtag_enable[0]) ? debug_resp_valid   : 1'b0;
+  assign dmi_resp_valid      = (jtag_enable[0]) ? 1'b0               : debug_resp_valid;
+
+  // SiFive's SimJTAG Module
+  // Converts to DPI calls
+  SimJTAG i_SimJTAG (
+    .clock                ( clk_i                ),
+    .reset                ( ~rst_ni              ),
+    .enable               ( jtag_enable[0]       ),
+    .init_done            ( init_done            ),
+    .jtag_TCK             ( jtag_TCK             ),
+    .jtag_TMS             ( jtag_TMS             ),
+    .jtag_TDI             ( jtag_TDI             ),
+    .jtag_TRSTn           ( jtag_TRSTn           ),
+    .jtag_TDO_data        ( jtag_TDO_data        ),
+    .jtag_TDO_driven      ( jtag_TDO_driven      ),
+    .exit                 ( jtag_exit            )
+  );
+
+  if (!CVA6Cfg.RVFI_DII) begin
+    dmi_jtag i_dmi_jtag (
+      .clk_i            ( clk_i           ),
+      .rst_ni           ( rst_ni          ),
+      .testmode_i       ( test_en         ),
+      .dmi_req_o        ( jtag_dmi_req    ),
+      .dmi_req_valid_o  ( jtag_req_valid  ),
+      .dmi_req_ready_i  ( debug_req_ready ),
+      .dmi_resp_i       ( debug_resp      ),
+      .dmi_resp_ready_o ( jtag_resp_ready ),
+      .dmi_resp_valid_i ( jtag_resp_valid ),
+      .dmi_rst_no       (                 ), // not connected
+      .tck_i            ( jtag_TCK        ),
+      .tms_i            ( jtag_TMS        ),
+      .trst_ni          ( jtag_TRSTn      ),
+      .td_i             ( jtag_TDI        ),
+      .td_o             ( jtag_TDO_data   ),
+      .tdo_oe_o         ( jtag_TDO_driven )
+    );
+  end else begin
+    assign jtag_dmi_req = '0;
+    assign jtag_resp_ready = '0;
+    assign jtag_TDO_data = '0;
+    assign jtag_TDO_driver = '0;
+  end
+
+  // SiFive's SimDTM Module
+  // Converts to DPI calls
+  logic [1:0] debug_req_bits_op;
+  assign dmi_req.op = dm::dtm_op_e'(debug_req_bits_op);
+
+  if (InclSimDTM) begin
+    SimDTM i_SimDTM (
+      .clk                  ( clk_i                 ),
+      .reset                ( ~rst_ni               ),
+      .debug_req_valid      ( dmi_req_valid         ),
+      .debug_req_ready      ( debug_req_ready       ),
+      .debug_req_bits_addr  ( dmi_req.addr          ),
+      .debug_req_bits_op    ( debug_req_bits_op     ),
+      .debug_req_bits_data  ( dmi_req.data          ),
+      .debug_resp_valid     ( dmi_resp_valid        ),
+      .debug_resp_ready     ( dmi_resp_ready        ),
+      .debug_resp_bits_resp ( debug_resp.resp       ),
+      .debug_resp_bits_data ( debug_resp.data       ),
+      .exit                 ( dmi_exit              )
+    );
+  end else begin
+    assign dmi_req_valid = '0;
+    assign debug_req_bits_op = '0;
+    assign dmi_exit = 1'b0;
+  end
+
+  // this delay window allows the core to read and execute init code
+  // from the bootrom before the first debug request can interrupt
+  // core. this is needed in cases where an fsbl is involved that
+  // expects a0 and a1 to be initialized with the hart id and a
+  // pointer to the dev tree, respectively.
+  localparam int unsigned DmiDelCycles = 500;
+
+  logic debug_req_core_ungtd;
+  int dmi_del_cnt_d, dmi_del_cnt_q;
+
+  assign dmi_del_cnt_d  = (dmi_del_cnt_q) ? dmi_del_cnt_q - 1 : 0;
+  assign debug_req_core = (dmi_del_cnt_q) ? 1'b0 :
+                          (!debug_enable) ? 1'b0 : debug_req_core_ungtd;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : p_dmi_del_cnt
+    if(!rst_ni) begin
+      dmi_del_cnt_q <= DmiDelCycles;
+    end else begin
+      dmi_del_cnt_q <= dmi_del_cnt_d;
+    end
+  end
+
 
   ariane_axi::req_t    dm_axi_m_req;
   ariane_axi::resp_t   dm_axi_m_resp;
@@ -177,7 +312,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     .testmode_i           ( test_en                     ),
     .ndmreset_o           ( ndmreset                    ),
     .dmactive_o           (                             ), // active debug session
-    .debug_req_o          ( /* NC */                    ),
+    .debug_req_o          ( debug_req_core_ungtd        ),
     .unavailable_i        ( '0                          ),
     .hartinfo_i           ( {ariane_pkg::DebugHartInfo} ),
     .slave_req_i          ( dm_slave_req                ),
@@ -195,12 +330,12 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     .master_r_valid_i     ( dm_master_r_valid           ),
     .master_r_rdata_i     ( dm_master_r_rdata           ),
     .dmi_rst_ni           ( rst_ni                      ),
-    .dmi_req_valid_i      ( 1'b0                        ),
-    .dmi_req_ready_o      ( /* NC */                    ),
-    .dmi_req_i            ( /* NC */                    ),
-    .dmi_resp_valid_o     ( /* NC */                    ),
-    .dmi_resp_ready_i     ( 1'b0                        ),
-    .dmi_resp_o           ( /* NC */                    )
+    .dmi_req_valid_i      ( debug_req_valid             ),
+    .dmi_req_ready_o      ( debug_req_ready             ),
+    .dmi_req_i            ( debug_req                   ),
+    .dmi_resp_valid_o     ( debug_resp_valid            ),
+    .dmi_resp_ready_i     ( debug_resp_ready            ),
+    .dmi_resp_o           ( debug_resp                  )
   );
 
 
@@ -426,11 +561,15 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   `AXI_ASSIGN_TO_RESP(axi_tag_resp, tag_mst)
   `REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
 
+  localparam logic[63:0] cached_end_addr = CVA6Cfg.RVFI_DII ?
+    ariane_soc::DRAMBase + 64'h800000 :
+    ariane_soc::DRAMBase + ariane_soc::DRAMLength - (ariane_soc::DRAMLength>>7);
+
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_tag_controller
     axi_tagctrl_reg_wrap #(
         .DRAMMemBase     (ariane_soc::DRAMBase),
         .CapSize         (CVA6Cfg.CLEN),
-        .TagCacheMemBase (ariane_soc::DRAMBase + 64'h800000),
+        .TagCacheMemBase (cached_end_addr),
         .SetAssociativity(ariane_soc::SetAssociativity),
         .NumLines        (ariane_soc::NumLines),
         .NumBlocks       (ariane_soc::NumBlocks),
@@ -457,7 +596,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
         .conf_req_i         (  /* not used */),
         .conf_resp_o        (  /* not used */),
         .cached_start_addr_i(ariane_soc::DRAMBase),
-        .cached_end_addr_i  (ariane_soc::DRAMBase + 64'h800000)
+        .cached_end_addr_i  (cached_end_addr)
     );
   end else begin
     assign axi_tag_req = dram_req;
@@ -494,7 +633,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   axi_pkg::xbar_rule_64_t [ariane_soc::NB_PERIPHERALS-1:0] addr_map;
 
   assign addr_map = '{
-    '{ idx: ariane_soc::Debug,    start_addr: 64'h0006_0000,            end_addr: 64'h0006_0000 + ariane_soc::DebugLength       },
+    '{ idx: ariane_soc::Debug,    start_addr: ariane_soc::DebugBase,    end_addr: ariane_soc::DebugBase + ariane_soc::DebugLength       },
     '{ idx: ariane_soc::ROM,      start_addr: ariane_soc::ROMBase,      end_addr: ariane_soc::ROMBase + ariane_soc::ROMLength           },
     '{ idx: ariane_soc::CLINT,    start_addr: ariane_soc::CLINTBase,    end_addr: ariane_soc::CLINTBase + ariane_soc::CLINTLength       },
     '{ idx: ariane_soc::PLIC,     start_addr: ariane_soc::PLICBase,     end_addr: ariane_soc::PLICBase + ariane_soc::PLICLength         },
@@ -623,16 +762,16 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
   rvfi_probes_t rvfi_probes;
   rvfi_csr_t rvfi_csr;
   rvfi_instr_t [CVA6Cfg.NrCommitPorts-1:0]  rvfi_instr;
+  rvfi_to_iti_t rvfi_to_iti;
+  iti_to_encoder_t iti_to_encoder;
 
   cva6_cheri_pkg::cap_reg_t boot_cap;
-  logic [CVA6Cfg.PCLEN-1:0] boot_addr;
+  logic [CVA6Cfg.XLEN-1:0] boot_addr;
   always_comb begin : gen_boot_cap
     boot_cap = ariane_pkg::REG_ROOT;
-    if (CVA6Cfg.RVFI_DII)
-      boot_addr = ariane_soc::DRAMBase;
-    else
-      boot_addr = ariane_soc::ROMBase;
+    boot_addr = CVA6Cfg.RVFI_DII ? ariane_soc::DRAMBase : ariane_soc::ROMBase;
     boot_cap.addr = boot_addr;
+    boot_cap.flags.int_mode = CVA6Cfg.RVFI_DII ? 1'b0 : 1'b1;
   end
 
   ariane #(
@@ -655,7 +794,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
 `ifdef SPIKE_TANDEM
     .debug_req_i          ( 1'b0                ),
 `else
-    .debug_req_i          ( 1'b0                ),
+    .debug_req_i          ( 1'b0      ),
 `endif
     .noc_req_o            ( axi_ariane_req      ),
     .noc_resp_i           ( axi_ariane_resp     )
@@ -681,7 +820,163 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     end
   end
 
+`ifdef RVFI_TRACE
+  assign rvfi_valid_o_0     = rvfi_instr[0].valid;
+  assign rvfi_order_o_0     = rvfi_instr[0].order;
+  assign rvfi_insn_o_0      = rvfi_instr[0].insn;
+  assign rvfi_trap_o_0      = rvfi_instr[0].trap;
+  assign rvfi_halt_o_0      = rvfi_instr[0].halt;
+  assign rvfi_intr_o_0      = rvfi_instr[0].intr;
+  assign rvfi_mode_o_0      = rvfi_instr[0].mode;
+  assign rvfi_rs1_addr_o_0  = rvfi_instr[0].rs1_addr;
+  assign rvfi_rs2_addr_o_0  = rvfi_instr[0].rs2_addr;
+  assign rvfi_rs1_rdata_o_0 = rvfi_instr[0].rs1_rdata;
+  assign rvfi_rs2_rdata_o_0 = rvfi_instr[0].rs2_rdata;
+  assign rvfi_rd_addr_o_0   = rvfi_instr[0].rd_addr;
+  assign rvfi_rd_wdata_o_0  = rvfi_instr[0].rd_wdata;
+  assign rvfi_pc_rdata_o_0  = rvfi_instr[0].pc_rdata;
+  assign rvfi_pc_wdata_o_0  = rvfi_instr[0].pc_wdata;
+  assign rvfi_mem_addr_o_0  = rvfi_instr[0].mem_addr;
+  assign rvfi_mem_rmask_o_0 = rvfi_instr[0].mem_rmask;
+  assign rvfi_mem_wmask_o_0 = rvfi_instr[0].mem_wmask;
+  assign rvfi_mem_rdata_o_0 = rvfi_instr[0].mem_rdata[CVA6Cfg.XLEN-1:0];
+  assign rvfi_mem_wdata_o_0 = rvfi_instr[0].mem_wdata[CVA6Cfg.XLEN-1:0];
+  if (CVA6Cfg.NrCommitPorts > 1) begin
+    assign rvfi_valid_o_1     = rvfi_instr[1].valid;
+    assign rvfi_order_o_1     = rvfi_instr[1].order;
+    assign rvfi_insn_o_1      = rvfi_instr[1].insn;
+    assign rvfi_trap_o_1      = rvfi_instr[1].trap;
+    assign rvfi_halt_o_1      = rvfi_instr[1].halt;
+    assign rvfi_intr_o_1      = rvfi_instr[1].intr;
+    assign rvfi_mode_o_1      = rvfi_instr[1].mode;
+    assign rvfi_rs1_addr_o_1  = rvfi_instr[1].rs1_addr;
+    assign rvfi_rs2_addr_o_1  = rvfi_instr[1].rs2_addr;
+    assign rvfi_rs1_rdata_o_1 = rvfi_instr[1].rs1_rdata;
+    assign rvfi_rs2_rdata_o_1 = rvfi_instr[1].rs2_rdata;
+    assign rvfi_rd_addr_o_1   = rvfi_instr[1].rd_addr;
+    assign rvfi_rd_wdata_o_1  = rvfi_instr[1].rd_wdata;
+    assign rvfi_pc_rdata_o_1  = rvfi_instr[1].pc_rdata;
+    assign rvfi_pc_wdata_o_1  = rvfi_instr[1].pc_wdata;
+    assign rvfi_mem_addr_o_1  = rvfi_instr[1].mem_addr;
+    assign rvfi_mem_rmask_o_1 = rvfi_instr[1].mem_rmask;
+    assign rvfi_mem_wmask_o_1 = rvfi_instr[1].mem_wmask;
+    assign rvfi_mem_rdata_o_1 = rvfi_instr[1].mem_rdata[CVA6Cfg.XLEN-1:0];
+    assign rvfi_mem_wdata_o_1 = rvfi_instr[1].mem_wdata[CVA6Cfg.XLEN-1:0];
+  end
+`else
+    cva6_iti #(
+        .CVA6Cfg   (CVA6Cfg),
+        .CAUSE_LEN  (iti_pkg::CAUSE_LEN),
+        .ITYPE_LEN (iti_pkg::ITYPE_LEN),
+        .IRETIRE_LEN (iti_pkg::IRETIRE_LEN),
+        .block_mode(0),
+        .rvfi_to_iti_t(rvfi_to_iti_t),
+        .iti_to_encoder_t(iti_to_encoder_t)
+    ) i_cva6_iti (
+        .clk_i  (clk_i),
+        .rst_ni (ndmreset_n),
+        // inputs from rvfi
+        .valid_i(rvfi_to_iti.valid),
+        .rvfi_to_iti_i(rvfi_to_iti),
+        .valid_o(),
+        .iti_to_encoder_o(iti_to_encoder)
+    );
 
+    logic                    packet_valid;
+    te_pkg::it_packet_type_e [0:0] packet_type;
+    logic [te_pkg::P_LEN-1:0] packet_length;
+    logic [te_pkg::PAYLOAD_LEN-1:0] packet_payload;
+
+    rv_tracer #(
+        .N(1),
+        .ONLY_BRANCHES(1)
+    ) i_encoder(
+        .clk_i               (clk_i),
+        .rst_ni              (rst_ni),
+        .valid_i             (iti_to_encoder.valid),
+        .itype_i             (iti_to_encoder.itype),
+        .cause_i             (iti_to_encoder.cause),
+        .tval_i              (iti_to_encoder.tval),
+        .priv_i              (iti_to_encoder.priv),
+        .iaddr_i             (iti_to_encoder.iaddr),
+        .iretire_i           (iti_to_encoder.iretire),
+        .ilastsize_i         (iti_to_encoder.ilastsize),
+        .time_i              (iti_to_encoder.cycles),
+        .tvec_i              ('0),
+        .epc_i               ('0),
+        .encapsulator_ready_i('1),
+        .paddr_i             ('0),
+        .pwrite_i            ('0),
+        .psel_i              ('0),
+        .penable_i           ('0),
+        .pwdata_i            ('0),
+        .packet_valid_o      (packet_valid),
+        .packet_type_o       (packet_type),
+        .packet_length_o     (packet_length),
+        .packet_payload_o    (packet_payload),
+        .stall_o             (),
+        .pready_o            (),
+        .prdata_o            ()
+    );
+
+    logic                           encap_valid;
+    encap_pkg::encap_fifo_entry_s   encap_fifo_entry_i;
+    encap_pkg::encap_fifo_entry_s   encap_fifo_entry_o;
+    logic                           encap_fifo_full;
+    logic                           encap_fifo_empty;
+    logic                           encap_fifo_pop;
+
+    encapsulator i_encapsulator (
+        .clk_i              (clk_i),
+        .valid_i            (packet_valid),
+        .packet_length_i    (packet_length),
+        .flow_i             ('0),
+        .timestamp_present_i('1),
+        //.srcid_i(),
+        .timestamp_i        (rvfi_to_iti.cycles),
+        //.type_i(),
+        .trace_payload_i    (packet_payload),
+        .valid_o            (encap_valid),
+        .encap_fifo_entry_o (encap_fifo_entry_i)
+    );
+
+    fifo_v3 # (
+        .DEPTH(16),
+        .dtype(encap_pkg::encap_fifo_entry_s)
+    ) i_fifo_encap (
+        .clk_i     (clk_i),
+        .rst_ni    (rst_ni),
+        .flush_i   ('0),
+        .testmode_i('0),
+        .full_o    (encap_fifo_full),
+        .empty_o   (encap_fifo_empty),
+        .usage_o   (),
+        .data_i    (encap_fifo_entry_i),
+        .push_i    (encap_valid),
+        .data_o    (encap_fifo_entry_o),
+        .pop_i     (encap_fifo_pop)
+    );
+    localparam DATA_LEN = 8;
+
+    logic                           slicer_valid;
+    logic [DATA_LEN-1:0]            slice;
+    logic [$clog2(DATA_LEN)-4:0]    valid_bytes;
+
+    slicer_DPTI #(
+        .SLICE_LEN(DATA_LEN),
+        .NO_TIME ('0)
+    ) i_slicer (
+        .clk_i             (clk_i),
+        .rst_ni            (rst_ni),
+        .valid_i           (!encap_fifo_empty),
+        .encap_fifo_entry_i(encap_fifo_entry_o),
+        .fifo_full_i       ('0), // usrFull DPTI in ariane_xilinx
+        .valid_o           (slicer_valid),
+        .slice_o           (slice),
+        .done_o            (encap_fifo_pop)
+    );
+
+`endif
 
   cva6_rvfi #(
       .CVA6Cfg   (CVA6Cfg),
@@ -692,11 +987,12 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
       .rvfi_probes_t(rvfi_probes_t),
       .rvfi_to_iti_t(rvfi_to_iti_t)
   ) i_cva6_rvfi (
-      .clk_i     (clk_i),
-      .rst_ni    (rst_ni),
+      .clk_i        (clk_i),
+      .rst_ni       (rst_ni),
       .rvfi_probes_i(rvfi_probes),
-      .rvfi_instr_o(rvfi_instr),
-      .rvfi_csr_o(rvfi_csr)
+      .rvfi_instr_o (rvfi_instr),
+      .rvfi_to_iti_o   (rvfi_to_iti),
+      .rvfi_csr_o   (rvfi_csr)
   );
 
   rvfi_tracer  #(
@@ -712,7 +1008,7 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     .rst_ni(rst_ni),
     .rvfi_i(rvfi_instr),
     .rvfi_csr_i(rvfi_csr),
-    .end_of_test_o(rvfi_exit)
+    .end_of_test_o(tracer_exit)
   );
 
 `ifdef SPIKE_TANDEM
@@ -725,16 +1021,44 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
         .rst_ni,
         .clint_tick_i   ( rtc_i    ),
         .rvfi_i         ( rvfi_instr ),
-        .rvfi_csr_i     ( rvfi_csr )
+        .rvfi_csr_i     ( rvfi_csr ),
+        .end_of_test_o  ( tandem_exit )
     );
     initial begin
         $display("Running binary in tandem mode");
     end
+
+    bit tandem_timeout_enable;
+    bit [31:0] tandem_timeout;
+    localparam TANDEM_TIMEOUT_THRESHOLD = 60;
+
+    // Tandem timeout logic
+    always_ff @(posedge clk_i) begin
+        if(tandem_timeout > TANDEM_TIMEOUT_THRESHOLD)
+            tandem_timeout_enable <= 0;
+        else if (tracer_exit)
+            tandem_timeout_enable <= 1;
+
+        if (tandem_timeout_enable)
+            tandem_timeout <= tandem_timeout + 1;
+    end
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+            rvfi_exit <= 0;
+        end else begin
+            if (tandem_exit || (tandem_timeout > TANDEM_TIMEOUT_THRESHOLD)) begin
+              rvfi_exit <= tracer_exit;
+            end
+        end
+    end
+`else
+    assign rvfi_exit = tracer_exit;
 `endif
 
 `ifdef VERILATOR
     initial begin
-        string verbosity = 0;
+        string verbosity;
         if ($value$plusargs("UVM_VERBOSITY=%s",verbosity)) begin
           uvm_set_verbosity_level(verbosity);
           `uvm_info("ariane_testharness", $sformatf("Set UVM_VERBOSITY to %s", verbosity), UVM_NONE)
@@ -807,50 +1131,5 @@ module ariane_testharness_dii import cva6_cheri_pkg::*; #(
     .CSYSREQ('0),
     .CSYSACK('0)
   );
-`endif
-
-`ifdef DII
-  assign rvfi_valid_o_0     = rvfi_instr[0].valid;
-  assign rvfi_order_o_0     = rvfi_instr[0].order;
-  assign rvfi_insn_o_0      = rvfi_instr[0].insn;
-  assign rvfi_trap_o_0      = rvfi_instr[0].trap;
-  assign rvfi_halt_o_0      = rvfi_instr[0].halt;
-  assign rvfi_intr_o_0      = rvfi_instr[0].intr;
-  assign rvfi_mode_o_0      = rvfi_instr[0].mode;
-  assign rvfi_rs1_addr_o_0  = rvfi_instr[0].rs1_addr;
-  assign rvfi_rs2_addr_o_0  = rvfi_instr[0].rs2_addr;
-  assign rvfi_rs1_rdata_o_0 = rvfi_instr[0].rs1_rdata;
-  assign rvfi_rs2_rdata_o_0 = rvfi_instr[0].rs2_rdata;
-  assign rvfi_rd_addr_o_0   = rvfi_instr[0].rd_addr;
-  assign rvfi_rd_wdata_o_0  = rvfi_instr[0].rd_wdata;
-  assign rvfi_pc_rdata_o_0  = rvfi_instr[0].pc_rdata;
-  assign rvfi_pc_wdata_o_0  = rvfi_instr[0].pc_wdata;
-  assign rvfi_mem_addr_o_0  = rvfi_instr[0].mem_addr;
-  assign rvfi_mem_rmask_o_0 = rvfi_instr[0].mem_rmask;
-  assign rvfi_mem_wmask_o_0 = rvfi_instr[0].mem_wmask;
-  assign rvfi_mem_rdata_o_0 = rvfi_instr[0].mem_rdata[CVA6Cfg.XLEN-1:0];
-  assign rvfi_mem_wdata_o_0 = rvfi_instr[0].mem_wdata[CVA6Cfg.XLEN-1:0];
-  if (CVA6Cfg.NrCommitPorts > 1) begin
-    assign rvfi_valid_o_1     = rvfi_instr[1].valid;
-    assign rvfi_order_o_1     = rvfi_instr[1].order;
-    assign rvfi_insn_o_1      = rvfi_instr[1].insn;
-    assign rvfi_trap_o_1      = rvfi_instr[1].trap;
-    assign rvfi_halt_o_1      = rvfi_instr[1].halt;
-    assign rvfi_intr_o_1      = rvfi_instr[1].intr;
-    assign rvfi_mode_o_1      = rvfi_instr[1].mode;
-    assign rvfi_rs1_addr_o_1  = rvfi_instr[1].rs1_addr;
-    assign rvfi_rs2_addr_o_1  = rvfi_instr[1].rs2_addr;
-    assign rvfi_rs1_rdata_o_1 = rvfi_instr[1].rs1_rdata;
-    assign rvfi_rs2_rdata_o_1 = rvfi_instr[1].rs2_rdata;
-    assign rvfi_rd_addr_o_1   = rvfi_instr[1].rd_addr;
-    assign rvfi_rd_wdata_o_1  = rvfi_instr[1].rd_wdata;
-    assign rvfi_pc_rdata_o_1  = rvfi_instr[1].pc_rdata;
-    assign rvfi_pc_wdata_o_1  = rvfi_instr[1].pc_wdata;
-    assign rvfi_mem_addr_o_1  = rvfi_instr[1].mem_addr;
-    assign rvfi_mem_rmask_o_1 = rvfi_instr[1].mem_rmask;
-    assign rvfi_mem_wmask_o_1 = rvfi_instr[1].mem_wmask;
-    assign rvfi_mem_rdata_o_1 = rvfi_instr[1].mem_rdata[CVA6Cfg.XLEN-1:0];
-    assign rvfi_mem_wdata_o_1 = rvfi_instr[1].mem_wdata[CVA6Cfg.XLEN-1:0];
-  end
 `endif
 endmodule
