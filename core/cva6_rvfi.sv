@@ -504,6 +504,8 @@ module cva6_rvfi
                   ex_commit_cause == riscv::ENV_CALL_SMODE ||
                   ex_commit_cause == riscv::ENV_CALL_UMODE ||
                   ex_commit_cause == cva6_cheri_pkg::CAP_EXCEPTION));
+      automatic logic rd_is_fpr;
+      rd_is_fpr = CVA6Cfg.FpPresent && is_rd_fpr(commit_instr_op[i]);
       rvfi_instr_o[i].valid <= valid;
       rvfi_instr_o[i].insn  <= commit_instr;
       // when synchronous trap, the instruction is not executed
@@ -527,10 +529,10 @@ module cva6_rvfi
           commit_instr_op[i]
       ) && wdata[i] == 1) ? '0 : commit_instr_rs1[i];
       rvfi_instr_o[i].rs2_addr <= rs2_addr;
-      rvfi_instr_o[i].rd_addr <= rd_addr;
-      rvfi_instr_o[i].rd_wdata <= (CVA6Cfg.FpPresent && is_rd_fpr(
-          commit_instr_op[i]
-      )) ? commit_instr_result[i] : (rd_addr == 0) ? '0 : wdata[i];
+      rvfi_instr_o[i].rd_addr <= (CVA6Cfg.RVFI_DII && rd_is_fpr) ? '0 : rd_addr;
+      rvfi_instr_o[i].rd_wdata <= rd_is_fpr ?
+        (CVA6Cfg.RVFI_DII ? '0 : commit_instr_result[i]) :
+        ((rd_addr == 0) ? '0 : wdata[i]);
       rvfi_instr_o[i].pc_rdata <= commit_instr_pc[i];
       if (commit_instr == 32'h30200073 && !exception) begin
         rvfi_instr_o[i].pc_wdata <= csr.mepc_q[63:0];
