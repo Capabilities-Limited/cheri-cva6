@@ -67,6 +67,9 @@ endif
 # Spike tandem mode: default to environment setting (DISABLED if envariable SPIKE_TANDEM is not set).
 spike-tandem ?= $(SPIKE_TANDEM)
 
+# RVFI_DII mode for TestRIG support (DISABLED if RVFI_DII is not set)
+rvfi-dii ?= $(RVFI_DII)
+
 SPIKE_INSTALL_DIR     ?= $(root-dir)/tools/spike
 
 # setting additional xilinx board parameters for the selected board
@@ -105,6 +108,9 @@ endif
 # cv64a6_imafdc_sv39, cv32a6_imac_sv0, cv32a6_imac_sv32, cv32a6_imafc_sv32, cv32a6_ima_sv32_fpga
 # Changing the default target to cv32a60x for Step1 verification
 target     ?= cv64a6_imafdczcheri_sv39_hpdcache_wb
+ifneq (,$(rvfi-dii))
+	target := $(target)_rvfi_dii
+endif
 ifneq (,$(findstring cv64,$(target)))
 	XLEN ?= 64
 else
@@ -160,6 +166,10 @@ else
 $(warning XCELIUM_HOME not set which is necessary for compiling DPIs when using XCELIUM)
 endif
 
+ifneq (,$(rvfi-dii))
+CFLAGS += -I$(root-dir)/corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils
+endif
+
 # this list contains the standalone components
 src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)                   \
         $(if $(spike-tandem),verif/tb/core/uvma_cva6pkg_utils_pkg.sv)                \
@@ -167,6 +177,7 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         $(if $(spike-tandem),verif/tb/core/uvmc_rvfi_reference_model_pkg.sv)         \
         $(if $(spike-tandem),verif/tb/core/uvmc_rvfi_scoreboard_pkg.sv)              \
         $(if $(spike-tandem),corev_apu/tb/common/spike.sv)                           \
+        $(if $(rvfi-dii),corev_apu/tb/tb_testRig_cheri/hdl/rvfi_dii_generator.sv)    \
         core/cva6_rvfi.sv                                                            \
         corev_apu/src/ariane.sv                                                      \
         $(wildcard corev_apu/bootrom/*.sv)                                           \
@@ -710,6 +721,21 @@ xrun-check-benchmarks:
 
 xrun-ci: xrun-asm-tests xrun-amo-tests xrun-mul-tests xrun-fp-tests xrun-benchmarks
 
+ifeq (,$(rvfi-dii))
+sim-c-files = corev_apu/tb/ariane_tb.cpp \
+              corev_apu/tb/dpi/SimDTM.cc \
+              corev_apu/tb/dpi/SimJTAG.cc \
+              corev_apu/tb/dpi/remote_bitbang.cc \
+              corev_apu/tb/dpi/msim_helper.cc
+ldflags = -LDFLAGS "-L$(RISCV)/lib -L$(SPIKE_INSTALL_DIR)/lib -Wl,-rpath,$(RISCV)/lib -Wl,-rpath,$(SPIKE_INSTALL_DIR)/lib -lfesvr -lriscv -ldisasm -lyaml-cpp $(if $(PROFILE), -g -pg,) -lpthread $(if $(TRACE_COMPACT), -lz,)"
+else
+sim-c-files = corev_apu/tb/tb_testRig_cheri/src/cva6_dii_toplevel.cpp \
+              corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils/rvfi_dii_utils.c \
+              corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils/SocketPacketUtils/socket_packet_utils.c
+ldflags =
+endif
+
+
 # verilator-specific
 verilate_command := $(verilator) --no-timing verilator_config.vlt                                                \
                     -f core/Flist.cva6                                                                           \
@@ -737,15 +763,15 @@ verilate_command := $(verilator) --no-timing verilator_config.vlt               
                     $(if $(DEBUG), --trace --trace-structs,)                                                     \
                     $(if $(TRACE_COMPACT), --trace-fst $(VL_INC_DIR)/verilated_fst_c.cpp)                        \
                     $(if $(TRACE_FAST), --trace $(VL_INC_DIR)/verilated_vcd_c.cpp)                               \
-                    -LDFLAGS "-L$(RISCV)/lib -L$(SPIKE_INSTALL_DIR)/lib -Wl,-rpath,$(RISCV)/lib -Wl,-rpath,$(SPIKE_INSTALL_DIR)/lib -lfesvr -lriscv -ldisasm -lyaml-cpp $(if $(PROFILE), -g -pg,) -lpthread $(if $(TRACE_COMPACT), -lz,)" \
+                    $(ldflags)                                                                                   \
                     -CFLAGS "$(CFLAGS)$(if $(PROFILE), -g -pg,) -DVL_DEBUG -I$(SPIKE_INSTALL_DIR)"               \
                     $(if $(SPIKE_TANDEM), +define+SPIKE_TANDEM, )                                                \
+                    $(if $(RVFI_DII), --autoflush +define+RVFI_TRACE=1+DII=1)                                    \
                     --cc --vpi                                                                                   \
                     $(list_incdir) --top-module ariane_testharness                                               \
                     --threads-dpi none                                                                           \
                     --Mdir $(ver-library) -O3                                                                    \
-                    --exe corev_apu/tb/ariane_tb.cpp corev_apu/tb/dpi/SimDTM.cc corev_apu/tb/dpi/SimJTAG.cc      \
-                    corev_apu/tb/dpi/remote_bitbang.cc corev_apu/tb/dpi/msim_helper.cc
+                    --exe $(sim-c-files)
 
 # User Verilator, at some point in the future this will be auto-generated
 verilate:
