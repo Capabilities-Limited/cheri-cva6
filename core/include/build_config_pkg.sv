@@ -182,6 +182,9 @@ package build_config_pkg;
     cfg.RVFI_DII = bit'(CVA6Cfg.RVFI_DII);
     cfg.DIIIDLEN = 6;
 
+    cfg.DcacheEccEnable = CVA6Cfg.DcacheEccEnable;
+    cfg.DcacheEccScrubberEnable = CVA6Cfg.DcacheEccScrubberEnable;
+
     cfg.DATA_USER_EN = CVA6Cfg.DataUserEn;
     cfg.WtDcacheWbufDepth = CVA6Cfg.WtDcacheWbufDepth;
     cfg.FETCH_USER_WIDTH = CVA6Cfg.FetchUserWidth;

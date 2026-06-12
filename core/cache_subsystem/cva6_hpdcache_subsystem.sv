@@ -227,8 +227,8 @@ module cva6_hpdcache_subsystem
     userCfg.userEn = CVA6Cfg.CheriPresent;
     userCfg.capAmoEn = CVA6Cfg.CheriPresent;
     userCfg.lowLatency = 1'b1;
-    userCfg.eccEn = 1'b0;  /*FIXME add additional CVA6 parameter*/
-    userCfg.eccScrubberEn = 1'b0;  /*FIXME: add additional CVA6 parameter*/
+    userCfg.eccEn = CVA6Cfg.DcacheEccEnable;
+    userCfg.eccScrubberEn = CVA6Cfg.DcacheEccScrubberEnable;
     return userCfg;
   endfunction
 

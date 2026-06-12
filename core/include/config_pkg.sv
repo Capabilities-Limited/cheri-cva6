@@ -217,6 +217,10 @@ package config_pkg;
     bit          DcacheFlushOnFence;
     bit          DcacheFlushOnFenceI;
     bit          DcacheInvalidateOnFlush;
+    // Is Error Detection and Correction enabled in the L1D ?
+    bit          DcacheEccEnable;
+    // Is Error Detection and Correction scrubber integrated in the L1D ?
+    bit          DcacheEccScrubberEnable;
     // User field on data bus enable
     int unsigned DataUserEn;
     // Write-through data cache write buffer depth
@@ -428,6 +432,9 @@ package config_pkg;
     bit DcacheFlushOnFence;
     bit DcacheFlushOnFenceI;
     bit DcacheInvalidateOnFlush;
+
+    bit DcacheEccEnable;
+    bit DcacheEccScrubberEnable;
 
     int unsigned DATA_USER_EN;
     int unsigned WtDcacheWbufDepth;
