@@ -1,0 +1,45 @@
+pipeline {
+    agent {
+        label 'vivado2020.1'
+    }
+
+    environment {
+        RISCV = "${WORKSPACE}/riscv"
+        CROSSCOMPILE = 'riscv64-unknown-elf-'
+    }
+
+    stages {
+        stage('Prepare') {
+            steps {
+                sh 'git clean -xdff'
+                sh 'rm -rf docs/06_cv32a65x_riscv/riscv-isa-manual || true'
+                sh 'git checkout .'
+                copyArtifacts filter: 'riscv-gnu-toolchain.tar.gz', fingerprintArtifacts: true, projectName: '../riscv-gnu-toolchain/label_exp=focal', selector: lastSuccessful()
+                sh 'rm -rf ${RISCV} && mkdir -p ${RISCV}'
+                sh 'tar -xzf riscv-gnu-toolchain.tar.gz -C ${RISCV} && mv ${RISCV}/local/scratch/jenkins/workspace/riscv-gnu-toolchain/label_exp/focal/riscv-gnu-sdk/* ${RISCV}/ && rm -r ${RISCV}/local'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'git submodule update --init --recursive'
+                sh '''
+                      # Vivado's settings64.sh uses source not .
+                      if ! command -v source >/dev/null 2>&1; then
+                          source() {
+                          . "$@"
+                          }
+                      fi
+                      . /local/ecad/xilinx/Vivado/2020.1/settings64.sh
+                      sed "s/\\(ConfigRVZcheri.*\\) = 1/\\1 = 0/" core/include/cv64a6_imafdczcheri_sv39_hpdcache_wb_config_pkg.sv > core/include/cv64a6_imafdczNOcheri_sv39_hpdcache_wb_config_pkg.sv
+                      sed -i -E 's/ConfigDataUserEn = 1/ConfigDataUserEn = 0/' core/include/cv64a6_imafdczNOcheri_sv39_hpdcache_wb_config_pkg.sv
+                      export target="cv64a6_imafdczNOcheri_sv39_hpdcache_wb"
+                      if [ "$flavour" = "CHERI" ]; then
+                        export target="cv64a6_imafdczcheri_sv39_hpdcache_wb"
+                      fi
+                      make fpga
+                   '''
+                archiveArtifacts artifacts: 'corev_apu/fpga/reports/*.rpt, corev_apu/fpga/work-fpga/*.rpt, corev_apu/fpga/work-fpga/*.bit, corev_apu/fpga/work-fpga/*.mcs, corev_apu/fpga/work-fpga/*.ltx', fingerprint: true
+            }
+        }
+    }
+}

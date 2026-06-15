@@ -89,6 +89,9 @@ else ifeq ($(BOARD), nexys_video)
 else
 $(error Unknown board - please specify a supported FPGA board)
 endif
+ifeq ($(VIVADO_EVAL), timing)
+	CLK_PERIOD_NS            := 5
+endif
 
 # spike tandem verification
 ifneq ($(spike-tandem),)
