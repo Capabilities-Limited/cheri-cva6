@@ -79,7 +79,7 @@ module ariane_regfile #(
     end
   end
 
-  for (genvar i = 0; i < NR_READ_PORTS; i++) begin
+  for (genvar i = 0; i < NR_READ_PORTS; i++) begin : gen_read_register
     assign rdata_o[i] = mem[raddr_i[i]];
   end
 
