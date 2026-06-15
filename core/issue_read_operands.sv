@@ -72,6 +72,8 @@ module issue_read_operands
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
     // Last committed pcc change - EX_STAGE
     output logic [CVA6Cfg.PCLEN-1:0] commit_pcc_o,
+    // Instruction DII ID - EX_STAGE
+    output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is zcmt - EX_STAGE
     output logic is_zcmt_o,
     // Is compressed instruction - EX_STAGE
@@ -187,6 +189,7 @@ module issue_read_operands
   logic               [       CVA6Cfg.PCLEN-1:0]                   pc_n;
   logic                                                            is_compressed_instr_n;
   branchpredict_sbe_t                                              branch_predict_n;
+  logic               [    CVA6Cfg.DIIIDLEN-1:0]                   dii_id_n;
   logic               [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.XLEN-1:0] imm_forward_rs3;
 
   logic [CVA6Cfg.NrIssuePorts-1:0] alu_valid_n, alu_valid_q;
@@ -1109,7 +1112,7 @@ module issue_read_operands
         .NR_READ_PORTS(CVA6Cfg.NrRgprPorts),
         .ZERO_REG_ZERO(1),
         .ZERO_VAL     (ariane_pkg::REG_NULL),
-        .INIT_VAL     (ariane_pkg::REG_NULL)
+        .INIT_VAL     (CVA6Cfg.RVFI_DII ? ariane_pkg::REG_ROOT : ariane_pkg::REG_NULL)
     ) i_ariane_regfile (
         .clk_i,
         .rst_ni,
@@ -1218,17 +1221,20 @@ module issue_read_operands
     pc_n = pcc_q;
     is_compressed_instr_n = 1'b0;
     branch_predict_n = {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
+    dii_id_n = dii_id_o;
     if (CVA6Cfg.SuperscalarEn) begin
       if (issue_instr_i[1].fu == CTRL_FLOW) begin
         pc_n = cva6_cheri_pkg::set_cap_reg_address(pcc[1], issue_instr_i[1].pc, pcc_meta);
         is_compressed_instr_n = issue_instr_i[1].is_compressed;
-        branch_predict_n      = issue_instr_i[1].bp;
+        branch_predict_n = issue_instr_i[1].bp;
+        if (CVA6Cfg.RVFI_DII) dii_id_n = issue_instr_i[1].dii_id;
       end
     end
     if (issue_instr_i[0].fu == CTRL_FLOW) begin
       pc_n = cva6_cheri_pkg::set_cap_reg_address(pcc[0], issue_instr_i[0].pc, pcc_meta);
       is_compressed_instr_n = issue_instr_i[0].is_compressed;
-      branch_predict_n      = issue_instr_i[0].bp;
+      branch_predict_n = issue_instr_i[0].bp;
+      if (CVA6Cfg.RVFI_DII) dii_id_n = issue_instr_i[0].dii_id;
     end
     x_transaction_rejected_n = 1'b0;
     if (issue_instr_i[0].fu == CVXIF) begin
@@ -1254,6 +1260,7 @@ module issue_read_operands
       branch_predict_o         <= {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
       x_transaction_rejected_o <= 1'b0;
       alu_bypass_q             <= '0;
+      if (CVA6Cfg.RVFI_DII) dii_id_o <= '0;
     end else begin
       fu_data_q <= fu_data_n;
       alu_bypass_q <= alu_bypass_n;
@@ -1263,6 +1270,7 @@ module issue_read_operands
       pc_o <= pc_n;
       is_compressed_instr_o <= is_compressed_instr_n;
       branch_predict_o <= branch_predict_n;
+      if (CVA6Cfg.RVFI_DII) dii_id_o <= dii_id_n;
       if (CVA6Cfg.CheriPresent) begin
         pcc_q <= pcc_n;
         pcc_jump_change_valid_q <= pcc_jump_change_valid_n;

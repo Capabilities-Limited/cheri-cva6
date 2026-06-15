@@ -107,7 +107,9 @@
   logic [Cfg.NrIssuePorts-1:0][Cfg.XLEN-1:0] rs1; \
   logic [Cfg.NrIssuePorts-1:0][Cfg.XLEN-1:0] rs2; \
   logic [Cfg.NrCommitPorts-1:0][Cfg.VLEN-1:0] commit_instr_pc; \
+  logic [Cfg.NrCommitPorts-1:0][Cfg.VLEN-1:0] commit_instr_next_pc; \
   ariane_pkg::fu_op [Cfg.NrCommitPorts-1:0] commit_instr_op; \
+  ariane_pkg::fu_t [Cfg.NrCommitPorts-1:0] commit_instr_fu; \
   logic [Cfg.NrCommitPorts-1:0][ariane_pkg::REG_ADDR_SIZE-1:0] commit_instr_rs1; \
   logic [Cfg.NrCommitPorts-1:0][ariane_pkg::REG_ADDR_SIZE-1:0] commit_instr_rs2; \
   logic [Cfg.NrCommitPorts-1:0][ariane_pkg::REG_ADDR_SIZE-1:0] commit_instr_rd; \

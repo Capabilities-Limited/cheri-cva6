@@ -36,6 +36,8 @@ module decoder
     input logic debug_req_i,
     // PC from fetch stage - FRONTEND
     input logic [CVA6Cfg.VLEN-1:0] pc_i,
+    // DII ID - FRONTEND
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Is a compressed instruction - compressed_decoder
     input logic is_compressed_i,
     // Compressed form of instruction - FRONTEND
@@ -208,6 +210,7 @@ module decoder
     instruction_o.bp                       = branch_predict_i;
     instruction_o.vfp                      = 1'b0;
     instruction_o.is_zcmt                  = is_zcmt_i;
+    if (CVA6Cfg.RVFI_DII) instruction_o.dii_id = dii_id_i;
     if (CVA6Cfg.CheriPresent) begin
       instruction_o.use_ddc  = 1'b0;
       instruction_o.int_mode = int_mode_i;

@@ -350,6 +350,7 @@ module id_stage #(
         .irq_ctrl_i,
         .irq_i,
         .pc_i                      (fetch_entry_i[i].address),
+        .dii_id_i                  (fetch_entry_i[i].dii_id),
         .int_mode_i                ((CVA6Cfg.CheriPresent) ? int_mode_prev[i] : 1'b0),
         .is_compressed_i           (is_compressed_deco[i]),
         .is_macro_instr_i          (is_macro_instr[i]),

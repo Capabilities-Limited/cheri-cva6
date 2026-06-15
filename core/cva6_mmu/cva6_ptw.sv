@@ -631,7 +631,9 @@ module cva6_ptw
           end
 
           // check if this access was actually allowed from a PMP perspective
-          if (!allow_access) begin
+          if ((!allow_access && !CVA6Cfg.RVFI_DII) || (CVA6Cfg.RVFI_DII && !config_pkg::range_check(
+                  64'h8000_0000, 64'h000800000, ptw_pptr_q
+              ))) begin
             shared_tlb_update_valid = 1'b0;
             // we have to return the failed address in bad_addr
             ptw_pptr_n = ptw_pptr_q;

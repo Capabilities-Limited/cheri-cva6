@@ -54,6 +54,8 @@ module ex_stage
     input alu_bypass_t alu_bypass_i,
     // PC of the current instruction - ISSUE_STAGE
     input logic [CVA6Cfg.PCLEN-1:0] pc_i,
+    // DII ID of the current instruction - ISSUE_STAGE
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Is_zcmt instruction - ISSUE_STAGE
     input logic is_zcmt_i,
     // DDC of the current instruction - ISSUE_STAGE
@@ -363,6 +365,7 @@ module ex_stage
       .debug_mode_i,
       .fu_data_i         (one_cycle_data),
       .pc_i,
+      .dii_id_i,
       .is_zcmt_i,
       .is_compressed_instr_i,
       .branch_valid_i    (|branch_valid_i),

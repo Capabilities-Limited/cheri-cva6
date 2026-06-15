@@ -146,7 +146,8 @@ localparam config_pkg::cva6_user_cfg_t cva6_cfg = '{
    NrLoadPipeRegs: int'(0),
    NrStorePipeRegs: int'(0),
    DcacheIdWidth: int'(3),
-   CheriCapTagWidth : int'(1)
+   CheriCapTagWidth : int'(1),
+   RVFI_DII: int'(0)
 };
 
 endpackage

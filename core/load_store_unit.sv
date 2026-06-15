@@ -433,6 +433,28 @@ module load_store_unit
       .pmpaddr_i           (pmpaddr_i)
   );
 
+  if (CVA6Cfg.RVFI_DII) begin
+    always_comb begin : rvfi_range_check
+      automatic
+      logic [63:0]
+      check_address = {
+        {64 - CVA6Cfg.PLEN{lsu_paddr[CVA6Cfg.PLEN-1]}}, lsu_paddr
+      };
+      automatic
+      logic
+      rvfi_addr_allowed = config_pkg::range_check(
+          64'h8000_0000, 64'h000800000, check_address
+      ) && tval_vaddr[CVA6Cfg.XLEN-1:CVA6Cfg.PLEN] == '0;
+      automatic exception_t rvfi_exception = '0;
+      rvfi_exception.cause = (st_valid && !st_is_actually_lr) ? riscv::ST_ACCESS_FAULT : riscv::LD_ACCESS_FAULT;
+      rvfi_exception.valid = pmp_translation_valid;
+      if (CVA6Cfg.TvalEn) rvfi_exception.tval = tval_vaddr;
+      lsu_exception = (rvfi_addr_allowed || mmu_exception.valid) ? mmu_exception : rvfi_exception;
+    end
+  end else begin
+    assign lsu_exception = pmp_exception;
+  end
+
   // ------------------
   // External MMU port
   // ------------------

@@ -1228,7 +1228,7 @@ module csr_regfile
     // boot_addr_i will be assigned a constant
     // on the top-level.
     if (mtvec_rst_load_q) begin
-      mtvec_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, boot_addr_i[CVA6Cfg.VLEN-1:0]} + 'h40;
+      mtvec_d = (CVA6Cfg.RVFI_DII) ? '0 : {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, boot_addr_i[CVA6Cfg.VLEN-1:0]} + 'h40;
     end else begin
       mtvec_d = mtvec_q;
     end
@@ -1316,7 +1316,11 @@ module csr_regfile
     end
 
     if (mtvec_rst_load_q) begin
-      mtvec_d = set_cap_reg_addr(boot_addr_i, reg_to_x(boot_addr_i) + 'h40);
+      if (CVA6Cfg.RVFI_DII) begin
+        mtvec_d = REG_ROOT;
+      end else begin
+        mtvec_d = set_cap_reg_addr(boot_addr_i, reg_to_x(boot_addr_i) + 'h40);
+      end
     end else begin
       mtvec_d = mtvec_q;
     end
