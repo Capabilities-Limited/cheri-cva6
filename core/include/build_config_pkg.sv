@@ -185,7 +185,7 @@ package build_config_pkg;
 
     cfg.FETCH_WIDTH = unsigned'(CVA6Cfg.SuperscalarEn ? 64 : 32);
     cfg.FETCH_ALIGN_BITS = $clog2(cfg.FETCH_WIDTH / 8);
-    cfg.INSTR_PER_FETCH = cfg.FETCH_WIDTH / ((CVA6Cfg.RVC) ? 16 : 32);
+    cfg.INSTR_PER_FETCH = cfg.FETCH_WIDTH / (CVA6Cfg.RVC ? 16 : 32);
     cfg.LOG2_INSTR_PER_FETCH = cfg.INSTR_PER_FETCH > 1 ? $clog2(cfg.INSTR_PER_FETCH) : 1;
 
     cfg.ModeW = (CVA6Cfg.XLEN == 32) ? 1 : 4;
