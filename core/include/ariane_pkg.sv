@@ -758,7 +758,6 @@ package ariane_pkg;
   // as request goes high.
   // Furthermore, those signals are kept stable until the response indicates
   // completion by asserting ack.
-  // TODO: fix this
   typedef struct packed {
     logic            req;        // this request is valid
     amo_t            amo_op;     // atomic memory operation to perform
@@ -769,7 +768,6 @@ package ariane_pkg;
   } amo_req_t;
 
   // AMO response coming from cache.
-  // TODO: fix this
   typedef struct packed {
     logic            ack;      // response is valid
     logic [CLEN-1:0] result;   // sign-extended, result
