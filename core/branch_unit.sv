@@ -150,7 +150,7 @@ module branch_unit #(
     end
     resolved_branch_o.pc = pc_i[CVA6Cfg.VLEN-1:0];
     if (CVA6Cfg.RVFI_DII) resolved_branch_o.dii_id = dii_id_i;
-    // There are only two sources of mispredicts:
+    // There are only three sources of mispredicts:
     // 1. Branches
     // 2. Jumps to register addresses
     // 3. Zcmt instructions
