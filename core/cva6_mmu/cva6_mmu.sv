@@ -151,7 +151,6 @@ module cva6_mmu
   logic [1:0] ptw_cheri_error;  // PTW threw a CHERI exception
   logic ptw_error_at_g_st;  // PTW threw an exception at the G-Stage
   logic ptw_err_at_g_int_st;  // PTW threw an exception at the G-Stage during S-Stage translation
-
   logic ptw_access_exception;  // PTW threw an access exception (PMPs)
   logic [CVA6Cfg.PLEN-1:0] ptw_bad_paddr;  // PTW page fault bad physical addr
   logic [CVA6Cfg.GPLEN-1:0] ptw_bad_gpaddr;  // PTW guest page fault bad guest physical addr
@@ -522,6 +521,7 @@ module cva6_mmu
 
   // check if we need to do translation or if we are always ready (e.g.: we are not translating anything)
   assign lsu_dtlb_hit_o = (en_ld_st_translation_i || en_ld_st_g_translation_i) ? dtlb_lu_hit : 1'b1;
+
 
   // The data interface is simpler and only consists of a request/response interface
   always_comb begin : data_interface

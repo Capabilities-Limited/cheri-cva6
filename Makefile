@@ -258,7 +258,6 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_top.sv \
         vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_reg_wrap.sv \
         corev_apu/tb/ariane_testharness.sv                                           \
-        corev_apu/tb/cva6_cheri_tag_mem.sv                                           \
         corev_apu/tb/ariane_peripherals.sv                                           \
         corev_apu/tb/rvfi_tracer.sv                                                  \
         corev_apu/tb/common/uart.sv                                                  \

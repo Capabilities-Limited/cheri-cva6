@@ -400,6 +400,7 @@ module load_store_unit
     assign dtlb_miss_o                         = 1'b0;
     assign dtlb_ppn                            = lsu_paddr[CVA6Cfg.PLEN-1:12];
     assign dtlb_hit                            = 1'b1;
+
   end
 
   // ------------------
