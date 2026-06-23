@@ -362,7 +362,7 @@ module issue_stage
       .we_fpr_i,
       .pcc_commit_i            (pc_commit_o),
       .set_pc_commit_i,
-      .commit_valid_i          (commit_instr_o[0].valid),
+      .commit_valid_i          (commit_ack_i[0] & !commit_drop_o[0]),
       .pcc_gen_commit_i        (commit_instr_o[0].pcc_gen),
       .ex_valid_i,
       .resolved_branch_i,
