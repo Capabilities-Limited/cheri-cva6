@@ -58,8 +58,6 @@ module commit_stage
     output logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_o,
     // Result of AMO operation - CACHE
     input amo_resp_t amo_resp_i,
-    // PCC to be written on flush - FRONTEND_CSR_REGFILE_ISSUE_STAGE
-    output logic [CVA6Cfg.VLEN-1:0] pc_o,
     // Last committed DII ID - FRONTEND
     output logic [CVA6Cfg.DIIIDLEN-1 : 0] dii_id_o,
     // Decoded CSR operation - CSR_REGFILE
@@ -119,8 +117,6 @@ module commit_stage
   for (genvar i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin : gen_waddr
     assign waddr_o[i] = commit_instr_i[i].rd;
   end
-
-  assign pc_o = commit_instr_i[0].pc;
 
   if (CVA6Cfg.RVFI_DII) assign dii_id_o = commit_instr_i[0].dii_id;
   // Dirty the FP state if we are committing anything related to the FPU
