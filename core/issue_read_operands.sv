@@ -759,7 +759,7 @@ module issue_read_operands
       if (eret_i) pcc_n = {2{epc_i}};
       else if (set_pc_commit_i) pcc_n = {2{pcc_commit_i}};
       else if (ex_valid_i) pcc_n = {2{trap_vector_base_i}};
-      else if (resolved_branch_i.valid && resolved_branch_i.cf_type inside {ariane_pkg::JumpR, ariane_pkg::Return}) begin
+      else if (resolved_branch_i.valid) begin
         pcc_n[resolved_branch_i.pcc_gen] = resolved_branch_i.target_address;
       end
 
