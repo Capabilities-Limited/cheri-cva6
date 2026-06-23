@@ -221,16 +221,17 @@ module issue_stage
   exception_t [1:0] pcc_ex;
   always_comb begin
     for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-      pcc_ex[i] = check_pcc_exceptions(commit_instr[i], pccs[commit_instr[i].pcc_gen], debug_mode_i);
+      pcc_ex[i] =
+          check_pcc_exceptions(commit_instr[i], pccs[commit_instr[i].pcc_gen], debug_mode_i);
       commit_instr_o[i] = commit_instr[i];
       if (pcc_ex[i].valid) commit_instr_o[i].ex = pcc_ex[i];
     end
   end
   assign pc_commit_o = cva6_cheri_pkg::set_cap_reg_flags(
-    cva6_cheri_pkg::set_cap_reg_addr(
-      pccs[commit_instr_o[0].pcc_gen], commit_instr_o[0].pc
-    ),
-    commit_instr_o[0].int_mode
+      cva6_cheri_pkg::set_cap_reg_addr(
+          pccs[commit_instr_o[0].pcc_gen], commit_instr_o[0].pc
+      ),
+      commit_instr_o[0].int_mode
   );
 
   logic x_transaction_accepted_iro_sb, x_issue_writeback_iro_sb;
@@ -377,11 +378,8 @@ module issue_stage
 
 
   // Check for Program Counter Capability (PCC) exceptions
-  function automatic exception_t check_pcc_exceptions (
-      input scoreboard_entry_t instr,
-      input cva6_cheri_pkg::cap_reg_t pcc,
-      input logic debug_mode
-  );
+  function automatic exception_t check_pcc_exceptions(
+      input scoreboard_entry_t instr, input cva6_cheri_pkg::cap_reg_t pcc, input logic debug_mode);
     automatic exception_t pcc_ex;
 
     automatic cva6_cheri_pkg::cap_meta_data_t pcc_meta;
@@ -396,9 +394,8 @@ module issue_stage
     // Extract PCC metadata
     pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc);
     pcc_base = cva6_cheri_pkg::get_cap_reg_base(pcc, pcc_meta);
-    pcc_top  = cva6_cheri_pkg::get_cap_reg_top(pcc, pcc_meta);
-    pcc_bounds_root =
-        cva6_cheri_pkg::are_cap_reg_bounds_root(pcc, pcc_meta);
+    pcc_top = cva6_cheri_pkg::get_cap_reg_top(pcc, pcc_meta);
+    pcc_bounds_root = cva6_cheri_pkg::are_cap_reg_bounds_root(pcc, pcc_meta);
     pcc_ex = '0;
     cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
     // Calculate next PC
@@ -406,8 +403,7 @@ module issue_stage
         (instr.is_compressed)
             ? {{CVA6Cfg.VLEN-2{1'b0}}, 2'h2}
             : {{CVA6Cfg.VLEN-3{1'b0}}, 3'h4};
-    {next_pc_carry, next_pc_addr} =
-        {1'b0, instr.pc} + {1'b0, next_pc_off};
+    {next_pc_carry, next_pc_addr} = {1'b0, instr.pc} + {1'b0, next_pc_off};
 
     // Bounds check
     if ((cva6_cheri_pkg::addrw_t'(signed'(instr.pc)) < pcc_base) ||
@@ -415,8 +411,7 @@ module issue_stage
         (next_pc_carry && !pcc_bounds_root)) begin
 
       pcc_ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-      cheri_tval2.fault_cause =
-          cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
+      cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
       pcc_ex.tval2 = cheri_tval2;
       pcc_ex.valid = 1'b1;
     end
@@ -424,8 +419,7 @@ module issue_stage
     // ASR permission check
     if (instr.needs_asr && !pcc.hperms.access_sys_regs) begin
       pcc_ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-      cheri_tval2.fault_cause =
-          cva6_cheri_pkg::CAP_PERM_VIOLATION;
+      cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
       pcc_ex.tval2 = cheri_tval2;
       pcc_ex.valid = 1'b1;
     end
@@ -433,19 +427,16 @@ module issue_stage
     // Execute permission check
     if (!pcc.hperms.permit_execute) begin
       pcc_ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-      cheri_tval2.fault_cause =
-          cva6_cheri_pkg::CAP_PERM_VIOLATION;
+      cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
       pcc_ex.tval2 = cheri_tval2;
       pcc_ex.valid = 1'b1;
     end
 
     // Seal violation
-    if ((pcc.otype != cva6_cheri_pkg::UNSEALED_CAP) &&
-        pcc.tag) begin
+    if ((pcc.otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc.tag) begin
 
       pcc_ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-      cheri_tval2.fault_cause =
-          cva6_cheri_pkg::CAP_SEAL_VIOLATION;
+      cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
       pcc_ex.tval2 = cheri_tval2;
       pcc_ex.valid = 1'b1;
     end
@@ -453,15 +444,13 @@ module issue_stage
     // Tag violation
     if (!pcc.tag) begin
       pcc_ex.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-      cheri_tval2.fault_cause =
-          cva6_cheri_pkg::CAP_TAG_VIOLATION;
+      cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
       pcc_ex.tval2 = cheri_tval2;
       pcc_ex.valid = 1'b1;
     end
 
     // Disable exceptions for invalid/debug instructions
-    if (!instr.valid || debug_mode)
-      pcc_ex.valid = 1'b0;
+    if (!instr.valid || debug_mode) pcc_ex.valid = 1'b0;
 
     return pcc_ex;
   endfunction
