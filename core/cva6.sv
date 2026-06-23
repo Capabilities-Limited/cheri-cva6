@@ -149,7 +149,7 @@ module cva6
       logic [CVA6Cfg.PCLEN-1:0] target_address;  // target address at which to jump, or not
       logic is_mispredict;  // set if this was a mis-predict
       logic is_taken;  // branch is taken
-      logic pcc_gen;  // with CHERI: set if the branch changes PCC metadata
+      logic pcc_gen;  // with CHERI: target PCC generation of branch
       cf_t cf_type;  // Type of control flow change
     },
 
@@ -563,10 +563,6 @@ module cva6
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_drop_id_commit;
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_commit_id;
 
-  // --------------
-  // ISSUE <-> COMMIT
-  // --------------
-  logic [1:0][CVA6Cfg.PCLEN-1:0] commit_pcc;
   // --------------
   // RVFI
   // --------------
@@ -1189,7 +1185,6 @@ module cva6
       .we_gpr_o              (we_gpr_commit_id),
       .we_fpr_o              (we_fpr_commit_id),
       .amo_resp_i            (amo_resp),
-      .pc_o                  (),
       .dii_id_o              (dii_id_commit),
       .csr_op_o              (csr_op_commit_csr),
       .csr_op_is_imm_o       (csr_op_is_imm_commit_csr),

@@ -1221,7 +1221,7 @@ module issue_read_operands
       end
       if (CVA6Cfg.CheriPresent) begin
         pcc_q <= pcc_n;
-        pcc_gen_q <= (resolved_branch_i.is_mispredict) ? resolved_branch_i.pcc_gen:pcc_gen_n[CVA6Cfg.NrIssuePorts];
+        pcc_gen_q <= (resolved_branch_i.is_mispredict) ? resolved_branch_i.pcc_gen : pcc_gen_n[CVA6Cfg.NrIssuePorts];
         pcc_changing_q <= pcc_changing_n;
       end
       pc_o <= pc_n;

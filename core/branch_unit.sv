@@ -108,11 +108,9 @@ module branch_unit #(
     resolved_branch_o.pcc_gen = fu_data_i.pcc_gen;
     // calculate target address simple 64 bit addition
     target_address = $unsigned($signed(jump_base) + $signed(fu_data_i.imm[CVA6Cfg.VLEN-1:0]));
-    if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) begin
-      target_address[0] = 1'b0;
-    end
-    if (fu_data_i.operation inside {ariane_pkg::CJALR})
-      resolved_branch_o.pcc_gen = ~fu_data_i.pcc_gen;
+    // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
+    if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}) target_address[0] = 1'b0;
+    if (fu_data_i.operation inside {ariane_pkg::CJALR}) resolved_branch_o.pcc_gen = ~fu_data_i.pcc_gen;
     if (CVA6Cfg.CheriPresent) begin
       target_address = cva6_cheri_pkg::set_cap_reg_address(
         jump_base_cap,
@@ -120,7 +118,6 @@ module branch_unit #(
         cva6_cheri_pkg::get_cap_reg_meta_data(
           jump_base_cap)
       );
-      // on a JALR we are supposed to reset the LSB to 0 (according to the specification)
       if (fu_data_i.operation inside {ariane_pkg::CJAL, ariane_pkg::CJALR}) begin
         branch_result_o = cva6_cheri_pkg::set_cap_reg_otype(next_pc, cva6_cheri_pkg::SENTRY_CAP);
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
@@ -150,7 +147,7 @@ module branch_unit #(
       if (CVA6Cfg.RVZCMT) begin
         if (is_zcmt_i) begin
           // Unconditional jump handling
-          resolved_branch_o.is_mispredict = 1'b1;  // miss prediction for ZCMT
+          resolved_branch_o.is_mispredict = 1'b1;  // miss prediction for ZCMT 
           resolved_branch_o.cf_type = ariane_pkg::JumpR;
         end
       end
