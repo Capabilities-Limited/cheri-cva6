@@ -119,7 +119,7 @@ module cva6
       logic use_pc;  // set if we need to use the PC as operand a, PC from exception
       logic use_ddc;  // use DDC as the default cap for load and stores
       logic int_mode; // Instruction was decoded in integer decoding mode (as opposed to capability mode)
-      logic pcc_gen; // Which forwarded PCC bounds to read in the backend.
+      logic pcc_gen;  // Which forwarded PCC bounds to read in the backend.
       exception_t ex;  // exception has occurred
       branchpredict_sbe_t bp;  // branch predict scoreboard data structure
       logic                     is_compressed; // signals a compressed instructions, we need this information at the commit stage if
@@ -187,17 +187,17 @@ module cva6
     },
 
     localparam type fu_data_t = struct packed {
-      fu_t                              fu;
-      fu_op                             operation;
-      logic [CVA6Cfg.REGLEN-1:0]        operand_a;
-      logic [CVA6Cfg.REGLEN-1:0]        operand_b;
-      logic [CVA6Cfg.XLEN-1:0]          imm;
-      logic [REG_ADDR_SIZE-1:0]         rs1;
-      logic [REG_ADDR_SIZE-1:0]         rs2;
+      fu_t fu;
+      fu_op operation;
+      logic [CVA6Cfg.REGLEN-1:0] operand_a;
+      logic [CVA6Cfg.REGLEN-1:0] operand_b;
+      logic [CVA6Cfg.XLEN-1:0] imm;
+      logic [REG_ADDR_SIZE-1:0] rs1;
+      logic [REG_ADDR_SIZE-1:0] rs2;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;
-      logic                             use_ddc;
-      logic                             pcc_gen;          // generation of pcc for this prediction
-      logic [5:0]                       orig_instr_aes_bits;
+      logic use_ddc;
+      logic pcc_gen;  // generation of pcc for this prediction
+      logic [5:0] orig_instr_aes_bits;
     },
 
     localparam type icache_req_t = struct packed {

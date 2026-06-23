@@ -190,7 +190,7 @@ module issue_read_operands
   rs3_len_t operand_c_fpr;
   // output flipflop (ID <-> EX)
   fu_data_t [CVA6Cfg.NrIssuePorts-1:0] fu_data_n, fu_data_q;
-  logic               [CVA6Cfg.PCLEN-1:0]                          pc_n;
+  logic               [       CVA6Cfg.PCLEN-1:0]                   pc_n;
   logic                                                            is_compressed_instr_n;
   branchpredict_sbe_t                                              branch_predict_n;
   logic               [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.XLEN-1:0] imm_forward_rs3;
@@ -372,7 +372,7 @@ module issue_read_operands
     assign use_alu2 = '0;
   end
 
-  assign int_mode_o   = cva6_cheri_pkg::get_cap_reg_flags(pcc_q[pcc_gen_q]);
+  assign int_mode_o = cva6_cheri_pkg::get_cap_reg_flags(pcc_q[pcc_gen_q]);
   assign pccs_o = pcc_q;
   // ---------------
   // Issue Stage
@@ -767,7 +767,8 @@ module issue_read_operands
       // If the backend is empty or we're committing the current generation, reset pcc_changing_g.
       pcc_changing_n = pcc_changing_q;
       if (pcc_gen_q != pcc_gen_n[CVA6Cfg.NrIssuePorts]) pcc_changing_n = 1;
-      else if (((pcc_gen_commit_i == pcc_gen_q) && commit_valid_i) | backend_empty_i) pcc_changing_n = 0;
+      else if (((pcc_gen_commit_i == pcc_gen_q) && commit_valid_i) | backend_empty_i)
+        pcc_changing_n = 0;
     end
   end
 
@@ -1170,8 +1171,8 @@ module issue_read_operands
           // Unsafe, but this instruction will not commit if its PC is out-of-bounds
           pc_out = cva6_cheri_pkg::set_cap_reg_addr(pc_out, issue_instr_i[1].pc);
           pc_out = cva6_cheri_pkg::set_cap_reg_flags(pc_out, issue_instr_i[1].int_mode);
-          pc_n = pc_out;
-        end else pc_n         = issue_instr_i[1].pc;
+          pc_n   = pc_out;
+        end else pc_n = issue_instr_i[1].pc;
         is_compressed_instr_n = issue_instr_i[1].is_compressed;
         branch_predict_n      = issue_instr_i[1].bp;
       end
@@ -1182,8 +1183,8 @@ module issue_read_operands
         // Unsafe, but this instruction will not commit if its PC is out-of-bounds
         pc_out = cva6_cheri_pkg::set_cap_reg_addr(pc_out, issue_instr_i[0].pc);
         pc_out = cva6_cheri_pkg::set_cap_reg_flags(pc_out, issue_instr_i[0].int_mode);
-        pc_n = pc_out;
-      end else pc_n         = issue_instr_i[0].pc;
+        pc_n   = pc_out;
+      end else pc_n = issue_instr_i[0].pc;
       is_compressed_instr_n = issue_instr_i[0].is_compressed;
       branch_predict_n      = issue_instr_i[0].bp;
     end
@@ -1203,8 +1204,8 @@ module issue_read_operands
       end
       pc_o <= '0;
       if (CVA6Cfg.CheriPresent) begin
-        pcc_q[0] <= REG_ROOT;
-        pcc_q[1] <= REG_ROOT; // Should not be depended upon.
+        pcc_q[0]  <= REG_ROOT;
+        pcc_q[1]  <= REG_ROOT;  // Should not be depended upon.
         pcc_gen_q <= 0;
       end
       is_zcmt_o                <= '0;
