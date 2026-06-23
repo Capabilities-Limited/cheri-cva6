@@ -348,7 +348,7 @@ module issue_read_operands
   // If there is a CJALR, it will flip the pcc_gen for the following instructions in the bundle.
   assign pcc_gen_n[0] = pcc_gen_q;
   for (genvar i = 1; i <= CVA6Cfg.NrIssuePorts; i++) begin
-    assign pcc_gen_n[i] = (issue_ack[i-1] && issue_instr_i[i-1].op inside {ariane_pkg::CJALR}) ? !pcc_gen_n[i-1] : pcc_gen_n[i-1];
+    assign pcc_gen_n[i] = (issue_ack_o[i-1] && issue_instr_i[i-1].op inside {ariane_pkg::CJALR}) ? !pcc_gen_n[i-1] : pcc_gen_n[i-1];
   end
   assign issue_pcc_gen_o = pcc_gen_n[CVA6Cfg.NrIssuePorts-1:0];
 
