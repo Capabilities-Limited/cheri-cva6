@@ -218,21 +218,28 @@ module issue_stage
   assign issue_instr_o = issue_instr_sb_iro;
   logic [1:0][CVA6Cfg.REGLEN-1:0] pccs;
   scoreboard_entry_t [CVA6Cfg.NrCommitPorts-1:0] commit_instr;
-  exception_t [1:0] pcc_ex;
+  exception_t [CVA6Cfg.NrCommitPorts-1:0] pcc_ex;
   always_comb begin
-    for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-      pcc_ex[i] =
-          check_pcc_exceptions(commit_instr[i], pccs[commit_instr[i].pcc_gen], debug_mode_i);
-      commit_instr_o[i] = commit_instr[i];
-      if (pcc_ex[i].valid) commit_instr_o[i].ex = pcc_ex[i];
+    if (CVA6Cfg.CheriPresent) begin
+      for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
+        pcc_ex[i] =
+            check_pcc_exceptions(commit_instr[i], pccs[commit_instr[i].pcc_gen], debug_mode_i);
+        commit_instr_o[i] = commit_instr[i];
+        if (pcc_ex[i].valid) commit_instr_o[i].ex = pcc_ex[i];
+      end
+      pc_commit_o = cva6_cheri_pkg::set_cap_reg_flags(
+        cva6_cheri_pkg::set_cap_reg_addr(
+          pccs[commit_instr_o[0].pcc_gen], commit_instr_o[0].pc
+        ),
+        commit_instr_o[0].int_mode
+      );
+    end else begin
+      pcc_ex = '0;
+      commit_instr_o = commit_instr;
+      pc_commit_o = commit_instr_o[0].pc;
     end
   end
-  assign pc_commit_o = cva6_cheri_pkg::set_cap_reg_flags(
-      cva6_cheri_pkg::set_cap_reg_addr(
-          pccs[commit_instr_o[0].pcc_gen], commit_instr_o[0].pc
-      ),
-      commit_instr_o[0].int_mode
-  );
+
 
   logic x_transaction_accepted_iro_sb, x_issue_writeback_iro_sb;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] x_id_iro_sb;
