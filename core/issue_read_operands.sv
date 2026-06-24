@@ -193,6 +193,7 @@ module issue_read_operands
   logic               [       CVA6Cfg.PCLEN-1:0]                   pc_n;
   logic                                                            is_compressed_instr_n;
   branchpredict_sbe_t                                              branch_predict_n;
+  logic                                                            is_zcmt_n;
   logic               [    CVA6Cfg.DIIIDLEN-1:0]                   dii_id_n;
   logic               [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.XLEN-1:0] imm_forward_rs3;
 
@@ -1160,9 +1161,11 @@ module issue_read_operands
   // ----------------------
 
   always_comb begin
-    pc_n = pcc_q;
+    pc_n = '0;
     is_compressed_instr_n = 1'b0;
     branch_predict_n = {cf_t'(0), {CVA6Cfg.VLEN{1'b0}}};
+    is_zcmt_n = 1'b0;
+    if (CVA6Cfg.RVFI_DII) dii_id_n = '0;
     if (CVA6Cfg.SuperscalarEn) begin
       if (issue_instr_i[1].fu == CTRL_FLOW) begin
         if (CVA6Cfg.CheriPresent) begin
@@ -1187,6 +1190,7 @@ module issue_read_operands
       end else pc_n = issue_instr_i[0].pc;
       is_compressed_instr_n = issue_instr_i[0].is_compressed;
       branch_predict_n = issue_instr_i[0].bp;
+      is_zcmt_n = issue_instr_i[0].is_zcmt;
       if (CVA6Cfg.RVFI_DII) dii_id_n = issue_instr_i[0].dii_id;
     end
     x_transaction_rejected_n = 1'b0;
@@ -1230,19 +1234,7 @@ module issue_read_operands
         pcc_gen_q <= (resolved_branch_i.is_mispredict) ? resolved_branch_i.pcc_gen : pcc_gen_n[CVA6Cfg.NrIssuePorts];
         pcc_changing_q <= pcc_changing_n;
       end
-      pc_o <= pc_n;
-      is_compressed_instr_o <= is_compressed_instr_n;
-      branch_predict_o <= branch_predict_n;
-      if (CVA6Cfg.SuperscalarEn) begin
-        if (issue_instr_i[1].fu == CTRL_FLOW) begin
-          if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[1].dii_id;
-        end
-      end
-      if (issue_instr_i[0].fu == CTRL_FLOW) begin
-        if (CVA6Cfg.RVFI_DII) dii_id_o <= issue_instr_i[0].dii_id;
-        if (CVA6Cfg.RVZCMT) is_zcmt_o <= issue_instr_i[0].is_zcmt;
-        else is_zcmt_o <= '0;
-      end
+      is_zcmt_o <= is_zcmt_n;
       x_transaction_rejected_o <= x_transaction_rejected_n;
     end
   end
