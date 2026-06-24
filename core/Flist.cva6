@@ -161,6 +161,7 @@ ${CVA6_REPO_DIR}/core/lsu_bypass.sv
 ${CVA6_REPO_DIR}/core/mult.sv
 ${CVA6_REPO_DIR}/core/multiplier.sv
 ${CVA6_REPO_DIR}/core/cheri_unit.sv
+${CVA6_REPO_DIR}/core/cheri_pcc_check.sv
 ${CVA6_REPO_DIR}/core/serdiv.sv
 ${CVA6_REPO_DIR}/core/perf_counters.sv
 ${CVA6_REPO_DIR}/core/ariane_regfile_ff.sv
