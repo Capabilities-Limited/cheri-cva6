@@ -13,6 +13,7 @@ module hpdcache_sram_wbyteenable_1rw
     parameter int unsigned ADDR_SIZE = 0,
     parameter int unsigned DATA_SIZE = 0,
     parameter int unsigned DEPTH = 2**ADDR_SIZE,
+    parameter int unsigned ATOM_SIZE = DATA_SIZE >= 8 ? 8 : DATA_SIZE,
     parameter int unsigned NDATA = 1
 )
 (
@@ -22,11 +23,11 @@ module hpdcache_sram_wbyteenable_1rw
     input  logic                              we,
     input  logic [ADDR_SIZE-1:0]              addr,
     input  logic [NDATA-1:0][DATA_SIZE-1:0]   wdata,
-    input  logic [NDATA-1:0][DATA_SIZE/8-1:0] wbyteenable,
+    input  logic [NDATA-1:0][(DATA_SIZE+ATOM_SIZE-1)/ATOM_SIZE-1:0] wbyteenable,
     output logic [NDATA-1:0][DATA_SIZE-1:0]   rdata
 );
 
-if (NDATA*DATA_SIZE == 128) begin
+if (ATOM_SIZE == 8 && NDATA*DATA_SIZE == 128) begin
     // split in two 64-bits wide SRAMs
     logic [127:0] __wdata;
     logic [127:0] __rdata;
@@ -69,7 +70,7 @@ if (NDATA*DATA_SIZE == 128) begin
 
     assign rdata = __rdata;
 
-end else if (NDATA*DATA_SIZE == 64) begin
+end else if (ATOM_SIZE == 8 && NDATA*DATA_SIZE == 64) begin
     SyncSpRamBeNx64 #(
       .ADDR_WIDTH(ADDR_SIZE),
       .DATA_DEPTH(DEPTH), // usually 2**ADDR_WIDTH, but can be lower
@@ -87,7 +88,7 @@ end else if (NDATA*DATA_SIZE == 64) begin
       .WrData_DI(wdata),
       .RdData_DO(rdata)
     );
-end else if (NDATA*DATA_SIZE == 32) begin
+end else if (ATOM_SIZE == 8 && NDATA*DATA_SIZE == 32) begin
     SyncSpRamBeNx32 #(
       .ADDR_WIDTH(ADDR_SIZE),
       .DATA_DEPTH(DEPTH), // usually 2**ADDR_WIDTH, but can be lower
@@ -106,9 +107,22 @@ end else if (NDATA*DATA_SIZE == 32) begin
       .RdData_DO(rdata)
     );
 
+end else if (ATOM_SIZE == NDATA*DATA_SIZE) begin
+    SyncSpRam #(
+      .ADDR_WIDTH (ADDR_SIZE),
+      .DATA_DEPTH (DEPTH),
+      .DATA_WIDTH (NDATA*DATA_SIZE)
+    )SyncSpRam_i(
+      .Clk_CI   (clk),
+      .Rst_RBI  (rst_n),
+      .CSel_SI  (cs),
+      .WrEn_SI  (we&wbyteenable),
+      .Addr_DI  (addr),
+      .WrData_DI(wdata),
+      .RdData_DO(rdata)
+    );
 end else begin
-   $fatal(1, "DATASIZE=%d, in not supported", NDATA*DATA_SIZE);
+    $fatal(1, "DATASIZE=%d, in not supported", NDATA*DATA_SIZE);
 end
-
 
 endmodule : hpdcache_sram_wbyteenable_1rw
