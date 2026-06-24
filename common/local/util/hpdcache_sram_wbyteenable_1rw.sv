@@ -13,6 +13,7 @@ module hpdcache_sram_wbyteenable_1rw
     parameter int unsigned ADDR_SIZE = 0,
     parameter int unsigned DATA_SIZE = 0,
     parameter int unsigned DEPTH = 2**ADDR_SIZE,
+    parameter int unsigned ATOM_SIZE = DATA_SIZE >= 8 ? 8 : DATA_SIZE,
     parameter int unsigned NDATA = 1
 )
 (
@@ -22,11 +23,11 @@ module hpdcache_sram_wbyteenable_1rw
     input  logic                              we,
     input  logic [ADDR_SIZE-1:0]              addr,
     input  logic [NDATA-1:0][DATA_SIZE-1:0]   wdata,
-    input  logic [NDATA-1:0][DATA_SIZE/8-1:0] wbyteenable,
+    input  logic [NDATA-1:0][(DATA_SIZE+ATOM_SIZE-1)/ATOM_SIZE-1:0] wbyteenable,
     output logic [NDATA-1:0][DATA_SIZE-1:0]   rdata
 );
 
-if (NDATA*DATA_SIZE == 128) begin
+if (ATOM_SIZE == 8 && NDATA*DATA_SIZE == 128) begin
     // split in two 64-bits wide SRAMs
     logic [127:0] __wdata;
     logic [127:0] __rdata;
@@ -69,7 +70,7 @@ if (NDATA*DATA_SIZE == 128) begin
 
     assign rdata = __rdata;
 
-end else if (NDATA*DATA_SIZE == 64) begin
+end else if (ATOM_SIZE == 8 && NDATA*DATA_SIZE == 64) begin
     SyncSpRamBeNx64 #(
       .ADDR_WIDTH(ADDR_SIZE),
       .DATA_DEPTH(DEPTH), // usually 2**ADDR_WIDTH, but can be lower
@@ -87,7 +88,7 @@ end else if (NDATA*DATA_SIZE == 64) begin
       .WrData_DI(wdata),
       .RdData_DO(rdata)
     );
-end else if (NDATA*DATA_SIZE == 32) begin
+end else if (ATOM_SIZE == 8 && NDATA*DATA_SIZE == 32) begin
     SyncSpRamBeNx32 #(
       .ADDR_WIDTH(ADDR_SIZE),
       .DATA_DEPTH(DEPTH), // usually 2**ADDR_WIDTH, but can be lower
@@ -107,7 +108,34 @@ end else if (NDATA*DATA_SIZE == 32) begin
     );
 
 end else begin
-   $fatal(1, "DATASIZE=%d, in not supported", NDATA*DATA_SIZE);
+   //$fatal(1, "DATASIZE=%d, in not supported", NDATA*DATA_SIZE);
+   // Fall back on non-optimised version that also supportes <8-bit atoms.
+   /*
+    *  Internal memory array declaration
+    */
+   typedef logic [NDATA-1:0][DATA_SIZE-1:0] mem_t [DEPTH];
+   mem_t mem;
+   logic [ADDR_SIZE-1:0] addr_reg;
+
+   assign rdata = mem[addr_reg];
+
+   /*
+    *  Process to update or read the memory array
+    */
+   always_ff @(posedge clk)
+   begin : mem_update_ff
+       if (cs == 1'b1) begin
+           if (we == 1'b1) begin
+               for (int j = 0; j < NDATA; j++) begin
+                   for (int i = 0; i < (DATA_SIZE+ATOM_SIZE-1)/ATOM_SIZE; i++) begin
+                       if (wbyteenable[j][i]) mem[addr][j][i*ATOM_SIZE +: ATOM_SIZE] <= wdata[j][i*ATOM_SIZE +: ATOM_SIZE];
+                   end
+               end
+           end else begin
+               addr_reg <= addr;
+           end
+       end
+   end
 end
 
 
