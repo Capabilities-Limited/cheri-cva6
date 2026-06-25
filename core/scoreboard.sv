@@ -23,29 +23,35 @@ module scoreboard #(
     parameter type rs3_len_t = logic
 ) (
     // Subsystem Clock - SUBSYSTEM
-    input  logic                                          clk_i,
+    input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
-    input  logic                                          rst_ni,
+    input logic rst_ni,
     // Is scoreboard full - PERF_COUNTERS
-    output logic                                          sb_full_o,
+    output logic sb_full_o,
     // Prevent from issuing - CONTROLLER
-    input  logic                                          flush_unissued_instr_i,
+    input logic flush_unissued_instr_i,
     // Flush whole scoreboard - CONTROLLER
-    input  logic                                          flush_i,
+    input logic flush_i,
+    // Debug mode state - CSR
+    input logic debug_mode_i,
+    // Global PCCs live in the pipeline - ISSUE_READ_OPERANDS
+    input logic [1:0][CVA6Cfg.REGLEN-1:0] pccs_i,
+    // First issue slot contains a PCC changing jump - ISSUE_READ_OPERANDS
+    input logic pcc_hazard_i,
     // Writeback Handling of CVXIF
     // TO_BE_COMPLETED - ISSUE_READ_OPERANDS
-    input  logic                                          x_transaction_accepted_i,
+    input logic x_transaction_accepted_i,
     // TO_BE_COMPLETED - ISSUE_READ_OPERANDS
-    input  logic                                          x_issue_writeback_i,
+    input logic x_issue_writeback_i,
     // TO_BE_COMPLETED - ISSUE_READ_OPERANDS
-    input  logic              [CVA6Cfg.TRANS_ID_BITS-1:0] x_id_i,
+    input logic [CVA6Cfg.TRANS_ID_BITS-1:0] x_id_i,
     // advertise instruction to commit stage, if commit_ack_i is asserted advance the commit pointer
     // Instructions to commit - COMMIT_STAGE
     output scoreboard_entry_t [CVA6Cfg.NrCommitPorts-1:0] commit_instr_o,
     // Instruction is cancelled - COMMIT_STAGE
-    output logic              [CVA6Cfg.NrCommitPorts-1:0] commit_drop_o,
+    output logic [CVA6Cfg.NrCommitPorts-1:0] commit_drop_o,
     // Commit acknowledge - COMMIT_STAGE
-    input  logic              [CVA6Cfg.NrCommitPorts-1:0] commit_ack_i,
+    input logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_i,
 
     // instruction to put on top of scoreboard e.g.: top pointer
     // we can always put this instruction to the top unless we signal with asserted full_o
@@ -105,6 +111,20 @@ module scoreboard #(
   sb_mem_t [CVA6Cfg.NR_SB_ENTRIES-1:0] mem_q, mem_n;
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0] still_issued;
 
+  typedef struct packed {
+    logic finished;
+    exception_t ex;
+  } pcc_ex_mem_t;
+
+  pcc_ex_mem_t [CVA6Cfg.NR_SB_ENTRIES-1:0] pcc_ex_mem_q, pcc_ex_mem_n;
+  typedef struct packed {
+    scoreboard_entry_t sbe;
+    logic [CVA6Cfg.TRANS_ID_BITS-1:0] ptr;
+    logic bypass;
+    logic valid;
+  } issue_buffer_t;
+  issue_buffer_t [CVA6Cfg.NrIssuePorts-1:0] issue_buffer_n, issue_buffer_q;
+
   logic [CVA6Cfg.NrIssuePorts-1:0] issue_full;
   logic [1:0][CVA6Cfg.NR_SB_ENTRIES/2-1:0] issued_instrs_even_odd;
 
@@ -145,6 +165,11 @@ module scoreboard #(
       commit_instr_o[i] = mem_q[commit_pointer_q[i]].sbe;
       commit_instr_o[i].trans_id = commit_pointer_q[i];
       commit_drop_o[i] = mem_q[commit_pointer_q[i]].cancelled;
+      commit_instr_o[i].valid &= pcc_ex_mem_q[commit_pointer_q[i]].finished;
+      // Overlay CHERI exception
+      if (CVA6Cfg.CheriPresent && pcc_ex_mem_q[commit_pointer_q[i]].ex.valid) begin
+        commit_instr_o[i].ex = pcc_ex_mem_q[commit_pointer_q[i]];
+      end
     end
   end
 
@@ -170,11 +195,18 @@ module scoreboard #(
   // keep track of all issued instructions
   always_comb begin : issue_fifo
     // default assignment
-    mem_n     = mem_q;
-    num_issue = '0;
+    mem_n          = mem_q;
+    num_issue      = '0;
+
+    pcc_ex_mem_n   = pcc_ex_mem_q;
+    issue_buffer_n = '0;
 
     // if we got an acknowledge from the issue stage, put this scoreboard entry in the queue
     for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
+      if (issue_buffer_q[i].valid) begin
+        pcc_ex_mem_n[issue_buffer_q[i].ptr] = '{finished: 1'b1, ex: pcc_ex_buffer[i]};
+        if (issue_buffer_q[i].bypass) pcc_ex_mem_n[issue_buffer_q[i].ptr].ex.valid = 1'b0;
+      end
       if (decoded_instr_valid_i[i] && decoded_instr_ack_o[i] && !flush_unissued_instr_i) begin
         automatic scoreboard_entry_t new_sbe = decoded_instr_i[i];
         if (CVA6Cfg.CheriPresent) begin
@@ -189,7 +221,14 @@ module scoreboard #(
             is_rd_fpr_flag: CVA6Cfg.FpPresent && ariane_pkg::is_rd_fpr(decoded_instr_i[i].op),
             sbe: new_sbe
         };
+        issue_buffer_n[i] = '{sbe: new_sbe, ptr: issue_pointer[i], bypass: 1'b0, valid: 1'b1};
       end
+      // In cases where we are issuing a PCC-changing jump and a subsequent instruction in the
+      // same cycle, we detect this from issue_read_operands and disable the PCC check on the
+      // target instruction, as the PCC is already bounds-checked on the jump.
+      // XXX TODO this is not quite correct: the bounds check checked 2-bytes, but this
+      // could be a 4 byte instruction, and more crucially we may need to check ASR.
+      if (pcc_hazard_i) issue_buffer_n[1].bypass = 1'b0;
     end
 
     // ------------
@@ -259,6 +298,7 @@ module scoreboard #(
         mem_n[commit_pointer_q[i]].issued    = 1'b0;
         mem_n[commit_pointer_q[i]].cancelled = 1'b0;
         mem_n[commit_pointer_q[i]].sbe.valid = 1'b0;
+        pcc_ex_mem_n[commit_pointer_q[i]].finished = 1'b0;
       end
     end
 
@@ -273,6 +313,31 @@ module scoreboard #(
         mem_n[i].sbe.valid    = 1'b0;
         mem_n[i].sbe.ex.valid = 1'b0;
       end
+    end
+  end
+
+  exception_t [CVA6Cfg.NrIssuePorts-1:0] pcc_ex_buffer;
+  if (CVA6Cfg.CheriPresent) begin : gen_pcc_checks
+    for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
+      automatic logic [CVA6Cfg.TRANS_ID_BITS-1:0] check_issue_pointer;
+      automatic scoreboard_entry_t sbe;
+      automatic exception_t pcc_ex;
+      assign check_issue_pointer = issue_buffer_q[i].ptr;
+      assign sbe = mem_q[check_issue_pointer].sbe;
+      cheri_pcc_check #(
+          .CVA6Cfg(CVA6Cfg),
+          .exception_t(exception_t)
+      ) i_cheri_pcc_check (
+          .clk_i(clk_i),
+          .rst_ni(rst_ni),
+          .pc_i(sbe.pc),
+          .needs_asr_i(sbe.needs_asr),
+          .is_compressed_i(sbe.is_compressed),
+          .pcc_gen_i(sbe.pcc_gen),
+          .pccs_i(pccs_i),
+          .debug_mode_i(debug_mode_i),
+          .pcc_ex_o(pcc_ex_buffer[i])
+      );
     end
   end
 
@@ -318,11 +383,15 @@ module scoreboard #(
   always_ff @(posedge clk_i or negedge rst_ni) begin : regs
     if (!rst_ni) begin
       mem_q            <= '{default: sb_mem_t'(0)};
+      issue_buffer_q   <= '0;
+      pcc_ex_mem_q     <= '0;
       commit_pointer_q <= '0;
       issue_pointer_q  <= '0;
     end else begin
       issue_pointer_q <= issue_pointer_n;
       mem_q <= mem_n;
+      issue_buffer_q <= issue_buffer_n;
+      pcc_ex_mem_q <= pcc_ex_mem_n;
       mem_q[x_id_i].sbe.rd <= (x_transaction_accepted_i && ~x_issue_writeback_i) ? 5'b0 : mem_n[x_id_i].sbe.rd;
       commit_pointer_q <= commit_pointer_n;
     end

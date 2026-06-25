@@ -70,6 +70,8 @@ module issue_read_operands
     output logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs2_forwarding_o,
     // Program Counter - EX_STAGE
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
+    // First issue slot contains a PCC-changing branch - SCOREBOARD
+    output logic pcc_hazard_o,
     // Instruction DII ID - EX_STAGE
     output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is zcmt - EX_STAGE
@@ -742,6 +744,8 @@ module issue_read_operands
     end
 
   end
+
+  assign pcc_hazard_o = issue_instr_i[0].op inside {ariane_pkg::CJALR};
 
   // third operand from fp regfile or gp regfile if NR_RGPR_PORTS == 3
   for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin

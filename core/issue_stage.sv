@@ -219,43 +219,22 @@ module issue_stage
   logic [1:0][CVA6Cfg.REGLEN-1:0] pccs;
   scoreboard_entry_t [CVA6Cfg.NrCommitPorts-1:0] commit_instr;
   exception_t [CVA6Cfg.NrCommitPorts-1:0] pcc_ex;
+  assign commit_instr_o = commit_instr;
   if (CVA6Cfg.CheriPresent) begin
-    for (genvar i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
-      cheri_pcc_check #(
-          .CVA6Cfg(CVA6Cfg),
-          .exception_t(exception_t)
-      ) i_cheri_pcc_check (
-          .clk_i(clk_i),
-          .rst_ni(rst_ni),
-          .pc_i(commit_instr[i].pc),
-          .needs_asr_i(commit_instr[i].needs_asr),
-          .is_compressed_i(commit_instr[i].is_compressed),
-          .pcc_gen_i(commit_instr[i].pcc_gen),
-          .pccs_i(pccs),
-          .debug_mode_i(debug_mode_i),
-          .pcc_ex_o(pcc_ex[i])
-      );
-    end
-    always_comb begin
-      commit_instr_o = commit_instr;
-      for (int unsigned i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
-        if (pcc_ex[i].valid) commit_instr_o[i].ex = pcc_ex[i];
-      end
-      pc_commit_o = cva6_cheri_pkg::set_cap_reg_flags(
+    assign pc_commit_o = cva6_cheri_pkg::set_cap_reg_flags(
         cva6_cheri_pkg::set_cap_reg_addr(
-          pccs[commit_instr_o[0].pcc_gen], commit_instr_o[0].pc
+            pccs[commit_instr_o[0].pcc_gen], commit_instr_o[0].pc
         ),
         commit_instr_o[0].int_mode
-      );
-    end
+    );
   end else begin
-    assign pcc_ex = '0;
-    assign commit_instr_o = commit_instr;
     assign pc_commit_o = commit_instr_o[0].pc;
   end
 
   logic x_transaction_accepted_iro_sb, x_issue_writeback_iro_sb;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] x_id_iro_sb;
+
+  logic pcc_hazard;
 
   // ---------------------------------------------------------
   // 2. Manage instructions in a scoreboard
@@ -274,6 +253,9 @@ module issue_stage
       .sb_full_o               (sb_full_o),
       .flush_unissued_instr_i,
       .flush_i,
+      .debug_mode_i,
+      .pccs_i                  (pccs),
+      .pcc_hazard_i            (pcc_hazard),
       .x_transaction_accepted_i(x_transaction_accepted_iro_sb),
       .x_issue_writeback_i     (x_issue_writeback_iro_sb),
       .x_id_i                  (x_id_iro_sb),
@@ -340,6 +322,7 @@ module issue_stage
       .rs2_forwarding_o        (rs2_forwarding_o),
       .pc_o,
       .pccs_o                  (pccs),
+      .pcc_hazard_o            (pcc_hazard),
       .dii_id_o,
       .is_zcmt_o,
       .is_compressed_instr_o,
