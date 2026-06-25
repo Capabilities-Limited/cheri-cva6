@@ -78,7 +78,7 @@ module cheri_pcc_check
       cheri_tval2.fault_cause = CAP_PERM_VIOLATION;
     end
     // Seal violation
-    if ((pcc.otype != UNSEALED_CAP) && pcc.tag) begin
+    if (pcc.otype != UNSEALED_CAP) begin
       fault = 1'b1;
       cheri_tval2.fault_cause = CAP_SEAL_VIOLATION;
     end
