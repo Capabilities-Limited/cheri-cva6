@@ -165,10 +165,12 @@ module scoreboard #(
       commit_instr_o[i] = mem_q[commit_pointer_q[i]].sbe;
       commit_instr_o[i].trans_id = commit_pointer_q[i];
       commit_drop_o[i] = mem_q[commit_pointer_q[i]].cancelled;
-      commit_instr_o[i].valid &= pcc_ex_mem_q[commit_pointer_q[i]].finished;
-      // Overlay CHERI exception
-      if (CVA6Cfg.CheriPresent && pcc_ex_mem_q[commit_pointer_q[i]].ex.valid) begin
-        commit_instr_o[i].ex = pcc_ex_mem_q[commit_pointer_q[i]];
+      if (CVA6Cfg.CheriPresent) begin
+        commit_instr_o[i].valid &= pcc_ex_mem_q[commit_pointer_q[i]].finished;
+        // Overlay CHERI exception
+        if (pcc_ex_mem_q[commit_pointer_q[i]].ex.valid) begin
+          commit_instr_o[i].ex = pcc_ex_mem_q[commit_pointer_q[i]];
+        end
       end
     end
   end
@@ -203,7 +205,7 @@ module scoreboard #(
 
     // if we got an acknowledge from the issue stage, put this scoreboard entry in the queue
     for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-      if (issue_buffer_q[i].valid) begin
+      if (CVA6Cfg.CheriPresent && issue_buffer_q[i].valid) begin
         pcc_ex_mem_n[issue_buffer_q[i].ptr] = '{finished: 1'b1, ex: pcc_ex_buffer[i]};
         if (issue_buffer_q[i].bypass) pcc_ex_mem_n[issue_buffer_q[i].ptr].ex.valid = 1'b0;
       end
@@ -298,7 +300,7 @@ module scoreboard #(
         mem_n[commit_pointer_q[i]].issued    = 1'b0;
         mem_n[commit_pointer_q[i]].cancelled = 1'b0;
         mem_n[commit_pointer_q[i]].sbe.valid = 1'b0;
-        pcc_ex_mem_n[commit_pointer_q[i]].finished = 1'b0;
+        if (CVA6Cfg.CheriPresent) pcc_ex_mem_n[commit_pointer_q[i]].finished = 1'b0;
       end
     end
 
@@ -391,7 +393,7 @@ module scoreboard #(
       issue_pointer_q <= issue_pointer_n;
       mem_q <= mem_n;
       issue_buffer_q <= issue_buffer_n;
-      pcc_ex_mem_q <= pcc_ex_mem_n;
+      if (CVA6Cfg.CheriPresent) pcc_ex_mem_q <= pcc_ex_mem_n;
       mem_q[x_id_i].sbe.rd <= (x_transaction_accepted_i && ~x_issue_writeback_i) ? 5'b0 : mem_n[x_id_i].sbe.rd;
       commit_pointer_q <= commit_pointer_n;
     end
