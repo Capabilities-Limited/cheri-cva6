@@ -314,6 +314,7 @@ module scoreboard #(
         mem_n[i].cancelled    = 1'b0;
         mem_n[i].sbe.valid    = 1'b0;
         mem_n[i].sbe.ex.valid = 1'b0;
+        if (CVA6Cfg.CheriPresent) pcc_ex_mem_n[i].finished = 1'b0;
       end
     end
   end
