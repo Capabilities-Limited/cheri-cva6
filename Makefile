@@ -880,7 +880,6 @@ fpga_filter += $(addprefix $(root-dir), core/cache_subsystem/hpdcache/rtl/src/co
 fpga_filter += $(addprefix $(root-dir), core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_ecc_1rw.sv)
 fpga_filter += $(addprefix $(root-dir), core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_wbyteenable_1rw.sv)
 fpga_filter += $(addprefix $(root-dir), core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_wbyteenable_ecc_1rw.sv)
-fpga_filter += $(addprefix $(root-dir), core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_wmask_1rw.sv)
 fpga_filter += $(addprefix $(root-dir), core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_wmask_ecc_1rw.sv)
 
 $(addprefix $(root-dir), corev_apu/fpga/src/bootrom/bootrom_$(XLEN).sv):
