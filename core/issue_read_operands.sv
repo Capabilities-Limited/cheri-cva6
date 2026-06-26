@@ -511,6 +511,7 @@ module issue_read_operands
         automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
         automatic logic pc_below_base;
         automatic logic pc_above_top;
+        cheri_tval2 = '0;
         cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
         next_pc_off = {{CVA6Cfg.VLEN - 3{1'b0}}, issue_instr_i[i].is_compressed ? 3'h2 : 3'h4};
         {next_pc_carry, next_pc_addr} = {1'b0, issue_instr_i[i].pc} + {1'b0, next_pc_off};
