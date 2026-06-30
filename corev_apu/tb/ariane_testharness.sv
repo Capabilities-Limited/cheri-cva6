@@ -793,7 +793,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
 `ifdef SPIKE_TANDEM
     .debug_req_i          ( 1'b0                ),
 `else
-    .debug_req_i          ( 1'b0      ),
+    .debug_req_i          ( debug_req_core      ),
 `endif
     .noc_req_o            ( axi_ariane_req      ),
     .noc_resp_i           ( axi_ariane_resp     )
