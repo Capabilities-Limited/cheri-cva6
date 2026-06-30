@@ -1,4 +1,5 @@
 // Copyright 2018 ETH Zurich and University of Bologna.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -42,6 +43,8 @@ module frontend
     input logic set_pc_commit_i,
     // COMMIT PC - COMMIT
     input logic [CVA6Cfg.VLEN-1:0] pc_commit_i,
+    // COMMIT DII ID - COMMIT
+    input logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_commit_i,
     // Exception event - COMMIT
     input logic ex_valid_i,
     // Mispredict event and next PC - EXECUTE
@@ -95,6 +98,7 @@ module frontend
   logic                                                          icache_valid_q;
   ariane_pkg::frontend_exception_t                               icache_ex_valid_q;
   logic                            [           CVA6Cfg.VLEN-1:0] icache_vaddr_q;
+  logic                            [       CVA6Cfg.DIIIDLEN-1:0] icache_dii_id_q;
   logic                            [          CVA6Cfg.GPLEN-1:0] icache_gpaddr_q;
   logic                            [                       31:0] icache_tinst_q;
   logic                                                          icache_gva_q;
@@ -106,12 +110,14 @@ module frontend
   // instruction fetch is ready
   logic                                                          if_ready;
   logic [CVA6Cfg.VLEN-1:0] npc_d, npc_q;  // next PC
+  logic [CVA6Cfg.DIIIDLEN-1:0] ndii_id_d, ndii_id_q;
 
   // indicates whether we come out of reset (then we need to load boot_addr_i)
   logic                                       npc_rst_load_q;
 
   logic                                       replay;
   logic [                   CVA6Cfg.VLEN-1:0] replay_addr;
+  logic [               CVA6Cfg.DIIIDLEN-1:0] replay_dii_id;
 
   // shift amount
   logic [$clog2(CVA6Cfg.INSTR_PER_FETCH)-1:0] shamt;
@@ -130,27 +136,29 @@ module frontend
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] rvi_imm;
   // RVC branching
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0] rvc_branch, rvc_jump, rvc_jr, rvc_return, rvc_jalr, rvc_call;
-  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] rvc_imm;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][    CVA6Cfg.VLEN-1:0] rvc_imm;
   // re-aligned instruction and address (coming from cache - combinationally)
-  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][            31:0] instr;
-  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] addr;
-  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0]                   instruction_valid;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][                31:0] instr;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][    CVA6Cfg.VLEN-1:0] addr;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.DIIIDLEN-1:0] dii_id;
+  logic            [CVA6Cfg.INSTR_PER_FETCH-1:0]                       instruction_valid;
   // BHT, BTB and RAS prediction
-  bht_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                   bht_prediction;
-  btb_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                   btb_prediction;
-  bht_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                   bht_prediction_shifted;
-  btb_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                   btb_prediction_shifted;
-  ras_t                                                            ras_predict;
-  logic            [           CVA6Cfg.VLEN-1:0]                   vpc_btb;
-  logic            [           CVA6Cfg.VLEN-1:0]                   vpc_bht;
+  bht_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                       bht_prediction;
+  btb_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                       btb_prediction;
+  bht_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                       bht_prediction_shifted;
+  btb_prediction_t [CVA6Cfg.INSTR_PER_FETCH-1:0]                       btb_prediction_shifted;
+  ras_t                                                                ras_predict;
+  logic            [           CVA6Cfg.VLEN-1:0]                       vpc_btb;
+  logic            [           CVA6Cfg.VLEN-1:0]                       vpc_bht;
 
   // branch-predict update
-  logic                                                            is_mispredict;
+  logic                                                                is_mispredict;
   logic ras_push, ras_pop;
   logic [           CVA6Cfg.VLEN-1:0] ras_update;
 
   // Instruction FIFO
   logic [           CVA6Cfg.VLEN-1:0] predict_address;
+  logic [       CVA6Cfg.DIIIDLEN-1:0] predict_dii_id;
   cf_t  [CVA6Cfg.INSTR_PER_FETCH-1:0] cf_type;
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0] taken_rvi_cf;
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0] taken_rvc_cf;
@@ -166,9 +174,11 @@ module frontend
       .valid_i            (icache_valid_q),
       .serving_unaligned_o(serving_unaligned),
       .address_i          (icache_vaddr_q),
+      .dii_id_i           (icache_dii_id_q),
       .data_i             (icache_data_q),
       .valid_o            (instruction_valid),
       .addr_o             (addr),
+      .dii_id_o           (dii_id),
       .instr_o            (instr)
   );
   // --------------------
@@ -195,7 +205,6 @@ module frontend
     assign bht_prediction_shifted[0] = (serving_unaligned) ? bht_q : bht_prediction[addr[0][1]];
     assign btb_prediction_shifted[0] = (serving_unaligned) ? btb_q : btb_prediction[addr[0][1]];
   end
-  ;
 
   // for the return address stack it doesn't matter as we have the
   // address of the call/return already
@@ -225,6 +234,7 @@ module frontend
     taken_rvi_cf = '0;
     taken_rvc_cf = '0;
     predict_address = '0;
+    if (CVA6Cfg.RVFI_DII) predict_dii_id = '0;
 
     for (int i = 0; i < CVA6Cfg.INSTR_PER_FETCH; i++) cf_type[i] = ariane_pkg::NoCF;
 
@@ -244,6 +254,7 @@ module frontend
           ras_push = 1'b0;
           if (CVA6Cfg.BTBEntries != 0 && btb_prediction_shifted[i].valid) begin
             predict_address = btb_prediction_shifted[i].target_address;
+            if (CVA6Cfg.RVFI_DII) predict_dii_id = dii_id[i] + 1;
             cf_type[i] = ariane_pkg::JumpR;
           end
         end
@@ -261,6 +272,7 @@ module frontend
           ras_pop = ras_predict.valid & instr_queue_consumed[i];
           ras_push = 1'b0;
           predict_address = ras_predict.ra;
+          if (CVA6Cfg.RVFI_DII) predict_dii_id = dii_id[i] + 1;
           cf_type[i] = ariane_pkg::Return;
         end
         // branch prediction
@@ -293,6 +305,7 @@ module frontend
       // calculate the jump target address
       if (taken_rvc_cf[i] || taken_rvi_cf[i]) begin
         predict_address = addr[i] + (taken_rvc_cf[i] ? rvc_imm[i] : rvi_imm[i]);
+        if (CVA6Cfg.RVFI_DII) predict_dii_id = dii_id[i] + 1;
       end
     end
   end
@@ -338,8 +351,7 @@ module frontend
                                 & resolved_branch_i.is_mispredict
                                 & (resolved_branch_i.cf_type == ariane_pkg::JumpR);
   assign btb_update.pc = resolved_branch_i.pc;
-  assign btb_update.target_address = resolved_branch_i.target_address;
-
+  assign btb_update.target_address = resolved_branch_i.target_address[CVA6Cfg.VLEN-1:0];
   // -------------------
   // Next PC
   // -------------------
@@ -352,26 +364,44 @@ module frontend
   // 5. Pipeline Flush because of CSR side effects
   // Mis-predict handling is a little bit different
   // select PC a.k.a PC Gen
+  logic [CVA6Cfg.VLEN-1:0] fetch_address;
+  logic [CVA6Cfg.DIIIDLEN-1:0] fetch_dii_id;
+
   always_comb begin : npc_select
-    automatic logic [CVA6Cfg.VLEN-1:0] fetch_address;
+    //automatic logic [CVA6Cfg.VLEN-1:0] fetch_address;
     // check whether we come out of reset
     // this is a workaround. some tools have issues
     // having boot_addr_i in the asynchronous
     // reset assignment to npc_q, even though
     // boot_addr_i will be assigned a constant
     // on the top-level.
+
     if (npc_rst_load_q) begin
       npc_d         = boot_addr_i;
       fetch_address = boot_addr_i;
+`ifdef DII
+      if (CVA6Cfg.RVFI_DII) begin
+        ndii_id_d    = test_dii_start();
+        fetch_dii_id = test_dii_start();
+      end
+`endif
     end else begin
       fetch_address = npc_q;
       // keep stable by default
       npc_d         = npc_q;
+      if (CVA6Cfg.RVFI_DII) begin
+        fetch_dii_id = ndii_id_q;
+        ndii_id_d = ndii_id_q;
+      end
     end
     // 0. Branch Prediction
     if (bp_valid) begin
       fetch_address = predict_address;
       npc_d = predict_address;
+      if (CVA6Cfg.RVFI_DII) begin
+        fetch_dii_id = predict_dii_id;
+        ndii_id_d = predict_dii_id;
+      end
     end
     // 1. Default assignment
     if (if_ready) begin
@@ -382,18 +412,22 @@ module frontend
     // 2. Replay instruction fetch
     if (replay) begin
       npc_d = replay_addr;
+      if (CVA6Cfg.RVFI_DII) ndii_id_d = replay_dii_id;
     end
     // 3. Control flow change request
     if (is_mispredict) begin
       npc_d = resolved_branch_i.target_address;
+      if (CVA6Cfg.RVFI_DII) ndii_id_d = resolved_branch_i.dii_id + 1;
     end
     // 4. Return from environment call
     if (eret_i) begin
       npc_d = epc_i;
+      if (CVA6Cfg.RVFI_DII) ndii_id_d = dii_id_commit_i + 1;
     end
     // 5. Exception/Interrupt
     if (ex_valid_i) begin
       npc_d = trap_vector_base_i;
+      if (CVA6Cfg.RVFI_DII) ndii_id_d = dii_id_commit_i + 1;
     end
     // 6. Pipeline Flush because of CSR side effects
     // On a pipeline flush start fetching from the next address
@@ -406,26 +440,29 @@ module frontend
     // TODO(zarubaf) This adder can at least be merged with the one in the csr_regfile stage
     if (set_pc_commit_i) begin
       npc_d = pc_commit_i + (halt_i ? '0 : {{CVA6Cfg.VLEN - 3{1'b0}}, 3'b100});
+      if (CVA6Cfg.RVFI_DII) ndii_id_d = dii_id_commit_i + 1;
     end
     // 7. Debug
     // enter debug on a hard-coded base-address
     if (CVA6Cfg.DebugEn && set_debug_pc_i)
       npc_d = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0];
     icache_dreq_o.vaddr = fetch_address;
+    if (CVA6Cfg.RVFI_DII) icache_dreq_o.dii_id = fetch_dii_id;
   end
-
   logic [CVA6Cfg.FETCH_WIDTH-1:0] icache_data;
   // re-align the cache line
   assign icache_data = icache_dreq_i.data >> {shamt, 4'b0};
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      npc_rst_load_q    <= 1'b1;
-      npc_q             <= '0;
-      speculative_q     <= '0;
-      icache_data_q     <= '0;
-      icache_valid_q    <= 1'b0;
-      icache_vaddr_q    <= 'b0;
+      npc_rst_load_q <= 1'b1;
+      npc_q          <= '0;
+      if (CVA6Cfg.RVFI_DII) ndii_id_q <= '0;
+      speculative_q  <= '0;
+      icache_data_q  <= '0;
+      icache_valid_q <= 1'b0;
+      icache_vaddr_q <= 'b0;
+      if (CVA6Cfg.RVFI_DII) icache_dii_id_q <= 'b0;
       icache_gpaddr_q   <= 'b0;
       icache_tinst_q    <= 'b0;
       icache_gva_q      <= 1'b0;
@@ -435,11 +472,13 @@ module frontend
     end else begin
       npc_rst_load_q <= 1'b0;
       npc_q          <= npc_d;
+      if (CVA6Cfg.RVFI_DII) ndii_id_q <= ndii_id_d;
       speculative_q  <= speculative_d;
       icache_valid_q <= icache_dreq_i.valid;
       if (icache_dreq_i.valid) begin
-        icache_data_q  <= icache_data;
+        icache_data_q  <= icache_dreq_i.ex.valid ? {CVA6Cfg.FETCH_WIDTH{1'b0}} : icache_data;
         icache_vaddr_q <= icache_dreq_i.vaddr;
+        if (CVA6Cfg.RVFI_DII) icache_dii_id_q <= icache_dreq_i.dii_id;
         if (CVA6Cfg.RVH) begin
           icache_gpaddr_q <= icache_dreq_i.ex.tval2[CVA6Cfg.GPLEN-1:0];
           icache_tinst_q  <= icache_dreq_i.ex.tinst;
@@ -573,6 +612,7 @@ module frontend
       .flush_i            (flush_i),
       .instr_i            (instr),                 // from re-aligner
       .addr_i             (addr),                  // from re-aligner
+      .dii_id_i           (dii_id),
       .exception_i        (icache_ex_valid_q),     // from I$
       .exception_addr_i   (icache_vaddr_q),
       .exception_gpaddr_i (icache_gpaddr_q),
@@ -585,6 +625,7 @@ module frontend
       .ready_o            (instr_queue_ready),
       .replay_o           (replay),
       .replay_addr_o      (replay_addr),
+      .replay_dii_id_o    (replay_dii_id),
       .fetch_entry_o      (fetch_entry_o),         // to back-end
       .fetch_entry_valid_o(fetch_entry_valid_o),   // to back-end
       .fetch_entry_ready_i(fetch_entry_ready_i)    // to back-end

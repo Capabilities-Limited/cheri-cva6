@@ -1,4 +1,6 @@
 // Copyright 2017-2019 ETH Zurich and University of Bologna.
+// Copyright 2025 Bruno Sá and Zero-Day Labs.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -57,31 +59,35 @@ module cva6
       exception_t              fetch_exception;  // exception occurred during fetch
     },
     localparam type icache_arsp_t = struct packed {
-      logic                    fetch_req;    // address translation request
-      logic [CVA6Cfg.VLEN-1:0] fetch_vaddr;  // virtual address out
+      logic                    fetch_req;        // address translation request
+      logic [CVA6Cfg.VLEN-1:0] fetch_vaddr;      // virtual address out
+      exception_t              fetch_exception;  // exception occurred during fetch
     },
 
     // I$ data requests
     localparam type icache_dreq_t = struct packed {
-      logic                    req;      // we request a new word
-      logic                    kill_s1;  // kill the current request
-      logic                    kill_s2;  // kill the last request
-      logic                    spec;     // request is speculative
-      logic [CVA6Cfg.VLEN-1:0] vaddr;    // 1st cycle: 12 bit index is taken for lookup
+      logic                        req;      // we request a new word
+      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;   // next requested DII ID in instruction stream
+      logic                        kill_s1;  // kill the current request
+      logic                        kill_s2;  // kill the last request
+      logic                        spec;     // request is speculative
+      logic [CVA6Cfg.VLEN-1:0]     vaddr;    // 1st cycle: 12 bit index is taken for lookup
     },
     localparam type icache_drsp_t = struct packed {
-      logic                                ready;  // icache is ready
-      logic                                valid;  // signals a valid read
-      logic [CVA6Cfg.FETCH_WIDTH-1:0]      data;   // 2+ cycle out: tag
-      logic [CVA6Cfg.FETCH_USER_WIDTH-1:0] user;   // User bits
-      logic [CVA6Cfg.VLEN-1:0]             vaddr;  // virtual address out
-      exception_t                          ex;     // we've encountered an exception
+      logic                                ready;   // icache is ready
+      logic                                valid;   // signals a valid read
+      logic [CVA6Cfg.FETCH_WIDTH-1:0]      data;    // 2+ cycle out: tag
+      logic [CVA6Cfg.FETCH_USER_WIDTH-1:0] user;    // User bits
+      logic [CVA6Cfg.VLEN-1:0]             vaddr;   // virtual address out
+      logic [CVA6Cfg.DIIIDLEN-1:0]         dii_id;  // First DII ID in the returned data
+      exception_t                          ex;      // we've encountered an exception
     },
 
     // IF/ID Stage
     // store the decompressed instruction
     localparam type fetch_entry_t = struct packed {
       logic [CVA6Cfg.VLEN-1:0] address;  // the address of the instructions from below
+      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;  // the DII ID of the instruction in the stream
       logic [31:0] instruction;  // instruction word
       branchpredict_sbe_t     branch_predict; // this field contains branch prediction information regarding the forward branch path
       exception_t             ex;             // this field contains exceptions which might have happened earlier, e.g.: fetch exceptions
@@ -95,6 +101,7 @@ module cva6
     // ID/EX/WB Stage
     localparam type scoreboard_entry_t = struct packed {
       logic [CVA6Cfg.VLEN-1:0] pc;  // PC of instruction
+      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;  // DII ID of the instruction in the stream
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;      // this can potentially be simplified, we could index the scoreboard entry
       // with the transaction id in any case make the width more generic
       fu_t fu;  // functional unit to use
@@ -102,7 +109,7 @@ module cva6
       logic [REG_ADDR_SIZE-1:0] rs1;  // register source address 1
       logic [REG_ADDR_SIZE-1:0] rs2;  // register source address 2
       logic [REG_ADDR_SIZE-1:0] rd;  // register destination address
-      logic [CVA6Cfg.XLEN-1:0] result;  // for unfinished instructions this field also holds the immediate,
+      logic [CVA6Cfg.REGLEN-1:0] result;  // for unfinished instructions this field also holds the immediate,
       // for unfinished floating-point that are partly encoded in rs2, this field also holds rs2
       // for unfinished floating-point fused operations (FMADD, FMSUB, FNMADD, FNMSUB)
       // this field holds the address of the third operand from the floating-point register file
@@ -110,10 +117,13 @@ module cva6
       logic use_imm;  // should we use the immediate as operand b?
       logic use_zimm;  // use zimm as operand a
       logic use_pc;  // set if we need to use the PC as operand a, PC from exception
+      logic use_ddc;  // use DDC as the default cap for load and stores
+      logic int_mode; // Instruction was decoded in integer decoding mode (as opposed to capability mode)
       exception_t ex;  // exception has occurred
       branchpredict_sbe_t bp;  // branch predict scoreboard data structure
       logic                     is_compressed; // signals a compressed instructions, we need this information at the commit stage if
                                                // we want jump accordingly e.g.: +4, +2
+      logic needs_asr;  // Instruction is privileged and must trap if PCC does not have ASR
       logic is_macro_instr;  // is an instruction executed as predefined sequence of instructions called macro definition
       logic is_last_macro_instr;  // is last decoded 32bit instruction of macro definition
       logic is_double_rd_macro_instr;  // is double move decoded 32bit instruction of macro definition
@@ -122,7 +132,7 @@ module cva6
     },
     localparam type writeback_t = struct packed {
       logic valid;  // wb data is valid
-      logic [CVA6Cfg.XLEN-1:0] data;  //wb data
+      logic [CVA6Cfg.REGLEN-1:0] data;  //wb data
       logic ex_valid;  // exception from WB
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;  //transaction ID
     },
@@ -132,12 +142,14 @@ module cva6
     // all the necessary data structures
     // bp_resolve_t
     localparam type bp_resolve_t = struct packed {
-      logic                    valid;           // prediction with all its values is valid
-      logic [CVA6Cfg.VLEN-1:0] pc;              // PC of predict or mis-predict
-      logic [CVA6Cfg.VLEN-1:0] target_address;  // target address at which to jump, or not
-      logic                    is_mispredict;   // set if this was a mis-predict
-      logic                    is_taken;        // branch is taken
-      cf_t                     cf_type;         // Type of control flow change
+      logic valid;  // prediction with all its values is valid
+      logic [CVA6Cfg.VLEN-1:0] pc;  // PC of predict or mis-predict
+      logic [CVA6Cfg.DIIIDLEN-1:0] dii_id;  // dii id of branch
+      logic [CVA6Cfg.PCLEN-1:0] target_address;  // target address at which to jump, or not
+      logic is_mispredict;  // set if this was a mis-predict
+      logic is_taken;  // branch is taken
+      logic is_pcc_change;  // with CHERI: set if the branch changes PCC metadata
+      cf_t cf_type;  // Type of control flow change
     },
 
     // All information needed to determine whether we need to associate an interrupt
@@ -159,25 +171,36 @@ module cva6
       logic                             hlvx_inst;
       logic                             overflow;
       logic                             g_overflow;
-      logic [CVA6Cfg.XLEN-1:0]          data;
-      logic [(CVA6Cfg.XLEN/8)-1:0]      be;
+      logic [CVA6Cfg.REGLEN-1:0]        operand_a;
+      logic [CVA6Cfg.REGLEN-1:0]        data;
+      logic [(CVA6Cfg.CLEN/8)-1:0]      be;
       fu_t                              fu;
       fu_op                             operation;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;
       logic                             is_speculative_load;
       logic                             is_speculative_load_miss;
+      logic [REG_ADDR_SIZE-1:0]         rs1;
+      logic                             use_ddc;
+      logic                             allow_tag;
+      logic                             allow_elevate;
+      logic                             allow_cap_level;
+      logic                             allow_load_mutable;
     },
 
 
-    localparam type cbo_t = logic [7:0],
+    localparam type cbo_t = logic [$bits(fu_op)-1:0],
 
     localparam type fu_data_t = struct packed {
       fu_t                              fu;
       fu_op                             operation;
-      logic [CVA6Cfg.XLEN-1:0]          operand_a;
-      logic [CVA6Cfg.XLEN-1:0]          operand_b;
+      logic [CVA6Cfg.REGLEN-1:0]        operand_a;
+      logic [CVA6Cfg.REGLEN-1:0]        operand_b;
       logic [CVA6Cfg.XLEN-1:0]          imm;
+      logic [REG_ADDR_SIZE-1:0]         rs1;
+      logic [REG_ADDR_SIZE-1:0]         rs2;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;
+      logic                             use_ddc;
+      logic [5:0]                       orig_instr_aes_bits;
     },
 
     localparam type icache_req_t = struct packed {
@@ -201,25 +224,25 @@ module cva6
 
     // D$ data requests
     localparam type dcache_req_i_t = struct packed {
-      logic [CVA6Cfg.DCACHE_INDEX_WIDTH-1:0] address_index;
-      logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0]   address_tag;
-      logic [CVA6Cfg.XLEN-1:0]               data_wdata;
-      logic [CVA6Cfg.DCACHE_USER_WIDTH-1:0]  data_wuser;
-      logic                                  data_req;
-      logic                                  data_we;
-      logic [(CVA6Cfg.XLEN/8)-1:0]           data_be;
-      logic [1:0]                            data_size;
-      logic [CVA6Cfg.DcacheIdWidth-1:0]      data_id;
-      logic                                  kill_req;
-      logic                                  tag_valid;
-      cbo_t                                  cbo_op;
+      logic [CVA6Cfg.DCACHE_INDEX_WIDTH-1:0]     address_index;
+      logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0]       address_tag;
+      logic [CVA6Cfg.CLEN-1:0]                   data_wdata;
+      logic [CVA6Cfg.DCACHE_USER_WIDTH-1:0]      data_wuser;
+      logic                                      data_req;
+      logic                                      data_we;
+      logic [(CVA6Cfg.CLEN/8)-1:0]               data_be;
+      logic [CVA6Cfg.DCACHE_DATA_SIZE_WIDTH-1:0] data_size;
+      logic [CVA6Cfg.DcacheIdWidth-1:0]          data_id;
+      logic                                      kill_req;
+      logic                                      tag_valid;
+      cbo_t                                      cbo_op;
     },
 
     localparam type dcache_req_o_t = struct packed {
       logic                                 data_gnt;
       logic                                 data_rvalid;
       logic [CVA6Cfg.DcacheIdWidth-1:0]     data_rid;
-      logic [CVA6Cfg.XLEN-1:0]              data_rdata;
+      logic [CVA6Cfg.CLEN-1:0]              data_rdata;
       logic [CVA6Cfg.DCACHE_USER_WIDTH-1:0] data_ruser;
     },
 
@@ -321,7 +344,7 @@ module cva6
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
     // Reset boot address - SUBSYSTEM
-    input logic [CVA6Cfg.VLEN-1:0] boot_addr_i,
+    input logic [CVA6Cfg.PCLEN-1:0] boot_addr_i,
     // Hard ID reflected as CSR - SUBSYSTEM
     input logic [CVA6Cfg.XLEN-1:0] hart_id_i,
     // Level sensitive (async) interrupts - SUBSYSTEM
@@ -378,7 +401,8 @@ module cva6
   logic                                         v;
   exception_t                                   ex_commit;  // exception from commit stage
   bp_resolve_t                                  resolved_branch;
-  logic             [         CVA6Cfg.VLEN-1:0] pc_commit;
+  logic             [        CVA6Cfg.PCLEN-1:0] pc_commit;
+  logic             [     CVA6Cfg.DIIIDLEN-1:0] dii_id_commit;
   logic                                         eret;
   logic             [CVA6Cfg.NrCommitPorts-1:0] commit_ack;
   logic             [CVA6Cfg.NrCommitPorts-1:0] commit_macro_ack;
@@ -409,8 +433,8 @@ module cva6
   // --------------
   // PCGEN <-> CSR
   // --------------
-  logic [CVA6Cfg.VLEN-1:0] trap_vector_base_commit_pcgen;
-  logic [CVA6Cfg.VLEN-1:0] epc_commit_pcgen;
+  logic [CVA6Cfg.REGLEN-1:0] trap_vector_base_commit_pcgen;
+  logic [CVA6Cfg.REGLEN-1:0] epc_commit_pcgen;
   // --------------
   // IF <-> ID
   // --------------
@@ -430,14 +454,15 @@ module cva6
   // --------------
   // ISSUE <-> EX
   // --------------
-  logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.VLEN-1:0] rs1_forwarding_id_ex;  // unregistered version of fu_data_o.operanda
-  logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.VLEN-1:0] rs2_forwarding_id_ex;  // unregistered version of fu_data_o.operandb
+  logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs1_forwarding_id_ex;  // unregistered version of fu_data_o.operanda
+  logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.REGLEN-1:0] rs2_forwarding_id_ex;  // unregistered version of fu_data_o.operandb
   logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.XLEN-1:0] rvfi_rs1;
   logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.XLEN-1:0] rvfi_rs2;
 
   fu_data_t [CVA6Cfg.NrIssuePorts-1:0] fu_data_id_ex;
   alu_bypass_t alu_bypass_id_ex;
-  logic [CVA6Cfg.VLEN-1:0] pc_id_ex;
+  logic [CVA6Cfg.PCLEN-1:0] pc_id_ex;
+  logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_id_ex;
   logic zcmt_id_ex;
   logic is_compressed_instr_id_ex;
   logic [CVA6Cfg.NrIssuePorts-1:0][31:0] tinst_ex;
@@ -445,7 +470,7 @@ module cva6
   logic flu_ready_ex_id;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] flu_trans_id_ex_id;
   logic flu_valid_ex_id;
-  logic [CVA6Cfg.XLEN-1:0] flu_result_ex_id;
+  logic [CVA6Cfg.REGLEN-1:0] flu_result_ex_id;
   exception_t flu_exception_ex_id;
   // ALU
   logic [CVA6Cfg.NrIssuePorts-1:0] alu_valid_id_ex;
@@ -459,13 +484,15 @@ module cva6
   // LSU
   logic [CVA6Cfg.NrIssuePorts-1:0] lsu_valid_id_ex;
   logic lsu_ready_ex_id;
+  // CLU
+  logic [CVA6Cfg.NrIssuePorts-1:0] clu_valid_id_ex;
 
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] load_trans_id_ex_id;
-  logic [CVA6Cfg.XLEN-1:0] load_result_ex_id;
+  logic [CVA6Cfg.REGLEN-1:0] load_result_ex_id;
   logic load_valid_ex_id;
   exception_t load_exception_ex_id;
 
-  logic [CVA6Cfg.XLEN-1:0] store_result_ex_id;
+  logic [CVA6Cfg.REGLEN-1:0] store_result_ex_id;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] store_trans_id_ex_id;
   logic store_valid_ex_id;
   exception_t store_exception_ex_id;
@@ -477,7 +504,7 @@ module cva6
   logic [1:0] fpu_fmt_id_ex;
   logic [2:0] fpu_rm_id_ex;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] fpu_trans_id_ex_id;
-  logic [CVA6Cfg.XLEN-1:0] fpu_result_ex_id;
+  logic [CVA6Cfg.REGLEN-1:0] fpu_result_ex_id;
   logic fpu_valid_ex_id;
   exception_t fpu_exception_ex_id;
   logic fpu_early_valid_ex_id;
@@ -488,7 +515,7 @@ module cva6
   scoreboard_entry_t issue_instr_id_acc;
   logic issue_instr_hs_id_acc;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] acc_trans_id_ex_id;
-  logic [CVA6Cfg.XLEN-1:0] acc_result_ex_id;
+  logic [CVA6Cfg.REGLEN-1:0] acc_result_ex_id;
   logic acc_valid_ex_id;
   exception_t acc_exception_ex_id;
   logic halt_acc_ctrl;
@@ -500,7 +527,7 @@ module cva6
   logic csr_hs_ld_st_inst_ex;
   // CVXIF
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] x_trans_id_ex_id;
-  logic [CVA6Cfg.XLEN-1:0] x_result_ex_id;
+  logic [CVA6Cfg.REGLEN-1:0] x_result_ex_id;
   logic x_valid_ex_id;
   exception_t x_exception_ex_id;
   logic x_we_ex_id;
@@ -539,6 +566,10 @@ module cva6
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_commit_id;
 
   // --------------
+  // ISSUE <-> COMMIT
+  // --------------
+  logic [CVA6Cfg.PCLEN-1:0] commit_pcc;
+  // --------------
   // RVFI
   // --------------
   logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] rvfi_issue_pointer;
@@ -547,7 +578,7 @@ module cva6
   // COMMIT <-> ID
   // --------------
   logic [CVA6Cfg.NrCommitPorts-1:0][4:0] waddr_commit_id;
-  logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] wdata_commit_id;
+  logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.REGLEN-1:0] wdata_commit_id;
   logic [CVA6Cfg.NrCommitPorts-1:0] we_gpr_commit_id;
   logic [CVA6Cfg.NrCommitPorts-1:0] we_fpr_commit_id;
   // --------------
@@ -575,16 +606,19 @@ module cva6
   logic [CVA6Cfg.ASID_WIDTH-1:0] vs_asid_csr_ex;
   logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_csr_ex;
   logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_csr_ex;
+  logic cap_ucrg_ex;
   logic [11:0] csr_addr_ex_csr;
   fu_op csr_op_commit_csr;
-  logic [CVA6Cfg.XLEN-1:0] csr_wdata_commit_csr;
-  logic [CVA6Cfg.XLEN-1:0] csr_rdata_csr_commit;
+  logic csr_op_is_imm_commit_csr;
+  logic [CVA6Cfg.REGLEN-1:0] csr_wdata_commit_csr;
+  logic [CVA6Cfg.REGLEN-1:0] csr_rdata_csr_commit;
   exception_t csr_exception_csr_commit;
   logic tvm_csr_id;
   logic tw_csr_id;
   logic vtw_csr_id;
   logic tsr_csr_id;
   logic hu;
+  logic [CVA6Cfg.REGLEN-1:0] ddc;
   irq_ctrl_t irq_ctrl_csr_id;
   logic dcache_en_csr_nbdcache;
   logic csr_write_fflags_commit_cs;
@@ -592,6 +626,8 @@ module cva6
   logic acc_cons_en_csr;
   logic debug_mode;
   logic single_step_csr_commit;
+  logic halt_for_single_step;
+  logic commit_single_step;
   riscv::pmpcfg_t [avoid_neg(CVA6Cfg.NrPMPEntries-1):0] pmpcfg;
   logic [avoid_neg(CVA6Cfg.NrPMPEntries-1):0][CVA6Cfg.PLEN-3:0] pmpaddr;
   logic [31:0] mcountinhibit_csr_perf;
@@ -614,6 +650,7 @@ module cva6
   logic dtlb_miss_ex_perf;
   logic dcache_miss_cache_perf;
   logic icache_miss_cache_perf;
+  logic icache_miss_cache_perf_real;
   logic [NumPorts-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0] miss_vld_bits;
   logic stall_issue;
   // --------------
@@ -629,6 +666,7 @@ module cva6
   logic flush_tlb_ctrl_ex;
   logic flush_tlb_vvma_ctrl_ex;
   logic flush_tlb_gvma_ctrl_ex;
+  logic int_mode_issue_id;
   logic fence_i_commit_controller;
   logic fence_commit_controller;
   logic sfence_vma_commit_controller;
@@ -645,8 +683,10 @@ module cva6
 
   icache_areq_t icache_areq_ex_cache;
   icache_arsp_t icache_areq_cache_ex;
+  icache_arsp_t icache_areq_cache_ex_real;
   icache_dreq_t icache_dreq_if_cache;
   icache_drsp_t icache_dreq_cache_if;
+  icache_drsp_t icache_dreq_cache_if_real;
 
   amo_req_t amo_req;
   amo_resp_t amo_resp;
@@ -687,23 +727,24 @@ module cva6
   ) i_frontend (
       .clk_i,
       .rst_ni,
-      .boot_addr_i        (boot_addr_i[CVA6Cfg.VLEN-1:0]),
-      .flush_bp_i         (1'b0),
-      .flush_i            (flush_ctrl_if),                  // not entirely correct
-      .halt_i             (halt_ctrl),
-      .halt_frontend_i    (halt_frontend),
-      .set_pc_commit_i    (set_pc_ctrl_pcgen),
-      .pc_commit_i        (pc_commit),
-      .ex_valid_i         (ex_commit.valid),
-      .resolved_branch_i  (resolved_branch),
-      .eret_i             (eret),
-      .epc_i              (epc_commit_pcgen),
-      .trap_vector_base_i (trap_vector_base_commit_pcgen),
-      .set_debug_pc_i     (set_debug_pc),
-      .debug_mode_i       (debug_mode),
-      .icache_dreq_o      (icache_dreq_if_cache),
-      .icache_dreq_i      (icache_dreq_cache_if),
-      .fetch_entry_o      (fetch_entry_if_id),
+      .boot_addr_i(boot_addr_i[CVA6Cfg.VLEN-1:0]),
+      .flush_bp_i(1'b0),
+      .flush_i(flush_ctrl_if),  // not entirely correct
+      .halt_i(halt_ctrl),
+      .halt_frontend_i(halt_frontend),
+      .set_pc_commit_i(set_pc_ctrl_pcgen),
+      .pc_commit_i(pc_commit[CVA6Cfg.VLEN-1:0]),
+      .dii_id_commit_i(dii_id_commit),
+      .ex_valid_i(ex_commit.valid),
+      .resolved_branch_i(resolved_branch),
+      .eret_i(eret),
+      .epc_i(epc_commit_pcgen[CVA6Cfg.VLEN-1:0]),
+      .trap_vector_base_i(trap_vector_base_commit_pcgen[CVA6Cfg.VLEN-1:0]),
+      .set_debug_pc_i(set_debug_pc),
+      .debug_mode_i(debug_mode),
+      .icache_dreq_o(icache_dreq_if_cache),
+      .icache_dreq_i(icache_dreq_cache_if),
+      .fetch_entry_o(fetch_entry_if_id),
       .fetch_entry_valid_o(fetch_valid_if_id),
       .fetch_entry_ready_i(fetch_ready_id_if)
   );
@@ -744,40 +785,46 @@ module cva6
 
       .rvfi_is_compressed_o(rvfi_is_compressed),
 
-      .priv_lvl_i          (priv_lvl),
-      .v_i                 (v),
-      .fs_i                (fs),
-      .vfs_i               (vfs),
-      .frm_i               (frm_csr_id_issue_ex),
-      .vs_i                (vs),
-      .irq_i               (irq_i),
-      .irq_ctrl_i          (irq_ctrl_csr_id),
-      .debug_mode_i        (debug_mode),
-      .tvm_i               (tvm_csr_id),
-      .tw_i                (tw_csr_id),
-      .vtw_i               (vtw_csr_id),
-      .tsr_i               (tsr_csr_id),
-      .hu_i                (hu),
-      .mcbie_i             (mcbie),
-      .scbie_i             (scbie),
-      .hcbie_i             (hcbie),
-      .mcbcfe_i            (mcbcfe),
-      .scbcfe_i            (scbcfe),
-      .hcbcfe_i            (hcbcfe),
-      .hart_id_i           (hart_id_i),
-      .compressed_ready_i  (x_compressed_ready),
-      .compressed_resp_i   (x_compressed_resp),
-      .compressed_valid_o  (x_compressed_valid),
-      .compressed_req_o    (x_compressed_req),
-      .jvt_i               (jvt),
+      .priv_lvl_i(priv_lvl),
+      .v_i(v),
+      .fs_i(fs),
+      .vfs_i(vfs),
+      .frm_i(frm_csr_id_issue_ex),
+      .vs_i(vs),
+      .irq_i(irq_i),
+      .irq_ctrl_i(irq_ctrl_csr_id),
+      .debug_mode_i(debug_mode),
+      .tvm_i(tvm_csr_id),
+      .tw_i(tw_csr_id),
+      .vtw_i(vtw_csr_id),
+      .tsr_i(tsr_csr_id),
+      .hu_i(hu),
+      .mcbie_i(mcbie),
+      .scbie_i(scbie),
+      .hcbie_i(hcbie),
+      .mcbcfe_i(mcbcfe),
+      .scbcfe_i(scbcfe),
+      .hcbcfe_i(hcbcfe),
+      .hart_id_i(hart_id_i),
+      .compressed_ready_i(x_compressed_ready),
+      .compressed_resp_i(x_compressed_resp),
+      .compressed_valid_o(x_compressed_valid),
+      .compressed_req_o(x_compressed_req),
+      .jvt_i(jvt),
       .debug_from_trigger_i(debug_from_trigger),
       // DCACHE interfaces
-      .dcache_req_ports_i  (dcache_req_ports_cache_id),
-      .dcache_req_ports_o  (dcache_req_ports_id_cache)
+      .dcache_req_ports_i(dcache_req_ports_cache_id),
+      .dcache_req_ports_o(dcache_req_ports_id_cache),
+      .commit_redirect_i(ex_commit.valid | eret | set_pc_ctrl_pcgen),
+      .int_mode_issue_i(int_mode_issue_id),
+      .int_mode_resolved_branch_i(cva6_cheri_pkg::get_cap_reg_flags(
+          resolved_branch.target_address
+      )),
+      .mispredict_redirect_i(resolved_branch.is_mispredict)
   );
 
   logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_ex_id;
-  logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.XLEN-1:0] wbdata_ex_id;
+  logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.REGLEN-1:0] wbdata_ex_id;
   exception_t [CVA6Cfg.NrWbPorts-1:0] ex_ex_ex_id;  // exception from execute, ex_stage to id_stage
   logic [CVA6Cfg.NrWbPorts-1:0] wt_valid_ex_id;
 
@@ -870,6 +917,7 @@ module cva6
       .flush_unissued_instr_i  (flush_unissued_instr_ctrl_id),
       .flush_i                 (flush_ctrl_id),
       .stall_i                 (stall_acc_id),
+      .debug_mode_i            (debug_mode),
       // ID Stage
       .decoded_instr_i         (issue_entry_id_issue),
       .decoded_instr_i_prev    (issue_entry_id_issue_prev),
@@ -877,12 +925,15 @@ module cva6
       .decoded_instr_valid_i   (issue_entry_valid_id_issue),
       .is_ctrl_flow_i          (is_ctrl_fow_id_issue),
       .decoded_instr_ack_o     (issue_instr_issue_id),
+      .int_mode_o              (int_mode_issue_id),
       // Functional Units
       .rs1_forwarding_o        (rs1_forwarding_id_ex),
       .rs2_forwarding_o        (rs2_forwarding_id_ex),
       .fu_data_o               (fu_data_id_ex),
       .alu_bypass_o            (alu_bypass_id_ex),
       .pc_o                    (pc_id_ex),
+      .commit_pcc_o            (commit_pcc),
+      .dii_id_o                (dii_id_id_ex),
       .is_zcmt_o               (zcmt_id_ex),
       .is_compressed_instr_o   (is_compressed_instr_id_ex),
       .tinst_o                 (tinst_ex),
@@ -892,12 +943,14 @@ module cva6
       .alu_valid_o             (alu_valid_id_ex),
       .aes_valid_o             (aes_valid_id_ex),
       // Branches and Jumps
-      .branch_valid_o          (branch_valid_id_ex),            // branch is valid
-      .branch_predict_o        (branch_predict_id_ex),          // branch predict to ex
-      .resolve_branch_i        (resolve_branch_ex_id),          // in order to resolve the branch
+      .branch_valid_o          (branch_valid_id_ex),             // branch is valid
+      .branch_predict_o        (branch_predict_id_ex),           // branch predict to ex
+      .resolve_branch_i        (resolve_branch_ex_id),           // in order to resolve the branch
       // LSU
       .lsu_ready_i             (lsu_ready_ex_id),
       .lsu_valid_o             (lsu_valid_id_ex),
+      // CLU
+      .clu_valid_o             (clu_valid_id_ex),
       // Multiplier
       .mult_valid_o            (mult_valid_id_ex),
       // FPU
@@ -936,14 +989,22 @@ module cva6
       .wt_valid_i              (wt_valid_ex_id),
       .x_we_i                  (x_we_ex_id),
       .x_rd_i                  (x_rd_ex_id),
+      .ex_valid_i              (ex_commit.valid),
+      .trap_vector_base_i      (trap_vector_base_commit_pcgen),
+      // CSR
+      .epc_i                   (epc_commit_pcgen),
+      .eret_i                  (eret),
 
-      .waddr_i              (waddr_commit_id),
-      .wdata_i              (wdata_commit_id),
-      .we_gpr_i             (we_gpr_commit_id),
-      .we_fpr_i             (we_fpr_commit_id),
-      .commit_instr_o       (commit_instr_id_commit),
-      .commit_drop_o        (commit_drop_id_commit),
-      .commit_ack_i         (commit_ack_commit_id),
+      .waddr_i        (waddr_commit_id),
+      .wdata_i        (wdata_commit_id),
+      .we_gpr_i       (we_gpr_commit_id),
+      .we_fpr_i       (we_fpr_commit_id),
+      .commit_instr_o (commit_instr_id_commit),
+      .commit_drop_o  (commit_drop_id_commit),
+      .commit_ack_i   (commit_ack_commit_id),
+      .pcc_commit_i   (pc_commit),
+      .set_pc_commit_i(set_pc_ctrl_pcgen),
+
       // Performance Counters
       .stall_issue_o        (stall_issue),
       //RVFI
@@ -984,6 +1045,7 @@ module cva6
       .fu_data_i(fu_data_id_ex),
       .alu_bypass_i(alu_bypass_id_ex),
       .pc_i(pc_id_ex),
+      .dii_id_i(dii_id_id_ex),
       .is_zcmt_i(zcmt_id_ex),
       .is_compressed_instr_i(is_compressed_instr_id_ex),
       .tinst_i(tinst_ex),
@@ -1007,11 +1069,14 @@ module cva6
       .csr_addr_o(csr_addr_ex_csr),
       .csr_commit_i(csr_commit_commit_ex),  // from commit
       .csr_hs_ld_st_inst_o(csr_hs_ld_st_inst_ex),  // signals a Hypervisor Load/Store Instruction
+      .ddc_i(ddc),
       // MULT
       .mult_valid_i(mult_valid_id_ex),
       // LSU
       .lsu_ready_o(lsu_ready_ex_id),
       .lsu_valid_i(lsu_valid_id_ex),
+      // CLU
+      .clu_valid_i(clu_valid_id_ex),
 
       .load_result_o   (load_result_ex_id),
       .load_trans_id_o (load_trans_id_ex_id),
@@ -1089,6 +1154,7 @@ module cva6
       .vs_asid_i               (vs_asid_csr_ex),                 // from CSR
       .hgatp_ppn_i             (hgatp_ppn_csr_ex),               // from CSR
       .vmid_i                  (vmid_csr_ex),                    // from CSR
+      .cap_ucrg_i              (cap_ucrg_ex),
       .icache_areq_i           (icache_areq_cache_ex),
       .icache_areq_o           (icache_areq_ex_cache),
       // DCACHE interfaces
@@ -1119,39 +1185,44 @@ module cva6
   ) commit_stage_i (
       .clk_i,
       .rst_ni,
-      .halt_i              (halt_ctrl),
-      .flush_dcache_i      (dcache_flush_ctrl_cache),
-      .exception_o         (ex_commit),
-      .dirty_fp_state_o    (dirty_fp_state),
-      .single_step_i       (single_step_csr_commit || single_step_acc_commit),
-      .commit_instr_i      (commit_instr_id_commit),
-      .commit_drop_i       (commit_drop_id_commit),
-      .commit_ack_o        (commit_ack_commit_id),
-      .commit_macro_ack_o  (commit_macro_ack),
-      .waddr_o             (waddr_commit_id),
-      .wdata_o             (wdata_commit_id),
-      .we_gpr_o            (we_gpr_commit_id),
-      .we_fpr_o            (we_fpr_commit_id),
-      .amo_resp_i          (amo_resp),
-      .pc_o                (pc_commit),
-      .csr_op_o            (csr_op_commit_csr),
-      .csr_wdata_o         (csr_wdata_commit_csr),
-      .csr_rdata_i         (csr_rdata_csr_commit),
-      .csr_write_fflags_o  (csr_write_fflags_commit_cs),
-      .csr_exception_i     (csr_exception_csr_commit),
-      .commit_lsu_o        (lsu_commit_commit_ex),
-      .commit_lsu_ready_i  (lsu_commit_ready_ex_commit),
-      .commit_tran_id_o    (lsu_commit_trans_id),
-      .amo_valid_commit_o  (amo_valid_commit),
-      .no_st_pending_i     (no_st_pending_commit),
-      .commit_csr_o        (csr_commit_commit_ex),
-      .fence_i_o           (fence_i_commit_controller),
-      .fence_o             (fence_commit_controller),
-      .flush_commit_o      (flush_commit),
-      .sfence_vma_o        (sfence_vma_commit_controller),
-      .hfence_vvma_o       (hfence_vvma_commit_controller),
-      .hfence_gvma_o       (hfence_gvma_commit_controller),
-      .break_from_trigger_i(break_from_trigger)
+      .halt_i                (halt_ctrl),
+      .flush_dcache_i        (dcache_flush_ctrl_cache),
+      .exception_o           (ex_commit),
+      .dirty_fp_state_o      (dirty_fp_state),
+      .single_step_i         (single_step_csr_commit || single_step_acc_commit),
+      .halt_for_single_step_i(halt_for_single_step),
+      .commit_single_step_o  (commit_single_step),
+      .commit_instr_i        (commit_instr_id_commit),
+      .commit_drop_i         (commit_drop_id_commit),
+      .commit_ack_o          (commit_ack_commit_id),
+      .commit_macro_ack_o    (commit_macro_ack),
+      .waddr_o               (waddr_commit_id),
+      .wdata_o               (wdata_commit_id),
+      .we_gpr_o              (we_gpr_commit_id),
+      .we_fpr_o              (we_fpr_commit_id),
+      .amo_resp_i            (amo_resp),
+      .pcc_i                 (commit_pcc),
+      .pc_o                  (pc_commit),
+      .dii_id_o              (dii_id_commit),
+      .csr_op_o              (csr_op_commit_csr),
+      .csr_op_is_imm_o       (csr_op_is_imm_commit_csr),
+      .csr_wdata_o           (csr_wdata_commit_csr),
+      .csr_rdata_i           (csr_rdata_csr_commit),
+      .csr_write_fflags_o    (csr_write_fflags_commit_cs),
+      .csr_exception_i       (csr_exception_csr_commit),
+      .commit_lsu_o          (lsu_commit_commit_ex),
+      .commit_lsu_ready_i    (lsu_commit_ready_ex_commit),
+      .commit_tran_id_o      (lsu_commit_trans_id),
+      .amo_valid_commit_o    (amo_valid_commit),
+      .no_st_pending_i       (no_st_pending_commit),
+      .commit_csr_o          (csr_commit_commit_ex),
+      .fence_i_o             (fence_i_commit_controller),
+      .fence_o               (fence_commit_controller),
+      .flush_commit_o        (flush_commit),
+      .sfence_vma_o          (sfence_vma_commit_controller),
+      .hfence_vvma_o         (hfence_vvma_commit_controller),
+      .hfence_gvma_o         (hfence_gvma_commit_controller),
+      .break_from_trigger_i  (break_from_trigger)
   );
 
   assign commit_ack = commit_macro_ack & ~commit_drop_id_commit;
@@ -1165,8 +1236,7 @@ module cva6
       .jvt_t             (jvt_t),
       .irq_ctrl_t        (irq_ctrl_t),
       .scoreboard_entry_t(scoreboard_entry_t),
-      .rvfi_probes_csr_t (rvfi_probes_csr_t),
-      .MHPMCounterNum    (MHPMCounterNum)
+      .rvfi_probes_csr_t (rvfi_probes_csr_t)
   ) csr_regfile_i (
       .clk_i,
       .rst_ni,
@@ -1175,10 +1245,11 @@ module cva6
       .halt_csr_o              (halt_csr_ctrl),
       .commit_instr_i          (commit_instr_id_commit[0]),
       .commit_ack_i            (commit_ack),
-      .boot_addr_i             (boot_addr_i[CVA6Cfg.VLEN-1:0]),
+      .boot_addr_i             (boot_addr_i),
       .hart_id_i               (hart_id_i[CVA6Cfg.XLEN-1:0]),
       .ex_i                    (ex_commit),
       .csr_op_i                (csr_op_commit_csr),
+      .csr_op_is_imm_i         (csr_op_is_imm_commit_csr),
       .csr_addr_i              (csr_addr_ex_csr),
       .csr_wdata_i             (csr_wdata_commit_csr),
       .csr_rdata_o             (csr_rdata_csr_commit),
@@ -1222,13 +1293,17 @@ module cva6
       .ipi_i,
       .debug_req_i,
       .set_debug_pc_o          (set_debug_pc),
+      .cap_ucrg_o              (cap_ucrg_ex),
       .tvm_o                   (tvm_csr_id),
       .tw_o                    (tw_csr_id),
       .vtw_o                   (vtw_csr_id),
       .tsr_o                   (tsr_csr_id),
       .hu_o                    (hu),
+      .ddc_o                   (ddc),
       .debug_mode_o            (debug_mode),
       .single_step_o           (single_step_csr_commit),
+      .halt_for_single_step_o  (halt_for_single_step),
+      .commit_single_step_i    (commit_single_step),
       .icache_en_o             (icache_en_csr),
       .dcache_en_o             (dcache_en_csr_nbdcache),
       .acc_cons_en_o           (acc_cons_en_csr),
@@ -1252,7 +1327,7 @@ module cva6
       .debug_from_trigger_o    (debug_from_trigger),
       .vaddr_from_lsu_i        (rvfi_lsu_ctrl.vaddr),
       .orig_instr_i            (orig_instr_id_issue),
-      .store_result_i          (store_result_ex_id),
+      .store_result_i          (reg_to_x(store_result_ex_id)),
       .break_from_trigger_o    (break_from_trigger)
   );
 
@@ -1402,6 +1477,7 @@ module cva6
         .icache_rtrn_t(icache_rtrn_t),
         .dcache_req_i_t(dcache_req_i_t),
         .dcache_req_o_t(dcache_req_o_t),
+        .exception_t (exception_t),
         .NumPorts  (NumPorts),
         .noc_req_t (noc_req_t),
         .noc_resp_t(noc_resp_t)
@@ -1412,11 +1488,11 @@ module cva6
         // I$
         .icache_en_i       (icache_en_csr),
         .icache_flush_i    (icache_flush_ctrl_cache),
-        .icache_miss_o     (icache_miss_cache_perf),
+        .icache_miss_o     (icache_miss_cache_perf_real),
         .icache_areq_i     (icache_areq_ex_cache),
-        .icache_areq_o     (icache_areq_cache_ex),
+        .icache_areq_o     (icache_areq_cache_ex_real),
         .icache_dreq_i     (icache_dreq_if_cache),
-        .icache_dreq_o     (icache_dreq_cache_if),
+        .icache_dreq_o     (icache_dreq_cache_if_real),
         // D$
         .dcache_enable_i   (dcache_en_csr_nbdcache),
         .dcache_flush_i    (dcache_flush_ctrl_cache),
@@ -1471,11 +1547,11 @@ module cva6
 
         .icache_en_i   (icache_en_csr),
         .icache_flush_i(icache_flush_ctrl_cache),
-        .icache_miss_o (icache_miss_cache_perf),
+        .icache_miss_o (icache_miss_cache_perf_real),
         .icache_areq_i (icache_areq_ex_cache),
-        .icache_areq_o (icache_areq_cache_ex),
+        .icache_areq_o (icache_areq_cache_ex_real),
         .icache_dreq_i (icache_dreq_if_cache),
-        .icache_dreq_o (icache_dreq_cache_if),
+        .icache_dreq_o (icache_dreq_cache_if_real),
 
         .dcache_enable_i   (dcache_en_csr_nbdcache),
         .dcache_flush_i    (dcache_flush_ctrl_cache),
@@ -1529,7 +1605,8 @@ module cva6
         .axi_aw_chan_t (axi_aw_chan_t),
         .axi_w_chan_t  (axi_w_chan_t),
         .axi_req_t     (noc_req_t),
-        .axi_rsp_t     (noc_resp_t)
+        .axi_rsp_t     (noc_resp_t),
+        .exception_t   (exception_t)
     ) i_cache_subsystem (
         // to D$
         .clk_i             (clk_i),
@@ -1538,11 +1615,11 @@ module cva6
         // I$
         .icache_en_i       (icache_en_csr),
         .icache_flush_i    (icache_flush_ctrl_cache),
-        .icache_miss_o     (icache_miss_cache_perf),
+        .icache_miss_o     (icache_miss_cache_perf_real),
         .icache_areq_i     (icache_areq_ex_cache),
-        .icache_areq_o     (icache_areq_cache_ex),
+        .icache_areq_o     (icache_areq_cache_ex_real),
         .icache_dreq_i     (icache_dreq_if_cache),
-        .icache_dreq_o     (icache_dreq_cache_if),
+        .icache_dreq_o     (icache_dreq_cache_if_real),
         // D$
         .dcache_enable_i   (dcache_en_csr_nbdcache),
         .dcache_flush_i    (dcache_flush_ctrl_cache),
@@ -1563,6 +1640,26 @@ module cva6
     assign dcache_commit_wbuffer_not_ni = 1'b1;
     assign inval_ready                  = 1'b1;
     assign miss_vld_bits                = '0;
+  end
+
+  if (CVA6Cfg.RVFI_DII) begin
+    rvfi_dii_generator #(
+        .CVA6Cfg(CVA6Cfg),
+        .icache_dreq_t(icache_dreq_t),
+        .icache_drsp_t(icache_drsp_t),
+        .exception_t(exception_t)
+    ) i_cva6_rvfi_dii_generator (
+        .clk_i (clk_i),
+        .rst_ni(rst_ni),
+        .dreq_i(icache_dreq_if_cache),
+        .dreq_o(icache_dreq_cache_if)
+    );
+    assign icache_miss_cache_perf = '0;
+    assign icache_areq_cache_ex   = '0;
+  end else begin
+    assign icache_dreq_cache_if   = icache_dreq_cache_if_real;
+    assign icache_miss_cache_perf = icache_miss_cache_perf_real;
+    assign icache_areq_cache_ex   = icache_areq_cache_ex_real;
   end
 
   // ----------------
@@ -1831,6 +1928,11 @@ module cva6
     assign rvfi_fetch_instr[i] = fetch_entry_if_id[i].instruction;
   end
 
+  logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] wdata_commit_rvfi;
+  for (genvar i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
+    assign wdata_commit_rvfi[i] = reg_to_x(wdata_commit_id[i]);
+  end
+
   cva6_rvfi_probes #(
       .CVA6Cfg            (CVA6Cfg),
       .exception_t        (exception_t),
@@ -1868,7 +1970,7 @@ module cva6
       .commit_ack_i(commit_ack),
       .mem_paddr_i (rvfi_mem_paddr),
       .debug_mode_i(debug_mode),
-      .wdata_i     (wdata_commit_id),
+      .wdata_i     (wdata_commit_rvfi),
 
       .csr_i(rvfi_csr),
       .irq_i(irq_i),

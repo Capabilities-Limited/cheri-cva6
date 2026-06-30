@@ -665,7 +665,7 @@ def save_regr_report(report):
     failed_details = run_cmd(r"sed -e 's,.*_sim/,,' %s | grep '\(csv\|matched\)' | uniq | sed -e 'N;s/\\n/ /g' | grep '\[FAILED\]'" % report).strip()
     logging.info(failed_details)
     run_cmd(("echo %s >> %s" % (failed_details, report)))
-    #sys.exit(RET_FAIL) #Do not return error code in case of test fail.
+    sys.exit(RET_FAIL)
   logging.info("ISS regression report is saved to %s" % report)
 
 
@@ -892,7 +892,7 @@ def load_config(args, cwd):
     elif base in ("cv64a6_imafdc_sv39_wb",):
       args.mabi = "lp64d"
       args.isa  = "rv64gc_zba_zbb_zbs_zbc"
-    elif base in ("cv64a6_imafdc_sv39", "cv64a6_imafdc_sv39_hpdcache", "cv64a6_imafdc_sv39_hpdcache_wb"):
+    elif base in ("cv64a6_imafdc_sv39", "cv64a6_imafdczcheri_sv39", "cv64a6_imafdczcheri_sv39_hpdcache_wb", "cv64a6_imafdc_sv39_hpdcache", "cv64a6_imafdc_sv39_hpdcache_wb"):
       args.mabi = "lp64d"
       args.isa  = "rv64gc_zba_zbb_zbs_zbc_zbkb_zbkx_zkne_zknd_zknh"
     elif base == "cv32a60x":
@@ -1035,7 +1035,7 @@ def check_spike_version():
 
 
 def check_verilator_version():
-  REQUIRED_VERILATOR_VERSION = "5.008"
+  REQUIRED_VERILATOR_VERSION = "5.038"
 
   verilator_version_string = run_cmd("verilator --version")
   logging.info(f"Verilator Version: {verilator_version_string.strip()}")

@@ -16,7 +16,7 @@ HALF_CLOCK_FREQUENCY ?= 50000000 #50MHz
 UART_BITRATE ?= 115200
 HAS_ETHERNET ?= 1
 else
-DRAM_SIZE_64 ?= 0x40000000 #1GB
+DRAM_SIZE_64 ?= 0x3f800000 #1GB, minus tag table
 DRAM_SIZE_32 ?= 0x08000000 #128MB
 CLOCK_FREQUENCY ?= 50000000 #50MHz
 HALF_CLOCK_FREQUENCY ?= 25000000 #25MHz
@@ -42,7 +42,7 @@ LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles
 
 INCLUDES = -I./ -I./src
 
-SRCS_C = src/main.c src/uart.c src/spi.c src/sd.c src/gpt.c src/dw_mmc.c src/bouncebuf.c
+SRCS_C = src/main.c src/uart.c src/spi.c src/sd.c src/gpt.c src/time.c src/dw_mmc.c src/bouncebuf.c
 SRCS_ASM = startup.S
 OBJS_C = $(SRCS_C:.c=.o)
 OBJS_S = $(SRCS_ASM:.S=.o)

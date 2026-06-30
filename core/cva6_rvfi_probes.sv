@@ -44,12 +44,12 @@ module cva6_rvfi_probes
     input exception_t ex_commit_i,
     input riscv::priv_lvl_t priv_lvl_i,
 
-    input lsu_ctrl_t                                               lsu_ctrl_i,
-    input logic      [    CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.XLEN-1:0] wbdata_i,
-    input logic      [CVA6Cfg.NrCommitPorts-1:0]                   commit_ack_i,
-    input logic      [         CVA6Cfg.PLEN-1:0]                   mem_paddr_i,
-    input logic                                                    debug_mode_i,
-    input logic      [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] wdata_i,
+    input lsu_ctrl_t                                                 lsu_ctrl_i,
+    input logic      [    CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.REGLEN-1:0] wbdata_i,
+    input logic      [CVA6Cfg.NrCommitPorts-1:0]                     commit_ack_i,
+    input logic      [         CVA6Cfg.PLEN-1:0]                     mem_paddr_i,
+    input logic                                                      debug_mode_i,
+    input logic      [CVA6Cfg.NrCommitPorts-1:0][  CVA6Cfg.XLEN-1:0] wdata_i,
 
     input rvfi_probes_csr_t csr_i,
     input logic [1:0] irq_i,
@@ -105,17 +105,18 @@ module cva6_rvfi_probes
 
     for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
       instr.commit_instr_pc[i] = commit_instr_i[i].pc;
+      instr.commit_instr_next_pc[i] = commit_instr_i[i].bp.predict_address;
       instr.commit_instr_op[i] = commit_instr_i[i].op;
+      instr.commit_instr_fu[i] = commit_instr_i[i].fu;
       instr.commit_instr_rs1[i] = commit_instr_i[i].rs1;
       instr.commit_instr_rs2[i] = commit_instr_i[i].rs2;
       instr.commit_instr_rd[i] = commit_instr_i[i].rd;
-      instr.commit_instr_result[i] = commit_instr_i[i].result;
+      instr.commit_instr_result[i] = reg_to_x(commit_instr_i[i].result);
       instr.commit_instr_valid[i] = commit_instr_i[i].valid;
+      instr.commit_ack[i] = commit_ack_i[i];
+      instr.commit_drop[i] = commit_drop_i[i];
+      instr.wdata[i] = wdata_i[i];
     end
-
-    instr.commit_drop = commit_drop_i;
-    instr.commit_ack = commit_ack_i;
-    instr.wdata = wdata_i;
 
     instr.branch_valid = resolved_branch_i.valid;
     instr.is_taken = resolved_branch_i.is_taken;

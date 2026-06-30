@@ -1,4 +1,6 @@
 // Copyright 2018 ETH Zurich and University of Bologna.
+// Copyright 2025 Bruno Sá and Zero-Day Labs.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -16,6 +18,8 @@
 `include "axi/assign.svh"
 `include "rvfi_types.svh"
 `include "iti_types.svh"
+`include "register_interface/assign.svh"
+`include "register_interface/typedef.svh"
 
 `ifdef VERILATOR
 `include "custom_uvm_macros.svh"
@@ -23,21 +27,64 @@
 `include "uvm_macros.svh"
 `endif
 
-module ariane_testharness #(
+module ariane_testharness import cva6_cheri_pkg::*; #(
   parameter config_pkg::cva6_cfg_t CVA6Cfg = build_config_pkg::build_config(cva6_config_pkg::cva6_cfg),
   //
   parameter int unsigned AXI_USER_WIDTH    = CVA6Cfg.AxiUserWidth,
   parameter int unsigned AXI_USER_EN       = CVA6Cfg.AXI_USER_EN,
   parameter int unsigned AXI_ADDRESS_WIDTH = 64,
   parameter int unsigned AXI_DATA_WIDTH    = 64,
-  parameter bit          InclSimDTM        = 1'b1,
-  parameter int unsigned NUM_WORDS         = 2**25,         // memory size
+  parameter bit          InclSimDTM        = CVA6Cfg.RVFI_DII ? 1'b1 : 1'b0,
+  parameter int unsigned NUM_WORDS         = CVA6Cfg.RVFI_DII ? 2**21 : 2**25, // memory size
   parameter bit          StallRandomOutput = 1'b0,
   parameter bit          StallRandomInput  = 1'b0
 ) (
   input  logic                           clk_i,
   input  logic                           rtc_i,
   input  logic                           rst_ni,
+`ifdef RVFI_TRACE
+  output logic                         rvfi_valid_o_0,
+  output logic [63:0]                  rvfi_order_o_0,
+  output logic [31:0]                  rvfi_insn_o_0,
+  output logic                         rvfi_trap_o_0,
+  output logic                         rvfi_halt_o_0,
+  output logic                         rvfi_intr_o_0,
+  output logic [ 1:0]                  rvfi_mode_o_0,
+  output logic [ 4:0]                  rvfi_rs1_addr_o_0,
+  output logic [ 4:0]                  rvfi_rs2_addr_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs1_rdata_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs2_rdata_o_0,
+  output logic [ 4:0]                  rvfi_rd_addr_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rd_wdata_o_0,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_rdata_o_0,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_wdata_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_addr_o_0,
+  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_rmask_o_0,
+  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_wmask_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_rdata_o_0,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_wdata_o_0,
+  output logic                         rvfi_valid_o_1,
+  output logic [63:0]                  rvfi_order_o_1,
+  output logic [31:0]                  rvfi_insn_o_1,
+  output logic                         rvfi_trap_o_1,
+  output logic                         rvfi_halt_o_1,
+  output logic                         rvfi_intr_o_1,
+  output logic [ 1:0]                  rvfi_mode_o_1,
+  output logic [ 4:0]                  rvfi_rs1_addr_o_1,
+  output logic [ 4:0]                  rvfi_rs2_addr_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs1_rdata_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rs2_rdata_o_1,
+  output logic [ 4:0]                  rvfi_rd_addr_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_rd_wdata_o_1,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_rdata_o_1,
+  output logic [CVA6Cfg.VLEN-1:0]      rvfi_pc_wdata_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_addr_o_1,
+  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_rmask_o_1,
+  output logic [(CVA6Cfg.CLEN/8)-1:0]  rvfi_mem_wmask_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_rdata_o_1,
+  output logic [CVA6Cfg.XLEN-1:0]      rvfi_mem_wdata_o_1,
+`endif
+
   output logic [31:0]                    exit_o
 );
 
@@ -131,8 +178,8 @@ module ariane_testharness #(
 
   logic debug_enable;
   initial begin
-    if (!$value$plusargs("jtag_rbb_enable=%b", jtag_enable)) jtag_enable = 'h0;
-    if ($test$plusargs("debug_disable")) debug_enable = 'h0; else debug_enable = 'h1;
+    if (CVA6Cfg.RVFI_DII || !$value$plusargs("jtag_rbb_enable=%b", jtag_enable)) jtag_enable = 'h0;
+    if (CVA6Cfg.RVFI_DII || $test$plusargs("debug_disable")) debug_enable = 'h0; else debug_enable = 'h1;
     if (CVA6Cfg.XLEN != 32 & CVA6Cfg.XLEN != 64) $error("CVA6Cfg.XLEN different from 32 and 64");
   end
 
@@ -140,11 +187,7 @@ module ariane_testharness #(
   assign debug_req_valid     = (jtag_enable[0]) ? jtag_req_valid     : dmi_req_valid;
   assign debug_resp_ready    = (jtag_enable[0]) ? jtag_resp_ready    : dmi_resp_ready;
   assign debug_req           = (jtag_enable[0]) ? jtag_dmi_req       : dmi_req;
-  if (ariane_pkg::RVFI) begin
-    assign exit_o              = (jtag_enable[0]) ? jtag_exit          : rvfi_exit;
-  end else begin
-    assign exit_o              = (jtag_enable[0]) ? jtag_exit          : dmi_exit;
-  end
+  assign exit_o              = (jtag_enable[0]) ? jtag_exit          : (dmi_exit | rvfi_exit);
   assign jtag_resp_valid     = (jtag_enable[0]) ? debug_resp_valid   : 1'b0;
   assign dmi_resp_valid      = (jtag_enable[0]) ? 1'b0               : debug_resp_valid;
 
@@ -164,24 +207,31 @@ module ariane_testharness #(
     .exit                 ( jtag_exit            )
   );
 
-  dmi_jtag i_dmi_jtag (
-    .clk_i            ( clk_i           ),
-    .rst_ni           ( rst_ni          ),
-    .testmode_i       ( test_en         ),
-    .dmi_req_o        ( jtag_dmi_req    ),
-    .dmi_req_valid_o  ( jtag_req_valid  ),
-    .dmi_req_ready_i  ( debug_req_ready ),
-    .dmi_resp_i       ( debug_resp      ),
-    .dmi_resp_ready_o ( jtag_resp_ready ),
-    .dmi_resp_valid_i ( jtag_resp_valid ),
-    .dmi_rst_no       (                 ), // not connected
-    .tck_i            ( jtag_TCK        ),
-    .tms_i            ( jtag_TMS        ),
-    .trst_ni          ( jtag_TRSTn      ),
-    .td_i             ( jtag_TDI        ),
-    .td_o             ( jtag_TDO_data   ),
-    .tdo_oe_o         ( jtag_TDO_driven )
-  );
+  if (!CVA6Cfg.RVFI_DII) begin
+    dmi_jtag i_dmi_jtag (
+      .clk_i            ( clk_i           ),
+      .rst_ni           ( rst_ni          ),
+      .testmode_i       ( test_en         ),
+      .dmi_req_o        ( jtag_dmi_req    ),
+      .dmi_req_valid_o  ( jtag_req_valid  ),
+      .dmi_req_ready_i  ( debug_req_ready ),
+      .dmi_resp_i       ( debug_resp      ),
+      .dmi_resp_ready_o ( jtag_resp_ready ),
+      .dmi_resp_valid_i ( jtag_resp_valid ),
+      .dmi_rst_no       (                 ), // not connected
+      .tck_i            ( jtag_TCK        ),
+      .tms_i            ( jtag_TMS        ),
+      .trst_ni          ( jtag_TRSTn      ),
+      .td_i             ( jtag_TDI        ),
+      .td_o             ( jtag_TDO_data   ),
+      .tdo_oe_o         ( jtag_TDO_driven )
+    );
+  end else begin
+    assign jtag_dmi_req = '0;
+    assign jtag_resp_ready = '0;
+    assign jtag_TDO_data = '0;
+    assign jtag_TDO_driver = '0;
+  end
 
   // SiFive's SimDTM Module
   // Converts to DPI calls
@@ -413,6 +463,8 @@ module ariane_testharness #(
   logic [AXI_USER_WIDTH-1:0]    wuser;
   logic [AXI_USER_WIDTH-1:0]    ruser;
 
+  localparam AxiCheriExtraIdBits = CVA6Cfg.CheriPresent ? 1 : 0;
+
   axi_riscv_atomics_wrap #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
@@ -430,12 +482,19 @@ module ariane_testharness #(
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
-    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + AxiCheriExtraIdBits ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
   ) dram_delayed();
 
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
+    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + 1 ),
+    .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
+  ) tag_mst();
+
   axi_delayer_intf #(
-    .AXI_ID_WIDTH        ( ariane_axi_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH        ( ariane_axi_soc::IdWidthSlave + AxiCheriExtraIdBits ),
     .AXI_ADDR_WIDTH      ( AXI_ADDRESS_WIDTH            ),
     .AXI_DATA_WIDTH      ( AXI_DATA_WIDTH               ),
     .AXI_USER_WIDTH      ( AXI_USER_WIDTH               ),
@@ -446,12 +505,12 @@ module ariane_testharness #(
   ) i_axi_delayer (
     .clk_i  ( clk_i        ),
     .rst_ni ( ndmreset_n   ),
-    .slv    ( dram         ),
+    .slv    ( tag_mst ),
     .mst    ( dram_delayed )
   );
 
   axi2mem #(
-    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + AxiCheriExtraIdBits ),
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
@@ -468,6 +527,80 @@ module ariane_testharness #(
     .user_i ( ruser        ),
     .data_i ( rdata        )
   );
+  typedef logic [CVA6Cfg.AxiAddrWidth-1:0]  axi_addr_t;
+  typedef struct packed {
+    int unsigned idx;
+    axi_addr_t   start_addr;
+    axi_addr_t   end_addr;
+  } rule_full_t;
+
+  typedef logic [(ariane_axi_soc::IdWidthSlave+AxiCheriExtraIdBits)-1:0] axi_mst_id_t;
+  typedef logic [CVA6Cfg.AxiDataWidth-1:0] axi_data_t;
+  typedef logic [ariane_axi_soc::StrbWidth-1:0] axi_strb_t;
+  typedef logic [CVA6Cfg.AxiUserWidth-1:0] axi_user_t;
+  typedef logic [7:0] byte_t;
+
+  `AXI_TYPEDEF_AW_CHAN_T(axi_mst_aw_t, axi_addr_t, axi_mst_id_t, axi_user_t)
+  `AXI_TYPEDEF_W_CHAN_T(axi_w_t, axi_data_t, axi_strb_t, axi_user_t)
+  `AXI_TYPEDEF_B_CHAN_T(axi_mst_b_t, axi_mst_id_t, axi_user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(axi_mst_ar_t, axi_addr_t, axi_mst_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(axi_mst_r_t, axi_data_t, axi_mst_id_t, axi_user_t)
+
+  `AXI_TYPEDEF_REQ_T(axi_mst_req_t, axi_mst_aw_t, axi_w_t, axi_mst_ar_t)
+  `AXI_TYPEDEF_RESP_T(axi_mst_resp_t, axi_mst_b_t, axi_mst_r_t)
+
+  ariane_axi_soc::req_slv_t  dram_req;
+  ariane_axi_soc::resp_slv_t dram_resp;
+  axi_mst_req_t axi_tag_req;
+  axi_mst_resp_t axi_tag_resp;
+
+  `AXI_ASSIGN_TO_REQ(dram_req, dram)
+  `AXI_ASSIGN_FROM_RESP(dram, dram_resp)
+  `AXI_ASSIGN_FROM_REQ(tag_mst, axi_tag_req)
+  `AXI_ASSIGN_TO_RESP(axi_tag_resp, tag_mst)
+  `REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
+
+  localparam logic[63:0] cached_end_addr = CVA6Cfg.RVFI_DII ?
+    ariane_soc::DRAMBase + 64'h800000 :
+    ariane_soc::DRAMBase + ariane_soc::DRAMLength - (ariane_soc::DRAMLength>>7);
+
+  if (CVA6Cfg.CheriPresent) begin : gen_cheri_tag_controller
+    axi_tagctrl_reg_wrap #(
+        .DRAMMemBase     (ariane_soc::DRAMBase),
+        .CapSize         (CVA6Cfg.CLEN),
+        .TagCacheMemBase (cached_end_addr),
+        .SetAssociativity(ariane_soc::SetAssociativity),
+        .NumLines        (ariane_soc::NumLines),
+        .NumBlocks       (ariane_soc::NumBlocks),
+        .AxiIdWidth      (ariane_axi_soc::IdWidthSlave),
+        .AxiAddrWidth    (CVA6Cfg.AxiAddrWidth),
+        .AxiDataWidth    (CVA6Cfg.AxiDataWidth),
+        .AxiUserWidth    (CVA6Cfg.AxiUserWidth),
+        .slv_req_t       (ariane_axi_soc::req_slv_t),
+        .slv_resp_t      (ariane_axi_soc::resp_slv_t),
+        .mst_req_t       (axi_mst_req_t),
+        .mst_resp_t      (axi_mst_resp_t),
+        .reg_req_t       (conf_req_t),
+        .reg_resp_t      (conf_rsp_t),
+        .rule_full_t     (rule_full_t),
+        .PrintSramCfg    (1'b0)
+    ) i_axi_tagctrl_reg_wrap_raw (
+        .clk_i,
+        .rst_ni,
+        .test_i             (1'b0),
+        .slv_req_i          (dram_req),
+        .slv_resp_o         (dram_resp),
+        .mst_req_o          (axi_tag_req),
+        .mst_resp_i         (axi_tag_resp),
+        .conf_req_i         (  /* not used */),
+        .conf_resp_o        (  /* not used */),
+        .cached_start_addr_i(ariane_soc::DRAMBase),
+        .cached_end_addr_i  (cached_end_addr)
+    );
+  end else begin
+    assign axi_tag_req = dram_req;
+    assign dram_resp = axi_tag_resp;
+  end
 
   sram #(
     .DATA_WIDTH ( AXI_DATA_WIDTH ),
@@ -586,7 +719,7 @@ module ariane_testharness #(
 `ifndef VERILATOR
     .InclUART     ( 1'b1                     ),
 `else
-    .InclUART     ( 1'b0                     ),
+    .InclUART     ( 1'b0                    ),
 `endif
     .InclSPI      ( 1'b0                     ),
     .InclEthernet ( 1'b0                     )
@@ -631,6 +764,15 @@ module ariane_testharness #(
   rvfi_to_iti_t rvfi_to_iti;
   iti_to_encoder_t iti_to_encoder;
 
+  cva6_cheri_pkg::cap_reg_t boot_cap;
+  logic [CVA6Cfg.XLEN-1:0] boot_addr;
+  always_comb begin : gen_boot_cap
+    boot_cap = ariane_pkg::REG_ROOT;
+    boot_addr = CVA6Cfg.RVFI_DII ? ariane_soc::DRAMBase : ariane_soc::ROMBase;
+    boot_cap.addr = boot_addr;
+    boot_cap.flags.int_mode = CVA6Cfg.RVFI_DII ? 1'b0 : 1'b1;
+  end
+
   ariane #(
     .CVA6Cfg              ( CVA6Cfg             ),
     .rvfi_probes_instr_t  ( rvfi_probes_instr_t ),
@@ -641,7 +783,7 @@ module ariane_testharness #(
   ) i_ariane (
     .clk_i                ( clk_i               ),
     .rst_ni               ( ndmreset_n          ),
-    .boot_addr_i          ( ariane_soc::ROMBase ), // start fetching from ROM
+    .boot_addr_i          ( CVA6Cfg.CheriPresent ? boot_cap : boot_addr ), // start fetching from ROM
     .hart_id_i            ( {56'h0, hart_id}    ),
     .irq_i                ( irqs                ),
     .ipi_i                ( ipi                 ),
@@ -677,6 +819,50 @@ module ariane_testharness #(
     end
   end
 
+`ifdef RVFI_TRACE
+  assign rvfi_valid_o_0     = rvfi_instr[0].valid;
+  assign rvfi_order_o_0     = rvfi_instr[0].order;
+  assign rvfi_insn_o_0      = rvfi_instr[0].insn;
+  assign rvfi_trap_o_0      = rvfi_instr[0].trap;
+  assign rvfi_halt_o_0      = rvfi_instr[0].halt;
+  assign rvfi_intr_o_0      = rvfi_instr[0].intr;
+  assign rvfi_mode_o_0      = rvfi_instr[0].mode;
+  assign rvfi_rs1_addr_o_0  = rvfi_instr[0].rs1_addr;
+  assign rvfi_rs2_addr_o_0  = rvfi_instr[0].rs2_addr;
+  assign rvfi_rs1_rdata_o_0 = rvfi_instr[0].rs1_rdata;
+  assign rvfi_rs2_rdata_o_0 = rvfi_instr[0].rs2_rdata;
+  assign rvfi_rd_addr_o_0   = rvfi_instr[0].rd_addr;
+  assign rvfi_rd_wdata_o_0  = rvfi_instr[0].rd_wdata;
+  assign rvfi_pc_rdata_o_0  = rvfi_instr[0].pc_rdata;
+  assign rvfi_pc_wdata_o_0  = rvfi_instr[0].pc_wdata;
+  assign rvfi_mem_addr_o_0  = rvfi_instr[0].mem_addr;
+  assign rvfi_mem_rmask_o_0 = rvfi_instr[0].mem_rmask;
+  assign rvfi_mem_wmask_o_0 = rvfi_instr[0].mem_wmask;
+  assign rvfi_mem_rdata_o_0 = rvfi_instr[0].mem_rdata[CVA6Cfg.XLEN-1:0];
+  assign rvfi_mem_wdata_o_0 = rvfi_instr[0].mem_wdata[CVA6Cfg.XLEN-1:0];
+  if (CVA6Cfg.NrCommitPorts > 1) begin
+    assign rvfi_valid_o_1     = rvfi_instr[1].valid;
+    assign rvfi_order_o_1     = rvfi_instr[1].order;
+    assign rvfi_insn_o_1      = rvfi_instr[1].insn;
+    assign rvfi_trap_o_1      = rvfi_instr[1].trap;
+    assign rvfi_halt_o_1      = rvfi_instr[1].halt;
+    assign rvfi_intr_o_1      = rvfi_instr[1].intr;
+    assign rvfi_mode_o_1      = rvfi_instr[1].mode;
+    assign rvfi_rs1_addr_o_1  = rvfi_instr[1].rs1_addr;
+    assign rvfi_rs2_addr_o_1  = rvfi_instr[1].rs2_addr;
+    assign rvfi_rs1_rdata_o_1 = rvfi_instr[1].rs1_rdata;
+    assign rvfi_rs2_rdata_o_1 = rvfi_instr[1].rs2_rdata;
+    assign rvfi_rd_addr_o_1   = rvfi_instr[1].rd_addr;
+    assign rvfi_rd_wdata_o_1  = rvfi_instr[1].rd_wdata;
+    assign rvfi_pc_rdata_o_1  = rvfi_instr[1].pc_rdata;
+    assign rvfi_pc_wdata_o_1  = rvfi_instr[1].pc_wdata;
+    assign rvfi_mem_addr_o_1  = rvfi_instr[1].mem_addr;
+    assign rvfi_mem_rmask_o_1 = rvfi_instr[1].mem_rmask;
+    assign rvfi_mem_wmask_o_1 = rvfi_instr[1].mem_wmask;
+    assign rvfi_mem_rdata_o_1 = rvfi_instr[1].mem_rdata[CVA6Cfg.XLEN-1:0];
+    assign rvfi_mem_wdata_o_1 = rvfi_instr[1].mem_wdata[CVA6Cfg.XLEN-1:0];
+  end
+`else
     cva6_iti #(
         .CVA6Cfg   (CVA6Cfg),
         .CAUSE_LEN  (iti_pkg::CAUSE_LEN),
@@ -789,6 +975,8 @@ module ariane_testharness #(
         .done_o            (encap_fifo_pop)
     );
 
+`endif
+
   cva6_rvfi #(
       .CVA6Cfg   (CVA6Cfg),
       .rvfi_instr_t(rvfi_instr_t),
@@ -854,11 +1042,14 @@ module ariane_testharness #(
             tandem_timeout <= tandem_timeout + 1;
     end
 
-    always_ff @(posedge clk_i) begin
-        if (tandem_exit || (tandem_timeout > TANDEM_TIMEOUT_THRESHOLD)) begin
-            rvfi_exit <= tracer_exit;
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+            rvfi_exit <= 0;
+        end else begin
+            if (tandem_exit || (tandem_timeout > TANDEM_TIMEOUT_THRESHOLD)) begin
+              rvfi_exit <= tracer_exit;
+            end
         end
-
     end
 `else
     assign rvfi_exit = tracer_exit;
