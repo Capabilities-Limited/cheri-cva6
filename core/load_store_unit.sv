@@ -370,7 +370,6 @@ module load_store_unit
         lsu_paddr <= '0;
         mmu_exception <= '0;
         pmp_translation_valid <= 1'b0;
-        if (CVA6Cfg.RVFI_DII) tval_vaddr <= '0;
       end else begin
         if (CVA6Cfg.VLEN >= CVA6Cfg.PLEN) begin : gen_virtual_physical_address_lsu
           lsu_paddr <= mmu_vaddr[CVA6Cfg.PLEN-1:0];
@@ -379,7 +378,6 @@ module load_store_unit
         end
         mmu_exception <= cheri_exception.valid ? cheri_exception : misaligned_exception;
         pmp_translation_valid <= translation_req;
-        if (CVA6Cfg.RVFI_DII) tval_vaddr <= mmu_vaddr;
       end
     end
 
