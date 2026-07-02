@@ -2968,7 +2968,7 @@ module csr_regfile
       csr_exception_o.valid = 1'b1;
     end
 
-    if (cheri_access_violation) begin
+    if (cheri_access_violation && !debug_mode_q) begin
       cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
       cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
       csr_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;

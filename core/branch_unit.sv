@@ -238,7 +238,7 @@ module branch_unit #(
           cheri_fault = 1'b1;
         end
       end
-      if (cheri_fault) begin
+      if (cheri_fault && !debug_mode_i) begin
         branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
         branch_exception_o.tval  = '0;
         branch_exception_o.tval2 = CVA6Cfg.GPLEN'(cva6_cheri_pkg::embed_cap_tval2(cheri_tval2));
