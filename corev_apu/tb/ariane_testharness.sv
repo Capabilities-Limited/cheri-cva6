@@ -605,7 +605,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
   sram #(
     .DATA_WIDTH ( AXI_DATA_WIDTH ),
     .USER_WIDTH ( AXI_USER_WIDTH ),
-    .USER_EN    ( AXI_USER_EN    ),
+    .USER_EN    ( 0              ),
 `ifdef VERILATOR
     .SIM_INIT   ( "none"         ),
 `else
