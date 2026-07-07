@@ -108,7 +108,6 @@ end else if (ATOM_SIZE == 8 && NDATA*DATA_SIZE == 32) begin
     );
 
 end else begin
-   //$fatal(1, "DATASIZE=%d, in not supported", NDATA*DATA_SIZE);
    // Fall back on non-optimised version that also supportes <8-bit atoms.
    localparam int unsigned N_ATOMS =
        (DATA_SIZE + ATOM_SIZE - 1) / ATOM_SIZE;
@@ -143,5 +142,31 @@ end else begin
    );
 end
 
+/*
+ *  Internal memory array declaration
 
+typedef logic [NDATA-1:0][DATA_SIZE-1:0] mem_t [DEPTH];
+mem_t mem;
+logic [ADDR_SIZE-1:0] addr_reg;
+
+assign rdata = mem[addr_reg];
+
+
+ *  Process to update or read the memory array
+
+always_ff @(posedge clk)
+begin : mem_update_ff
+    if (cs == 1'b1) begin
+        if (we == 1'b1) begin
+            for (int j = 0; j < NDATA; j++) begin
+                for (int i = 0; i < (DATA_SIZE+ATOM_SIZE-1)/ATOM_SIZE; i++) begin
+                    if (wbyteenable[j][i]) mem[addr][j][i*ATOM_SIZE +: ATOM_SIZE] <= wdata[j][i*ATOM_SIZE +: ATOM_SIZE];
+                end
+            end
+        end else begin
+            addr_reg <= addr;
+        end
+    end
+end
+*/
 endmodule : hpdcache_sram_wbyteenable_1rw
