@@ -183,7 +183,8 @@ package cva6_config_pkg;
       NrLoadPipeRegs: int'(CVA6ConfigNrLoadPipeRegs),
       NrStorePipeRegs: int'(CVA6ConfigNrStorePipeRegs),
       DcacheIdWidth: int'(CVA6ConfigDcacheIdWidth),
-      CheriCapTagWidth : int'(1)
+      CheriCapTagWidth : int'(1),
+      RVFI_DII : int'(0)
   };
 
 endpackage

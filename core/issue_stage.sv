@@ -69,6 +69,8 @@ module issue_stage
     output logic [CVA6Cfg.REGLEN-1:0] pc_o,
     // Program Counter Capability - EX_STAGE
     output logic [CVA6Cfg.REGLEN-1:0] commit_pcc_o,
+    // DII ID - EX_STAGE
+    output logic [CVA6Cfg.DIIIDLEN-1:0] dii_id_o,
     // Is zcmt instruction - EX_STAGE
     output logic is_zcmt_o,
     // Is compressed instruction - EX_STAGE
@@ -304,6 +306,7 @@ module issue_stage
       .rs2_forwarding_o        (rs2_forwarding_o),
       .pc_o,
       .commit_pcc_o,
+      .dii_id_o,
       .is_zcmt_o,
       .is_compressed_instr_o,
       .flu_ready_i             (flu_ready_i),

@@ -372,6 +372,11 @@ module cva6_mmu
   // Instruction Interface
   //-----------------------
   localparam int PPNWMin = (CVA6Cfg.PPNW - 1 > 29) ? 29 : CVA6Cfg.PPNW - 1;
+  // Workaround to trap on invalid address outside of DRAM
+  logic rvfii_instr_addr_allowed;
+  assign rvfii_instr_addr_allowed = config_pkg::range_check(
+      64'h8000_0000, 64'h000800000, {{64 - CVA6Cfg.PLEN{1'b0}}, icache_areq_o.fetch_paddr}
+  );
 
   // The instruction interface is a simple request response interface
   always_comb begin : instr_interface

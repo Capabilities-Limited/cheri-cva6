@@ -269,6 +269,8 @@ package config_pkg;
     bit          SvnapotEn;
     // Cheri capability tag width
     int unsigned CheriCapTagWidth;
+    // Enable RVDI_DII interface
+    int unsigned RVFI_DII;
   } cva6_user_cfg_t;
 
   typedef struct packed {
@@ -431,6 +433,8 @@ package config_pkg;
     int unsigned LOG2_INSTR_PER_FETCH;
 
     int unsigned CheriCapTagWidth;
+    bit RVFI_DII;
+    int unsigned DIIIDLEN;
 
     int unsigned ModeW;
     int unsigned ASIDW;

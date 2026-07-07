@@ -198,6 +198,9 @@ module store_unit
     pop_st_o                         = 1'b0;
     ex_o                             = ex_i;
     cap_translation_req_d            = cap_translation_req_q;
+    if (CVA6Cfg.RVFI_DII && amo_op_q == AMO_SC && ex_i.cause == riscv::ST_ACCESS_FAULT) begin
+      ex_o.valid = 1'b0;
+    end
     if (amo_op_q == AMO_LR) begin
       st_is_actually_lr_o = 1'b1;
       translation_req_is_actually_lr_o = 1'b1;

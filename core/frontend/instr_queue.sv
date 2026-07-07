@@ -1,4 +1,5 @@
 // Copyright 2018 - 2019 ETH Zurich and University of Bologna.
+// Copyright 2025 Capabilities Limited.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -59,6 +60,8 @@ module instr_queue
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][31:0] instr_i,
     // Instruction address - instr_realign
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.VLEN-1:0] addr_i,
+    // Instruction DII ID - instr_realign
+    input logic [CVA6Cfg.INSTR_PER_FETCH-1:0][CVA6Cfg.DIIIDLEN-1:0] dii_id_i,
     // Instruction is valid - instr_realign
     input logic [CVA6Cfg.INSTR_PER_FETCH-1:0] valid_i,
     // Handshake’s ready with CACHE - CACHE
@@ -80,6 +83,8 @@ module instr_queue
     output logic replay_o,
     // Address at which to replay the fetch - FRONTEND
     output logic [CVA6Cfg.VLEN-1:0] replay_addr_o,
+    // DII ID to restart stream from - FRONTEND
+    output logic [CVA6Cfg.DIIIDLEN-1:0] replay_dii_id_o,
     // Handshake’s data with ID_STAGE - ID_STAGE
     output fetch_entry_t [CVA6Cfg.NrIssuePorts-1:0] fetch_entry_o,
     // Handshake’s valid with ID_STAGE - ID_STAGE
@@ -93,6 +98,7 @@ module instr_queue
 
   typedef struct packed {
     logic [31:0]                     instr;      // instruction word
+    logic [CVA6Cfg.DIIIDLEN-1:0]     dii_id;     // instruction DII ID
     ariane_pkg::cf_t                 cf;         // branch was taken
     ariane_pkg::frontend_exception_t ex;         // exception happened
     logic [CVA6Cfg.VLEN-1:0]         ex_vaddr;   // lower VLEN bits of tval for exception
@@ -142,6 +148,7 @@ module instr_queue
   logic [CVA6Cfg.INSTR_PER_FETCH*2-1:0] fifo_pos_extended;
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0] fifo_pos;
   logic [CVA6Cfg.INSTR_PER_FETCH*2-1:0][31:0] instr;
+  logic [CVA6Cfg.INSTR_PER_FETCH*2-1:0][CVA6Cfg.DIIIDLEN-1:0] dii_id;
   ariane_pkg::cf_t [CVA6Cfg.INSTR_PER_FETCH*2-1:0] cf;
   // replay interface
   logic [CVA6Cfg.INSTR_PER_FETCH-1:0] instr_overflow_fifo;
@@ -208,6 +215,10 @@ module instr_queue
       assign instr[i+CVA6Cfg.INSTR_PER_FETCH] = instr_i[i];
       assign cf[i] = cf_type_i[i];
       assign cf[i+CVA6Cfg.INSTR_PER_FETCH] = cf_type_i[i];
+      if (CVA6Cfg.RVFI_DII) begin
+        assign dii_id[i] = dii_id_i[i];
+        assign dii_id[i+CVA6Cfg.INSTR_PER_FETCH] = dii_id_i[i];
+      end
     end
 
     // shift the inputs
@@ -226,6 +237,8 @@ module instr_queue
         assign instr_data_in[i].ex_tinst = '0;
         assign instr_data_in[i].ex_gva = 1'b0;
       end
+      if (CVA6Cfg.RVFI_DII)
+        assign instr_data_in[i].dii_id = dii_id[CVA6Cfg.INSTR_PER_FETCH+i-idx_is_q];
       /* verilator lint_on WIDTH */
     end
   end else begin : gen_multiple_instr_per_fetch_without_C
@@ -238,6 +251,7 @@ module instr_queue
     assign fifo_pos_extended = '0;
     assign fifo_pos = '0;
     assign instr = '0;
+    if (CVA6Cfg.RVFI_DII) assign dii_id = '0;
     assign popcount = '0;
     assign shamt = '0;
     assign valid = '0;
@@ -251,6 +265,7 @@ module instr_queue
 
     /* verilator lint_off WIDTH */
     assign instr_data_in[0].instr = instr_i[0];
+    if (CVA6Cfg.RVFI_DII) assign instr_data_in[0].dii_id = dii_id_i[0];
     assign instr_data_in[0].cf = cf_type_i[0];
     assign instr_data_in[0].ex = exception_i;  // exceptions hold for the whole fetch packet
     assign instr_data_in[0].ex_vaddr = exception_addr_i;
@@ -289,8 +304,11 @@ module instr_queue
     // if we successfully pushed some instructions we can output the next instruction
     // which we didn't manage to push
     assign replay_addr_o = (address_overflow) ? addr_i[0] : addr_i[shamt];
+    if (CVA6Cfg.RVFI_DII)
+      assign replay_dii_id_o = (address_overflow) ? dii_id_i[0] : dii_id_i[shamt];
   end else begin : gen_replay_addr_o_without_C
     assign replay_addr_o = addr_i[0];
+    if (CVA6Cfg.RVFI_DII) assign replay_dii_id_o = dii_id_i[0];
   end
 
   // ----------------------
@@ -322,6 +340,7 @@ module instr_queue
       // assemble fetch entry
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
         fetch_entry_o[i].instruction = '0;
+        if (CVA6Cfg.RVFI_DII) fetch_entry_o[i].dii_id = '0;
         fetch_entry_o[i].address = pc_j[i];
         fetch_entry_o[i].ex.valid = 1'b0;
         fetch_entry_o[i].ex.cause = '0;
@@ -346,6 +365,7 @@ module instr_queue
             fetch_entry_o[0].ex.cause = riscv::INSTR_PAGE_FAULT;
           end
           fetch_entry_o[0].instruction = instr_data_out[i].instr;
+          if (CVA6Cfg.RVFI_DII) fetch_entry_o[0].dii_id = instr_data_out[i].dii_id;
           fetch_entry_o[0].ex.valid = instr_data_out[i].ex != ariane_pkg::FE_NONE;
           if (CVA6Cfg.TvalEn)
             fetch_entry_o[0].ex.tval = {
@@ -368,6 +388,7 @@ module instr_queue
               fetch_entry_o[NID].ex.cause = riscv::INSTR_PAGE_FAULT;
             end
             fetch_entry_o[NID].instruction = instr_data_out[i].instr;
+            if (CVA6Cfg.RVFI_DII) fetch_entry_o[NID].dii_id = instr_data_out[i].dii_id;
             fetch_entry_o[NID].ex.valid = instr_data_out[i].ex != ariane_pkg::FE_NONE;
             fetch_entry_o[NID].ex.tval = {{64 - CVA6Cfg.VLEN{1'b0}}, instr_data_out[i].ex_vaddr};
             fetch_entry_o[NID].branch_predict.cf = instr_data_out[i].cf;
@@ -390,7 +411,8 @@ module instr_queue
       idx_ds_d = '0;
       idx_is_d = '0;
       fetch_entry_o[0].instruction = instr_data_out[0].instr;
-      fetch_entry_o[0].address = pc_q;
+      if (CVA6Cfg.RVFI_DII) fetch_entry_o[0].dii_id = instr_data_out[0].dii_id;
+      fetch_entry_o[0].address  = pc_q;
 
       fetch_entry_o[0].ex.valid = instr_data_out[0].ex != ariane_pkg::FE_NONE;
       if (instr_data_out[0].ex == ariane_pkg::FE_INSTR_ACCESS_FAULT) begin

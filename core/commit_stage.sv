@@ -62,6 +62,8 @@ module commit_stage
     input logic [CVA6Cfg.PCLEN-1:0] pcc_i,
     // TO_BE_COMPLETED - FRONTEND_CSR_REGFILE
     output logic [CVA6Cfg.PCLEN-1:0] pc_o,
+    // Last committed DII ID - FRONTEND
+    output logic [CVA6Cfg.DIIIDLEN-1 : 0] dii_id_o,
     // Decoded CSR operation - CSR_REGFILE
     output fu_op csr_op_o,
     // Whether the CSR operation is immediate-based - CSR_REGFILE
@@ -130,6 +132,7 @@ module commit_stage
     pcc_o = cva6_cheri_pkg::set_cap_reg_flags(pcc_o, commit_instr_i[0].int_mode);
     pc_o  = pcc_o;
   end
+  if (CVA6Cfg.RVFI_DII) assign dii_id_o = commit_instr_i[0].dii_id;
   // Dirty the FP state if we are committing anything related to the FPU
   always_comb begin : dirty_fp_state
     dirty_fp_state_o = 1'b0;
