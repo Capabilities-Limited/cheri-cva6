@@ -70,6 +70,9 @@ spike-tandem ?= $(SPIKE_TANDEM)
 # RVFI_DII mode for TestRIG support (DISABLED if RVFI_DII is not set)
 rvfi-dii ?= $(RVFI_DII)
 
+# FCOV to enable functional coverage
+fcov ?= $(FCOV)
+
 SPIKE_INSTALL_DIR     ?= $(root-dir)/tools/spike
 
 # setting additional xilinx board parameters for the selected board
@@ -178,6 +181,7 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         $(if $(spike-tandem),verif/tb/core/uvmc_rvfi_scoreboard_pkg.sv)              \
         $(if $(spike-tandem),corev_apu/tb/common/spike.sv)                           \
         $(if $(rvfi-dii),corev_apu/tb/tb_testRig_cheri/hdl/rvfi_dii_generator.sv)    \
+        $(if $(fcov),core/coverage/branch_unit_coverage.sv)                          \
         core/cva6_rvfi.sv                                                            \
         corev_apu/src/ariane.sv                                                      \
         $(wildcard corev_apu/bootrom/*.sv)                                           \
