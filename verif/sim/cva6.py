@@ -1035,7 +1035,7 @@ def check_spike_version():
 
 
 def check_verilator_version():
-  REQUIRED_VERILATOR_VERSION = "5.038"
+  REQUIRED_VERILATOR_VERSION = "5.050"
 
   verilator_version_string = run_cmd("verilator --version")
   logging.info(f"Verilator Version: {verilator_version_string.strip()}")
