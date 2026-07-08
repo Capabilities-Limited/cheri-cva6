@@ -206,6 +206,7 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/pulp-platform/axi/src/axi_id_prepend.sv                               \
         vendor/pulp-platform/axi/src/axi_atop_filter.sv                              \
         vendor/pulp-platform/axi/src/axi_err_slv.sv                                  \
+        vendor/pulp-platform/axi/src/axi_fifo.sv                                      \
         vendor/pulp-platform/axi/src/axi_mux.sv                                      \
         vendor/pulp-platform/axi/src/axi_demux.sv                                    \
         vendor/pulp-platform/axi/src/axi_xbar.sv                                     \
