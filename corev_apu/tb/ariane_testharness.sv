@@ -486,47 +486,6 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
   ) dram_delayed();
 
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
-    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + 1 ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
-  ) tag_mst();
-
-  axi_delayer_intf #(
-    .AXI_ID_WIDTH        ( ariane_axi_soc::IdWidthSlave + AxiCheriExtraIdBits ),
-    .AXI_ADDR_WIDTH      ( AXI_ADDRESS_WIDTH            ),
-    .AXI_DATA_WIDTH      ( AXI_DATA_WIDTH               ),
-    .AXI_USER_WIDTH      ( AXI_USER_WIDTH               ),
-    .STALL_RANDOM_INPUT  ( StallRandomInput             ),
-    .STALL_RANDOM_OUTPUT ( StallRandomOutput            ),
-    .FIXED_DELAY_INPUT   ( 0                            ),
-    .FIXED_DELAY_OUTPUT  ( 0                            )
-  ) i_axi_delayer (
-    .clk_i  ( clk_i        ),
-    .rst_ni ( ndmreset_n   ),
-    .slv    ( tag_mst ),
-    .mst    ( dram_delayed )
-  );
-
-  axi2mem #(
-    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + AxiCheriExtraIdBits ),
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
-  ) i_axi2mem (
-    .clk_i  ( clk_i        ),
-    .rst_ni ( ndmreset_n   ),
-    .slave  ( dram_delayed ),
-    .req_o  ( req          ),
-    .we_o   ( we           ),
-    .addr_o ( addr         ),
-    .be_o   ( be           ),
-    .user_o ( wuser        ),
-    .data_o ( wdata        ),
-    .user_i ( ruser        ),
-    .data_i ( rdata        )
-  );
   typedef logic [CVA6Cfg.AxiAddrWidth-1:0]  axi_addr_t;
   typedef struct packed {
     int unsigned idx;
@@ -553,12 +512,51 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
   ariane_axi_soc::resp_slv_t dram_resp;
   axi_mst_req_t axi_tag_req;
   axi_mst_resp_t axi_tag_resp;
+  axi_mst_req_t dram_delayed_req;
+  axi_mst_resp_t dram_delayed_resp;
 
   `AXI_ASSIGN_TO_REQ(dram_req, dram)
   `AXI_ASSIGN_FROM_RESP(dram, dram_resp)
-  `AXI_ASSIGN_FROM_REQ(tag_mst, axi_tag_req)
-  `AXI_ASSIGN_TO_RESP(axi_tag_resp, tag_mst)
+  `AXI_ASSIGN_FROM_REQ(dram_delayed, dram_delayed_req)
+  `AXI_ASSIGN_TO_RESP(dram_delayed_resp, dram_delayed)
   `REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
+
+  axi_fifo #(
+    .Depth         ( 8                  ),
+    .aw_chan_t     ( axi_mst_aw_t       ),
+    .w_chan_t      ( axi_w_t            ),
+    .b_chan_t      ( axi_mst_b_t        ),
+    .ar_chan_t     ( axi_mst_ar_t       ),
+    .r_chan_t      ( axi_mst_r_t        ),
+    .axi_req_t     ( axi_mst_req_t      ),
+    .axi_resp_t    ( axi_mst_resp_t     )
+  ) i_axi_fifo (
+    .clk_i        ( clk_i             ),
+    .rst_ni       ( ndmreset_n        ),
+    .slv_req_i    ( axi_tag_req       ),
+    .slv_resp_o   ( axi_tag_resp      ),
+    .mst_resp_i   ( dram_delayed_resp ),
+    .mst_req_o    ( dram_delayed_req  )
+  );
+
+  axi2mem #(
+    .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave + AxiCheriExtraIdBits ),
+    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH            ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH               ),
+    .AXI_USER_WIDTH ( AXI_USER_WIDTH               )
+  ) i_axi2mem (
+    .clk_i  ( clk_i        ),
+    .rst_ni ( ndmreset_n   ),
+    .slave  ( dram_delayed ),
+    .req_o  ( req          ),
+    .we_o   ( we           ),
+    .addr_o ( addr         ),
+    .be_o   ( be           ),
+    .user_o ( wuser        ),
+    .data_o ( wdata        ),
+    .user_i ( ruser        ),
+    .data_i ( rdata        )
+  );
 
   localparam logic[63:0] cached_end_addr = CVA6Cfg.RVFI_DII ?
     ariane_soc::DRAMBase + 64'h800000 :
