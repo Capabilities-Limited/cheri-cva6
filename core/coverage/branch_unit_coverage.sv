@@ -9,7 +9,7 @@
 // specific language governing permissions and limitations under the License.
 //
 
-module branch_unit_coverage #(
+module branch_unit_coverage import ariane_pkg::*; #(
     parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
     parameter type bp_resolve_t = logic,
     parameter type branchpredict_sbe_t = logic,
@@ -79,7 +79,7 @@ module branch_unit_coverage #(
 
   endgroup
 
-  covergroup cp_branch_unit_inputs @(posedge clk_i iff (rst_ni && branch_valid_i));
+  covergroup cg_branch_unit_inputs @(posedge clk_i iff (rst_ni && branch_valid_i));
     option.per_instance = 1;
     option.name = "cg_branch_unit_inputs";
     option.comment = "All branch operations attempted";
@@ -91,7 +91,7 @@ module branch_unit_coverage #(
       bins JAL = {JAL};
       bins CJAL = {CJAL};
       bins BEQ = {EQ};
-      bins BNE = {BNE};
+      bins BNE = {NE};
       bins BLTS = {LTS};
       bins BGES = {GES};
       bins BLTU = {LTU};
@@ -111,7 +111,7 @@ module branch_unit_coverage #(
       bins comp_taken = {1'b1};
     };
 
-    cp_branch_opa_tag : coverpoint is_valid_cap(fu_data_i.operand_a) {
+    cp_branch_opa_tag : coverpoint cva6_cheri_pkg::is_cap_reg_valid(fu_data_i.operand_a) {
       bins Tagged = {1'b1};
       bins Untagged = {1'b0};
     }
