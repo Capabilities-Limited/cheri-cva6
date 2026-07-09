@@ -802,23 +802,14 @@ module ex_stage
   endgenerate
 
   // Coverage binds
-  bind branch_unit branch_unit_coverage branch_unit_coverage_i (
-      .clk_i,
-      .rst_ni,
-      .v_i,
-      .debug_mode_i,
-      .fu_data_i         (one_cycle_data),
-      .pc_i,
-      .dii_id_i,
-      .is_zcmt_i,
-      .is_compressed_instr_i,
-      .branch_valid_i    (|branch_valid_i),
-      .branch_comp_res_i (alu_branch_res),
-      .branch_result_o   (branch_result),
-      .branch_predict_i,
-      .resolved_branch_o (resolved_branch),
-      .resolve_branch_o,
-      .branch_exception_o(branch_exception)
+  bind branch_unit branch_unit_coverage #(
+      .CVA6Cfg(CVA6Cfg),
+      .bp_resolve_t(bp_resolve_t),
+      .branchpredict_sbe_t(branchpredict_sbe_t),
+      .exception_t(exception_t),
+      .fu_data_t(fu_data_t)
+  ) branch_unit_coverage_i (
+      .*
   );
 
 endmodule
