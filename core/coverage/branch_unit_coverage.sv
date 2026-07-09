@@ -27,11 +27,11 @@ module branch_unit_coverage import ariane_pkg::*; #(
     input logic is_compressed_instr_i,
     input logic branch_valid_i,
     input logic branch_comp_res_i,
-    output logic [CVA6Cfg.REGLEN-1:0] branch_result_o,
+    input logic [CVA6Cfg.REGLEN-1:0] branch_result_o,
     input branchpredict_sbe_t branch_predict_i,
-    output bp_resolve_t resolved_branch_o,
-    output logic resolve_branch_o,
-    output exception_t branch_exception_o
+    input bp_resolve_t resolved_branch_o,
+    input logic resolve_branch_o,
+    input exception_t branch_exception_o
 );
   covergroup cg_branch_unit_cap_ex @(posedge clk_i iff (branch_exception_o.valid && rst_ni));
     option.per_instance = 1;
