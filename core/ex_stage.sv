@@ -802,7 +802,7 @@ module ex_stage
   endgenerate
 
   // Coverage binds
-  bind branch_unit_i branch_unit_coverage branch_unit_coverage_i (
+  bind branch_unit branch_unit_coverage branch_unit_coverage_i (
       .clk_i,
       .rst_ni,
       .v_i,
