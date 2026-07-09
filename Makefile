@@ -742,6 +742,7 @@ endif
 # verilator-specific
 verilate_command := $(verilator) --no-timing verilator_config.vlt                                                \
                     -f core/Flist.cva6                                                                           \
+                    $(if $(fcov), --coverage)                                                                    \
                     core/cva6_rvfi.sv                                                                            \
                     $(filter-out %.vhd, $(ariane_pkg))                                                           \
                     $(filter-out core/fpu_wrap.sv, $(filter-out %.vhd, $(filter-out %_config_pkg.sv, $(src))))   \

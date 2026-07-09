@@ -314,6 +314,7 @@ done_processing:
 
     // Reset Routine
     if (eof_trace){
+      Verilated::threadContextp()->coveragep()->write("coverage.dat");
       sendReset(traces_count);
       for (int i = 0; i < 10; i++) {
         top->rst_ni = 0;

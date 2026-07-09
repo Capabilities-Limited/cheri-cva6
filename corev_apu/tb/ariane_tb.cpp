@@ -411,5 +411,7 @@ done_processing:
               << " ms\n";
   }
 
+  Verilated::threadContextp()->coveragep()->write("coverage.dat");
+
   return ret;
 }
