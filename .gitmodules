@@ -49,8 +49,8 @@
 [submodule "corev_apu/fpga/src/gpio"]
 	path = corev_apu/fpga/src/gpio
 	url = https://github.com/pulp-platform/gpio.git
-[submodule "vendor/zero-day/axi_tagcontroller"]
-	path = vendor/zero-day/axi_tagcontroller
+[submodule "vendor/capltd/axi_tagcontroller"]
+	path = vendor/capltd/axi_cheri_tagcontroller
 	url = https://github.com/Capabilities-Limited/axi_cheri_tagcontroller.git
 [submodule "corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils"]
 	path = corev_apu/tb/tb_testRig_cheri/src/RVFI-DII-utils
