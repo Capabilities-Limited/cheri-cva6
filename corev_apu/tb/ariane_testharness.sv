@@ -565,6 +565,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_tag_controller
     axi_tagctrl_reg_wrap #(
         .DRAMMemBase     (ariane_soc::DRAMBase),
+        .DRAMMemLength   (ariane_soc::DRAMLength),
         .CapSize         (CVA6Cfg.CLEN),
         .TagCacheMemBase (cached_end_addr),
         .SetAssociativity(ariane_soc::SetAssociativity),
