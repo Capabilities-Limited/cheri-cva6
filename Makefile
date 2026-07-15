@@ -259,6 +259,12 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_top.sv \
         vendor/zero-day/axi_tagcontroller/src/llc_cache_wrapper.sv \
         vendor/zero-day/axi_tagcontroller/src/axi_tagctrl_reg_wrap.sv \
+        vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_hpdcache_configs.sv \
+        vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine.sv \
+        vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_config.sv \
+        vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_root_init.sv \
+        vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups_read.sv \
+        vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups_write.sv \
 	vendor/zero-day/axi_tagcontroller/src/hpdcache_wrapper.sv \
         corev_apu/tb/ariane_testharness.sv                                           \
         corev_apu/tb/ariane_peripherals.sv                                           \
