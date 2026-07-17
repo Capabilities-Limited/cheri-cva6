@@ -44,8 +44,13 @@ package cva6_config_pkg;
   localparam CVA6ConfigIcacheByteSize = 16384;
   localparam CVA6ConfigIcacheSetAssoc = 4;
   localparam CVA6ConfigIcacheLineWidth = 128;
-  localparam CVA6ConfigDcacheByteSize = 32768;
-  localparam CVA6ConfigDcacheSetAssoc = 8;
+  `ifdef VERILATOR
+    localparam CVA6ConfigDcacheByteSize = 256; // 2 sets
+    localparam CVA6ConfigDcacheSetAssoc = 2;
+  `else
+    localparam CVA6ConfigDcacheByteSize = 32768;
+    localparam CVA6ConfigDcacheSetAssoc = 8;
+  `endif
   localparam CVA6ConfigDcacheLineWidth = 512;
 
   localparam CVA6ConfigDcacheFlushOnFence = 1'b1;
