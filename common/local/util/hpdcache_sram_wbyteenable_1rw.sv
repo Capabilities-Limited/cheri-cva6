@@ -116,7 +116,7 @@ end else if (ATOM_SIZE == NDATA*DATA_SIZE) begin
       .Clk_CI   (clk),
       .Rst_RBI  (rst_n),
       .CSel_SI  (cs),
-      .WrEn_SI  (we),
+      .WrEn_SI  (we&wbyteenable),
       .Addr_DI  (addr),
       .WrData_DI(wdata),
       .RdData_DO(rdata)
