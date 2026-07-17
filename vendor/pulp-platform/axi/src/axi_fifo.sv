@@ -21,6 +21,8 @@
 module axi_fifo #(
     parameter int unsigned Depth       = 32'd1,  // Number of FiFo slots.
     parameter bit          FallThrough = 1'b0,  // fifos are in fall-through mode
+    parameter int          Delay       = 8'd0,  // delay address flits by a random number up to this many cycles
+    parameter int          Reorder     = 1'b0,  // sometimes reorder address flits
     // AXI channel structs
     parameter type         aw_chan_t   = logic,
     parameter type         w_chan_t    = logic,
@@ -42,6 +44,11 @@ module axi_fifo #(
     input  axi_resp_t mst_resp_i
 );
 
+  logic [7:0] delay_count;
+  always_ff @(posedge clk_i) begin
+    delay_count <= (delay_count < Delay) ? delay_count+1:0;
+  end
+
   if (Depth == '0) begin : gen_no_fifo
     // degenerate case, connect input to output
     assign mst_req_o  = slv_req_i;
@@ -50,8 +57,8 @@ module axi_fifo #(
     logic aw_fifo_empty, ar_fifo_empty, w_fifo_empty, r_fifo_empty, b_fifo_empty;
     logic aw_fifo_full, ar_fifo_full, w_fifo_full, r_fifo_full, b_fifo_full;
 
-    assign mst_req_o.aw_valid  = ~aw_fifo_empty;
-    assign mst_req_o.ar_valid  = ~ar_fifo_empty;
+    assign mst_req_o.aw_valid  = (~aw_fifo_empty && delay_count==0);
+    assign mst_req_o.ar_valid  = (~ar_fifo_empty && delay_count==0);
     assign mst_req_o.w_valid   = ~w_fifo_empty;
     assign slv_resp_o.r_valid  = ~r_fifo_empty;
     assign slv_resp_o.b_valid  = ~b_fifo_empty;
