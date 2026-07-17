@@ -1258,6 +1258,7 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
   if (CVA6Cfg.CheriPresent) begin
     axi_tagctrl_reg_wrap #(
         .DRAMMemBase     (DRAMMemBase),
+        .DRAMMemLength   (DRAMMemLength),
         .CapSize         (CapSize),
         .TagCacheMemBase (TagCacheMemBase),
         .SetAssociativity(SetAssociativity),
