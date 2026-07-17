@@ -232,7 +232,7 @@ localparam int unsigned TagCacheMemBase = DRAMMemBase + DRAMMemLength - TagCache
 localparam int unsigned SetAssociativity = 32'd8;
 localparam int unsigned NumLines = 32'd128;
 localparam int unsigned NumBlocks = 32'd4;
-  
+
 // WARNING: If NBSlave is modified, Xilinx's IPs under fpga/xilinx need to be updated with the new AXI id width and regenerated.
 // Otherwise reads and writes to DRAM may be returned to the wrong master and the crossbar will freeze. See issue #568.
 localparam NBSlave = 2; // debug, ariane
@@ -1258,6 +1258,7 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
   if (CVA6Cfg.CheriPresent) begin
     axi_tagctrl_reg_wrap #(
         .DRAMMemBase     (DRAMMemBase),
+        .DRAMMemLength   (DRAMMemLength),
         .CapSize         (CapSize),
         .TagCacheMemBase (TagCacheMemBase),
         .SetAssociativity(SetAssociativity),
