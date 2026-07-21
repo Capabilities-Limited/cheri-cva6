@@ -1,0 +1,23 @@
+commit 4e5889172dd4a6f6c684a13b550062aa806853e5
+Author: Ray Lau <ray.lau@lowrisc.org>
+Date:   Tue May 19 16:10:33 2026 +0100
+
+    [rtl] Fix ethernet Tx packet size
+    
+    Without the fix tx_frame_addr counts up when no packet is being
+    transmitted, causing the next packet to have uncontrolled size
+    and content.
+
+diff --git a/framing_top.sv b/framing_top.sv
+index d9b8b51..d2c5b45 100644
+--- a/framing_top.sv
++++ b/framing_top.sv
+@@ -276,7 +276,7 @@ always @(posedge clk_int)
+ 	    begin
+ 	       tx_frame_addr <= 'b0;
+ 	    end
+-	  if (tx_axis_tready)
++	  if (tx_axis_tready && tx_axis_tvalid)
+ 	    begin
+ 	       tx_frame_addr <= tx_frame_addr + 1;
+ 	       tx_axis_tlast <= (tx_frame_addr == tx_packet_length-2) & tx_axis_tvalid_dly;
