@@ -1,0 +1,50 @@
+commit b4b0d7eddf79e13d0b85095f79b12e264ef338c7
+Author: Ray Lau <ray.lau@lowrisc.org>
+Date:   Tue May 19 16:13:33 2026 +0100
+
+    [rtl] Fix ethernet Rx first packet lost
+    
+    On reset, the ethernet MAC sets byte_sync and last to 0, which is
+    different from their value after receiving a packet. This causes
+    the first received packet to be lost.
+    
+    This fix ensures byte_sync and last are set to 1 before receiving
+    any packets, allowing the first received packet to be captured
+    correctly.
+
+diff --git a/framing_top.sv b/framing_top.sv
+index 8723305..bef867c 100644
+--- a/framing_top.sv
++++ b/framing_top.sv
+@@ -86,10 +86,20 @@ reg        byte_sync, sync, irq_en, tx_busy;
+         */
+          wire [31:0] tx_fcs_reg_rev, rx_fcs_reg_rev;
+    
+-   always @(posedge rx_clk)
++  logic last_override;
++
++  always_ff @(posedge rx_clk) begin
++    if (rst_int) begin
++      last_override <= 1'b1;
++    end else if (rx_axis_tvalid) begin
++      last_override <= 1'b0;
++    end
++  end
++
++   always @(posedge clk_int)
+      if (rst_int == 1'b1)
+        begin
+-	  byte_sync <= 1'b0;
++	  byte_sync <= 1'b1;
+        end
+      else
+        begin
+@@ -97,7 +107,7 @@ reg        byte_sync, sync, irq_en, tx_busy;
+             begin
+                byte_sync <= 1'b1;
+             end
+-	  if (rx_axis_tlast && byte_sync)
++	  if ((rx_axis_tlast || (last_override && !rx_axis_tvalid)) && byte_sync)
+             begin
+                last <= 1'b1;
+             end

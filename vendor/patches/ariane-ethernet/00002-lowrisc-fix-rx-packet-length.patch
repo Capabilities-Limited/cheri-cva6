@@ -1,0 +1,23 @@
+commit 0e0fce36cdbb4c540dc18a6b21526acd1f510fda
+Author: Ray Lau <ray.lau@lowrisc.org>
+Date:   Tue May 19 16:11:30 2026 +0100
+
+    [rtl] Fix reported Rx packet length is always 1
+    
+    Rx logic incorrectly assumed that rx_axis_tlast will be 0 when
+    rx_axis_tvalid is 0. This caused the received packet size to be
+    updated to 1 after the correct size was stored.
+
+diff --git a/framing_top.sv b/framing_top.sv
+index d2c5b45..7d1ca13 100644
+--- a/framing_top.sv
++++ b/framing_top.sv
+@@ -302,7 +302,7 @@ always @(posedge clk_int)
+             if (rx_addr_axis < 6)
+               rx_dest_mac <= {rx_dest_mac[39:0],rx_axis_tdata};
+             end
+-	  if (rx_axis_tlast)
++	  if (rx_axis_tvalid && rx_axis_tlast)
+             begin
+ 	        rx_length_axis[nextbuf[2:0]] <= rx_addr_axis + 1;
+ 	        rx_addr_axis <= 'b0;

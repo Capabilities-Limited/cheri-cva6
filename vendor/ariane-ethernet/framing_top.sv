@@ -66,6 +66,7 @@ reg        byte_sync, sync, irq_en, tx_busy;
         */
         reg         tx_axis_tvalid;
         reg         tx_axis_tvalid_dly;
+        wire        tx_axis_tvalid_gated;
         reg 	    tx_axis_tlast;
         wire [7:0]  tx_axis_tdata;
         wire        tx_axis_tready;
@@ -85,10 +86,20 @@ reg        byte_sync, sync, irq_en, tx_busy;
         */
          wire [31:0] tx_fcs_reg_rev, rx_fcs_reg_rev;
    
-   always @(posedge rx_clk)
+  logic last_override;
+
+  always_ff @(posedge rx_clk) begin
+    if (rst_int) begin
+      last_override <= 1'b1;
+    end else if (rx_axis_tvalid) begin
+      last_override <= 1'b0;
+    end
+  end
+
+   always @(posedge clk_int)
      if (rst_int == 1'b1)
        begin
-	  byte_sync <= 1'b0;
+	  byte_sync <= 1'b1;
        end
      else
        begin
@@ -96,7 +107,7 @@ reg        byte_sync, sync, irq_en, tx_busy;
             begin
                byte_sync <= 1'b1;
             end
-	  if (rx_axis_tlast && byte_sync)
+	  if ((rx_axis_tlast || (last_override && !rx_axis_tvalid)) && byte_sync)
             begin
                last <= 1'b1;
             end
@@ -189,7 +200,7 @@ always @(posedge msoc_clk)
         6: begin firstbuf <= core_lsu_wdata[3:0]; end
         default:;
       endcase
-       if ((last > 0) && ~sync)
+       if (last > 0)
          begin
          // check broadcast/multicast address
 	     sync <= (rx_dest_mac[47:24]==24'h01005E) | (&rx_dest_mac) | (mac_address == rx_dest_mac) | promiscuous;
@@ -276,7 +287,7 @@ always @(posedge clk_int)
 	    begin
 	       tx_frame_addr <= 'b0;
 	    end
-	  if (tx_axis_tready)
+	  if (tx_axis_tready && tx_axis_tvalid)
 	    begin
 	       tx_frame_addr <= tx_frame_addr + 1;
 	       tx_axis_tlast <= (tx_frame_addr == tx_packet_length-2) & tx_axis_tvalid_dly;
@@ -288,6 +299,7 @@ always @(posedge clk_int)
 	      tx_axis_tvalid_dly <= 1'b0;
       end
  
+   assign tx_axis_tvalid_gated = tx_axis_tvalid & tx_enable_i;
    always @(posedge rx_clk)
      if (rst_int)
        begin
@@ -302,7 +314,7 @@ always @(posedge clk_int)
             if (rx_addr_axis < 6)
               rx_dest_mac <= {rx_dest_mac[39:0],rx_axis_tdata};
             end
-	  if (rx_axis_tlast)
+	  if (rx_axis_tvalid && rx_axis_tlast)
             begin
 	        rx_length_axis[nextbuf[2:0]] <= rx_addr_axis + 1;
 	        rx_addr_axis <= 'b0;
@@ -330,7 +342,7 @@ rgmii_soc rgmii_soc1
    .phy_pme_n(phy_pme_n),
    .mac_gmii_tx_en(mac_gmii_tx_en),
    .tx_axis_tdata(tx_axis_tdata),
-   .tx_axis_tvalid(tx_axis_tvalid),
+   .tx_axis_tvalid(tx_axis_tvalid_gated),
    .tx_axis_tready(tx_axis_tready),
    .tx_axis_tlast(tx_axis_tlast),
    .tx_axis_tuser(tx_axis_tuser),

@@ -16,6 +16,6 @@
     }
 
     //Patch dir for local changes
-    patch_dir: "./patches/ariane-ethernet",
+    patch_dir: "patches/ariane-ethernet",
 }
 

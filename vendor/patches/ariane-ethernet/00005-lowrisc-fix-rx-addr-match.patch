@@ -1,0 +1,25 @@
+commit e8631172a00d8040ceb9ee8a04cec4cec37292e8
+Author: Ray Lau <ray.lau@lowrisc.org>
+Date:   Tue May 19 16:13:52 2026 +0100
+
+    [rtl] Fix ethernet Rx MAC address matching
+    
+    sync is updated late if the previous packet passes the destination
+    MAC address check, therefore a packet following an accepted packet
+    will always be accepted irrespective of its destination MAC address.
+    
+    This fix ensures sync is updated on time.
+
+diff --git a/framing_top.sv b/framing_top.sv
+index bef867c..11fa142 100644
+--- a/framing_top.sv
++++ b/framing_top.sv
+@@ -200,7 +200,7 @@ always @(posedge msoc_clk)
+         6: begin firstbuf <= core_lsu_wdata[3:0]; end
+         default:;
+       endcase
+-       if ((last > 0) && ~sync)
++       if (last > 0)
+          begin
+          // check broadcast/multicast address
+ 	     sync <= (rx_dest_mac[47:24]==24'h01005E) | (&rx_dest_mac) | (mac_address == rx_dest_mac) | promiscuous;
