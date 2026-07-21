@@ -95,11 +95,12 @@
       interrupt-parent = <&PLIC0>;
       interrupts = < 2 2 >;
       reg = < 0x0 0x20000000 0x0 0x1000 >;
+      fifo-size = <256>;
       xlnx,family = "kintex7";
       xlnx,fifo-exist = <0x1>;
       xlnx,num-ss-bits = <0x1>;
       xlnx,num-transfer-bits = <0x8>;
-      xlnx,sck-ratio = <0x4>;
+      xlnx,sck-ratio = <0x2>;
 
       mmc@0 {
         compatible = "mmc-spi-slot";
