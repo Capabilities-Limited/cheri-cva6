@@ -1,0 +1,21 @@
+// -*- coding: utf-8 -*-
+
+{
+    // Name of the project
+    name: "ariane-ethernet",
+
+    // Target directory: relative to the location of this script.
+    target_dir: "ariane-ethernet",
+
+    // Upstream repository
+    upstream: {
+        // URL
+        url: "https://github.com/lowrisc/ariane-ethernet",
+        // revision
+        rev: "6a5436b",
+    }
+
+    //Patch dir for local changes
+    patch_dir: "./patches/ariane-ethernet",
+}
+
