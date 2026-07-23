@@ -282,7 +282,7 @@ module load_unit
   assign not_commit_time = commit_tran_id_i != lsu_ctrl_i.trans_id;
   assign inflight_stores = (!dcache_wbuffer_not_ni_i || !store_buffer_empty_i);
   assign stall_ni = (inflight_stores || not_commit_time) && (paddr_ni && CVA6Cfg.NonIdemPotenceEn);
-  assign cap_translation_req = (CVA6Cfg.CheriPresent) ? lsu_ctrl_i.operation inside {ariane_pkg::LC} : 1'b0;
+  assign cap_translation_req = (CVA6Cfg.CheriPresent) ? lsu_ctrl_i.operation inside {ariane_pkg::LY} : 1'b0;
 
   assign translation_req_is_cap_o = cap_translation_req & lsu_ctrl_i.allow_tag;
 
@@ -600,7 +600,7 @@ module load_unit
   // prepare these signals for faster selection in the next cycle
   assign rdata_is_signed    =   ldbuf_rdata.operation inside {ariane_pkg::LW,  ariane_pkg::LH,  ariane_pkg::LB, ariane_pkg::HLV_W, ariane_pkg::HLV_H, ariane_pkg::HLV_B};
   assign rdata_is_fp_signed =   ldbuf_rdata.operation inside {ariane_pkg::FLW, ariane_pkg::FLH, ariane_pkg::FLB};
-  assign rdata_offset       =   (ldbuf_rdata.operation inside {ariane_pkg::LD,  ariane_pkg::FLD, ariane_pkg::HLV_D} & CVA6Cfg.IS_XLEN64 & CVA6Cfg.CheriPresent) ? ldbuf_rdata.address_offset + 7 : 
+  assign rdata_offset       =   (ldbuf_rdata.operation inside {ariane_pkg::LD,  ariane_pkg::FLD, ariane_pkg::HLV_D} & CVA6Cfg.IS_XLEN64 & CVA6Cfg.CheriPresent) ? ldbuf_rdata.address_offset + 7 :
  ((ldbuf_rdata.operation inside {ariane_pkg::LW,  ariane_pkg::FLW, ariane_pkg::HLV_W}) & CVA6Cfg.IS_XLEN64) ? ldbuf_rdata.address_offset + 3 :
                                 ( ldbuf_rdata.operation inside {ariane_pkg::LH,  ariane_pkg::FLH, ariane_pkg::HLV_H})                     ? ldbuf_rdata.address_offset + 1 :
                                                                                                                          ldbuf_rdata.address_offset;
@@ -645,7 +645,7 @@ module load_unit
           result_o = x_to_reg(shifted_data);
         end
 
-        if (CVA6Cfg.CheriPresent && ldbuf_rdata.operation == ariane_pkg::LC) begin
+        if (CVA6Cfg.CheriPresent && ldbuf_rdata.operation == ariane_pkg::LY) begin
           // Convert memory capability to register capability
           result_o = cva6_cheri_pkg::cap_mem_to_cap_reg(data);
         end
