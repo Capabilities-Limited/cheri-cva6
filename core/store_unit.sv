@@ -170,7 +170,7 @@ module store_unit
   assign instr_is_amo = is_amo(lsu_ctrl_i.operation);
   assign instr_is_cap = (CVA6Cfg.CheriPresent) ? is_cap(lsu_ctrl_i.operation) : 1'b0;
   // check if we are storing a valid cap
-  assign cap_translation_req = (lsu_ctrl_i.operation inside {SC, AMO_SCC, AMO_LRC, AMO_SWAPC} && lsu_ctrl_i.data[CVA6Cfg.REGLEN-1] && CVA6Cfg.CheriPresent) ? 1'b1 : 1'b0;
+  assign cap_translation_req = (lsu_ctrl_i.operation inside {SY, AMO_SCY, AMO_LRY, AMO_SWAPY} && lsu_ctrl_i.data[CVA6Cfg.REGLEN-1] && CVA6Cfg.CheriPresent) ? 1'b1 : 1'b0;
   // keep the data and the byte enable for the second cycle (after address translation)
   logic [CVA6Cfg.CLEN-1:0] st_data_n, st_data_q;
   logic [CVA6Cfg.CheriCapTagWidth-1:0] st_cap_tag_n, st_cap_tag_q;
@@ -328,9 +328,9 @@ module store_unit
     // save AMO op for next cycle
     if (CVA6Cfg.RVA) begin
       case (lsu_ctrl_i.operation)
-        AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRC: amo_op_d = AMO_LR;
-        AMO_SCB, AMO_SCH, AMO_SCW, AMO_SCD, AMO_SCC: amo_op_d = AMO_SC;
-        AMO_SWAPW, AMO_SWAPD, AMO_SWAPC:             amo_op_d = AMO_SWAP;
+        AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRY: amo_op_d = AMO_LR;
+        AMO_SCB, AMO_SCH, AMO_SCW, AMO_SCD, AMO_SCY: amo_op_d = AMO_SC;
+        AMO_SWAPW, AMO_SWAPD, AMO_SWAPY:             amo_op_d = AMO_SWAP;
         AMO_ADDW, AMO_ADDD:                          amo_op_d = AMO_ADD;
         AMO_ANDW, AMO_ANDD:                          amo_op_d = AMO_AND;
         AMO_ORW, AMO_ORD:                            amo_op_d = AMO_OR;

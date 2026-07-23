@@ -330,37 +330,40 @@ package ariane_pkg;
     CSR_CLEAR,
     // CLU functions
     // Capability-Inspection Instructions
-    GCPERM,
-    GCTYPE,
-    GCBASE,
-    GCLEN,
-    GCTAG,
-    GCMODE,
-    GCHI,
+    YPERMR,
+    YTYPER,
+    YBASER,
+    YLENR,
+    YTOPR,
+    YTAGR,
+    YMODER,
+    YHIR,
     // Capability-Modification Instructions
-    ACPERM,
-    SCMODE,
-    SCHI,
-    SCADDR,
-    CADD,
-    SCBNDSR,
-    SCBNDS,
-    CBLD,
-    SENTRY,
+    YPERMC,
+    YMODEW,
+    PACKY,
+    YADDRW,
+    YADD,
+    YBNDSRW,
+    YBNDSRDW,
+    YBNDSW,
+    YBLD,
+    YSUNSEAL,
+    YSENTRY,
     CMV,
     // Pointer-Comparison Instructions
-    SCSS,
-    SCEQ,
+    YSS,
+    YEQ,
     // Control-Flow Instructions
-    MODESW_CAP,
-    MODESW_INT,
+    YMODESWY,
+    YMODESWI,
     CJAL,
     CJALR,
     // Adjusting to Compressed Capability Precision Instructions
-    CRAM,
+    YAMASK,
     // LSU functions
-    LC,
-    SC,
+    LY,
+    SY,
     LD,
     SD,
     LW,
@@ -391,12 +394,12 @@ package ariane_pkg;
     AMO_LRH,
     AMO_LRW,
     AMO_LRD,
-    AMO_LRC,
+    AMO_LRY,
     AMO_SCB,
     AMO_SCH,
     AMO_SCW,
     AMO_SCD,
-    AMO_SCC,
+    AMO_SCY,
     AMO_SWAPW,
     AMO_ADDW,
     AMO_ANDW,
@@ -415,7 +418,7 @@ package ariane_pkg;
     AMO_MAXDU,
     AMO_MIND,
     AMO_MINDU,
-    AMO_SWAPC,
+    AMO_SWAPY,
     // cache block operations (CBO)
     CBO_CLEAN,
     CBO_FLUSH,
@@ -691,7 +694,7 @@ package ariane_pkg;
 
   function automatic logic is_amo(fu_op op);
     case (op) inside
-      [AMO_LRB : AMO_SWAPC]: begin
+      [AMO_LRB : AMO_SWAPY]: begin
         return 1'b1;
       end
       default: return 1'b0;
@@ -700,7 +703,7 @@ package ariane_pkg;
 
   function automatic logic is_amo_sc(fu_op op);
     case (op) inside
-      [AMO_SCB : AMO_SCC]: begin
+      [AMO_SCB : AMO_SCY]: begin
         return 1'b1;
       end
       default: return 1'b0;
@@ -776,7 +779,7 @@ package ariane_pkg;
 
   function automatic logic is_cap(fu_op op);
     case (op) inside
-      LC, SC, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
+      LY, SY, AMO_LRY, AMO_SCY, AMO_SWAPY: begin
         return 1'b1;
       end
       default: return 1'b0;
@@ -954,7 +957,7 @@ package ariane_pkg;
   // ----------------------
   function automatic logic [2:0] extract_transfer_size(fu_op op);
     case (op)
-      AMO_LRC, AMO_SCC, LC, SC, AMO_SWAPC: begin
+      AMO_LRY, AMO_SCY, LY, SY, AMO_SWAPY: begin
         return 3'b100;
       end
       LD, HLV_D, SD, HSV_D, FLD, FSD,

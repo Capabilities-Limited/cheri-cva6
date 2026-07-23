@@ -799,7 +799,7 @@ module load_store_unit
       if (CVA6Cfg.IS_XLEN64) begin
         case (lsu_ctrl.operation)
           // capability width
-          LC, SC, AMO_LRC, AMO_SCC, AMO_SWAPC: begin
+          LY, SY, AMO_LRY, AMO_SCY, AMO_SWAPY: begin
             if (CVA6Cfg.CheriPresent && lsu_ctrl.vaddr[3:0] != 4'b0000) begin
               data_misaligned = 1'b1;
             end
@@ -854,7 +854,7 @@ module load_store_unit
         end
         STORE: begin
 
-          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRC} ? riscv::LD_ADDR_MISALIGNED : riscv::ST_ADDR_MISALIGNED;
+          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRY} ? riscv::LD_ADDR_MISALIGNED : riscv::ST_ADDR_MISALIGNED;
           cva6_misaligned_exception.valid = 1'b1;
           if (CVA6Cfg.TvalEn)
             cva6_misaligned_exception.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, lsu_ctrl.vaddr};
@@ -883,7 +883,7 @@ module load_store_unit
           end
         end
         STORE: begin
-          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRC} ? riscv::LOAD_PAGE_FAULT : riscv::STORE_PAGE_FAULT;
+          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRY} ? riscv::LOAD_PAGE_FAULT : riscv::STORE_PAGE_FAULT;
           cva6_misaligned_exception.valid = 1'b1;
           if (CVA6Cfg.TvalEn)
             cva6_misaligned_exception.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, lsu_ctrl.vaddr};
@@ -912,7 +912,7 @@ module load_store_unit
           end
         end
         STORE: begin
-          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRC} ? riscv:: LOAD_GUEST_PAGE_FAULT : riscv::STORE_GUEST_PAGE_FAULT;
+          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRY} ? riscv:: LOAD_GUEST_PAGE_FAULT : riscv::STORE_GUEST_PAGE_FAULT;
           cva6_misaligned_exception.valid = 1'b1;
           if (CVA6Cfg.TvalEn)
             cva6_misaligned_exception.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, lsu_ctrl.vaddr};
@@ -1000,15 +1000,15 @@ module load_store_unit
             AMO_MAXDU, AMO_MIND, AMO_MINDU: begin
           size = 8;
         end
-        LC, AMO_LRC: begin
+        LY, AMO_LRY: begin
           size = cva6_cheri_pkg::CLEN / 8;
           does_store = 1'b0;
         end
-        SC, AMO_SCC: begin
+        SY, AMO_SCY: begin
           size = cva6_cheri_pkg::CLEN / 8;
           does_load = 1'b0;
         end
-        AMO_SWAPC: begin
+        AMO_SWAPY: begin
           size = cva6_cheri_pkg::CLEN / 8;
         end
         LB, LBU, AMO_LRB, FLB, HLV_B, HLV_BU: begin
@@ -1070,7 +1070,7 @@ module load_store_unit
   if (CVA6Cfg.CheriPresent) begin
     assign lsu_req_check_cap = fu_data_i.use_ddc ? ddc_i : fu_data_i.operand_a;
     assign lsu_req_st_data_cap = fu_data_i.operand_b;
-    assign lsu_req_ld_cap = ((fu_data_i.fu == LOAD) && (fu_data_i.operation inside{ariane_pkg::LC})) || ((fu_data_i.fu == STORE) && fu_data_i.operation inside{ariane_pkg::AMO_LRC, ariane_pkg::AMO_SWAPC});
+    assign lsu_req_ld_cap = ((fu_data_i.fu == LOAD) && (fu_data_i.operation inside{ariane_pkg::LY})) || ((fu_data_i.fu == STORE) && fu_data_i.operation inside{ariane_pkg::AMO_LRY, ariane_pkg::AMO_SWAPY});
     assign lsu_req_ld_allow_tag = lsu_req_check_cap.hperms.permit_load && lsu_req_check_cap.hperms.permit_cap && lsu_req_ld_cap;
     assign lsu_req_ld_allow_elevate = lsu_req_check_cap.hperms.permit_elevate_level;
     assign lsu_req_ld_allow_cap_level = lsu_req_ld_allow_elevate || lsu_req_check_cap.hperms.cap_level;

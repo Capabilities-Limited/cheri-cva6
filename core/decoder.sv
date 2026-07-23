@@ -526,7 +526,7 @@ module decoder
                     // disabled in HS-mode / H-mode
                     virtual_illegal_instr = 1'b1;
                   end else begin
-                    if((priv_lvl_i != riscv::PRIV_LVL_M && mcbie_i == riscv::CBIE_FLUSH) || 
+                    if((priv_lvl_i != riscv::PRIV_LVL_M && mcbie_i == riscv::CBIE_FLUSH) ||
                       (priv_lvl_i == riscv::PRIV_LVL_U && scbie_i == riscv::CBIE_FLUSH) ||
                       (priv_lvl_i == riscv::PRIV_LVL_HS && hcbie_i == riscv::CBIE_FLUSH) ||
                       (priv_lvl_i == riscv::PRIV_LVL_U && hu_i && (hcbie_i == riscv::CBIE_FLUSH || scbie_i == riscv::CBIE_FLUSH))) begin
@@ -561,27 +561,8 @@ module decoder
               end
             end
 
-
             default: begin
-              if (CVA6Cfg.CheriPresent) begin
-                //if (instr.itype.rs1 != 0) begin
-                case (instr.stype.funct3)
-                  3'b100: begin
-                    instruction_o.fu = LOAD;
-                    imm_select = IIMM;
-                    instruction_o.rs1[4:0] = instr.itype.rs1;
-                    instruction_o.rd[4:0] = instr.itype.rd;
-                    instruction_o.use_ddc = int_mode_i;
-                    instruction_o.op = ariane_pkg::LC;
-                    tinst = {17'b0, instr.itype.funct3, instr.itype.rd, instr.itype.opcode};
-                    tinst[1] = is_compressed_i ? 1'b0 : 'b1;
-                  end
-                  default: illegal_instr = 1'b1;
-                endcase
-                //end else illegal_instr = 1'b1;
-              end else begin
-                illegal_instr = 1'b1;
-              end
+              illegal_instr = 1'b1;
             end
           endcase
         end
@@ -1096,115 +1077,15 @@ module decoder
                 end
               endcase
             end
-            if (CVA6Cfg.CheriPresent) begin
-              unique case ({
-                instr.rtype.funct7, instr.rtype.funct3
-              })
-                //CADD       CADD=0000110    CADD=000
-                //CMV        CADD=0000110    CADD=000 (rs2=0)
-                //SCADDR   SCADDR=0000110  SCADDR=001
-                //ACPERM   ACPERM=0000110  ACPERM=010
-                //SCHI       SCHI=0000110    SCHI=011
-                //CBLD       CBLD=0000110    CBLD=101
-                //SCBNDS   SCBNDS=0000111  SCBNDS=000
-                //SCBNDSR SCBNDSR=0000111 SCBNDSR=001
-                {
-                  7'b000_0110, 3'b000
-                } : begin
-                  case (instr.rtype.rs2)
-                    // ------------------------------------
-                    // Pointer-Arithmetic Instructions
-                    // ------------------------------------
-                    5'b00000: instruction_o.op = ariane_pkg::CMV;
-                    default: begin
-                      instruction_o.op = ariane_pkg::CADD;
-                    end
-                  endcase
-                end
-                {7'b000_0110, 3'b001} : instruction_o.op = ariane_pkg::SCADDR;
-                {7'b000_0110, 3'b010} : instruction_o.op = ariane_pkg::ACPERM;
-                {7'b000_0110, 3'b011} : instruction_o.op = ariane_pkg::SCHI;
-                {7'b000_0110, 3'b101} : instruction_o.op = ariane_pkg::CBLD;
-                {7'b000_0111, 3'b000} : instruction_o.op = ariane_pkg::SCBNDS;
-                {7'b000_0111, 3'b001} : instruction_o.op = ariane_pkg::SCBNDSR;
-                //GCTAG   GCTAG=0001000  GCTAG=00000  GCTAG=000
-                //GCPERM GCPERM=0001000 GCPERM=00001 GCPERM=000
-                //GCTYPE GCTYPE=0001000 GCTYPE=00010 GCTYPE=000
-                //GCMODE GCMODE=0001000 GCMODE=00011 GCMODE=000
-                //GCBASE GCBASE=0001000 GCBASE=00101 GCBASE=000
-                //GCLEN   GCLEN=0001000  GCLEN=00110  GCLEN=000
-                //GCHI     GCHI=0001000   GCHI=00100   GCHI=000
-                //CRAM     CRAM=0001000   CRAM=00111   CRAM=000
-                //SENTRY SENTRY=0001000 SENTRY=01000 SENTRY=000
-                {
-                  7'b000_1000, 3'b000
-                } : begin
-                  case (instr.rtype.rs2)
-                    // ----------------------------------
-                    // Capability-Inspection Instructions
-                    // ----------------------------------
-                    5'b00000: instruction_o.op = ariane_pkg::GCTAG;
-                    5'b00001: instruction_o.op = ariane_pkg::GCPERM;
-                    5'b00010: instruction_o.op = ariane_pkg::GCTYPE;
-                    5'b00011: instruction_o.op = ariane_pkg::GCMODE;
-                    5'b00101: instruction_o.op = ariane_pkg::GCBASE;
-                    5'b00110: instruction_o.op = ariane_pkg::GCLEN;
-                    5'b00100: instruction_o.op = ariane_pkg::GCHI;
-                    5'b00111: begin
-                      instruction_o.op = ariane_pkg::CRAM;
-                      instruction_o.rs1[4:0] = 5'b0; // Use C0 as the capability operand for SetBounds function.
-                      instruction_o.rs2[4:0] = instr.rtype.rs1;
-                    end
-                    5'b01000: instruction_o.op = ariane_pkg::SENTRY;
-                    default: begin
-                      illegal_instr_cheri = 1'b1;
-                    end
-                  endcase
-                end
-                //  SCEQ=0000110   SCEQ=100
-                //  SCSS=0000110   SCSS=110
-                //SCMODE=0000110 SCMODE=111
-                {7'b000_0110, 3'b100} : instruction_o.op = ariane_pkg::SCEQ;
-                {7'b000_0110, 3'b110} : instruction_o.op = ariane_pkg::SCSS;
-                {7'b000_0110, 3'b111} : instruction_o.op = ariane_pkg::SCMODE;
-                //MODESW.CAP MSW.CAP=0001001 MSW=00000 MSW=00000 MSW=001 MSW=00000
-                //MODESW.INT MSW.INT=0001010 MSW=00000 MSW=00000 MSW=001 MSW=00000
-                {
-                  7'b000_1001, 3'b001
-                } : begin
-                  if (instr.rtype.rs1 == 0 && instr.rtype.rs2 == 0 && instr.rtype.rd == 0) begin
-                    instruction_o.op = ariane_pkg::MODESW_CAP;
-                    int_mode_o = 1'b0;
-                  end else illegal_instr_cheri = 1'b1;
-                end
-                {
-                  7'b000_1010, 3'b001
-                } : begin
-                  if (instr.rtype.rs1 == 0 && instr.rtype.rs2 == 0 && instr.rtype.rd == 0) begin
-                    instruction_o.op = ariane_pkg::MODESW_INT;
-                    int_mode_o = 1'b1;
-                  end else illegal_instr_cheri = 1'b1;
-                end
-                default: begin
-                  illegal_instr_cheri = 1'b1;
-                end
-              endcase
-              if (!illegal_instr_cheri) instruction_o.fu = CLU;
-            end
+
             //VCS coverage on
             unique case ({
-              CVA6Cfg.RVB, CVA6Cfg.RVZiCond, CVA6Cfg.CheriPresent
+              CVA6Cfg.RVB, CVA6Cfg.RVZiCond
             })
-              3'b000: illegal_instr = illegal_instr_non_bm;
-              3'b001: illegal_instr = illegal_instr_non_bm & illegal_instr_cheri;
-              3'b010: illegal_instr = illegal_instr_non_bm & illegal_instr_zic;
-              3'b011:
-              illegal_instr = illegal_instr_non_bm & illegal_instr_zic & illegal_instr_cheri;
-              3'b100: illegal_instr = illegal_instr_non_bm & illegal_instr_bm;
-              3'b101: illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_cheri;
-              3'b110: illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_zic;
-              3'b111:
-              illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_zic & illegal_instr_cheri;
+              2'b00: illegal_instr = illegal_instr_non_bm;
+              2'b01: illegal_instr = illegal_instr_non_bm & illegal_instr_zic;
+              2'b10: illegal_instr = illegal_instr_non_bm & illegal_instr_bm;
+              2'b11: illegal_instr = illegal_instr_non_bm & illegal_instr_bm & illegal_instr_zic;
               default: ;  // TODO: Check that default case is not synthesized.
             endcase
           end
@@ -1375,22 +1256,7 @@ module decoder
               default: illegal_instr_bm = 1'b1;
             endcase
           end
-          if (CVA6Cfg.CheriPresent) begin
-            //SCBNDSI SCBNDSI=000001 SCBNDSI=101 OP-IMM=0010011
-            unique case (instr.itype.funct3)
-              3'b101: begin
-                if (instr.instr[31:26] == 6'b000_001) begin
-                  instruction_o.op = ariane_pkg::SCBNDS;  // Set Bounds
-                  imm_select = SCIMM;  // Scaled immediate; special for SCBNDSI
-                  if (instr.instr[25] != 1'b0 && instr.instr[24:20] <= 5'b1)
-                    illegal_instr_cheri = 1'b1;
-                end else illegal_instr_cheri = 1'b1;
-              end
-              default: illegal_instr_cheri = 1'b1;
-            endcase
-            if (!illegal_instr_cheri) instruction_o.fu = CLU;
-          end
-          illegal_instr = illegal_instr_non_bm & illegal_instr_bm & (!CVA6Cfg.CheriPresent || illegal_instr_cheri);
+          illegal_instr = illegal_instr_non_bm & illegal_instr_bm;
         end
 
         // --------------------------------
@@ -1436,15 +1302,7 @@ module decoder
                 default: illegal_instr_bm = 1'b1;
               endcase
             end
-            if (CVA6Cfg.CheriPresent) begin
-              //CADDI CADDI=010
-              unique case (instr.itype.funct3)
-                3'b010: instruction_o.op = ariane_pkg::CADD;
-                default illegal_instr_cheri = 1'b1;
-              endcase
-              if (!illegal_instr_cheri) instruction_o.fu = CLU;
-            end
-            illegal_instr = illegal_instr_non_bm & illegal_instr_bm & (!CVA6Cfg.CheriPresent || illegal_instr_cheri);
+            illegal_instr = illegal_instr_non_bm & illegal_instr_bm;
           end else illegal_instr = 1'b1;
         end
         // --------------------------------
@@ -1467,9 +1325,6 @@ module decoder
             3'b010: instruction_o.op = ariane_pkg::SW;
             3'b011:
             if (CVA6Cfg.XLEN == 64) instruction_o.op = ariane_pkg::SD;
-            else illegal_instr = 1'b1;
-            3'b100:
-            if (CVA6Cfg.CheriPresent) instruction_o.op = ariane_pkg::SC;
             else illegal_instr = 1'b1;
             default: illegal_instr = 1'b1;
           endcase
@@ -1858,13 +1713,6 @@ module decoder
               5'h1C: instruction_o.op = ariane_pkg::AMO_MAXDU;
               default: illegal_instr = 1'b1;
             endcase
-          end else if (CVA6Cfg.CheriPresent && CVA6Cfg.RVA && instr.stype.funct3 == 3'h4) begin
-            unique case (instr.instr[31:27])
-              5'h1: instruction_o.op = ariane_pkg::AMO_SWAPC;
-              5'h2: instruction_o.op = ariane_pkg::AMO_LRC;
-              5'h3: instruction_o.op = ariane_pkg::AMO_SCC;
-              default: illegal_instr = 1'b1;
-            endcase
           end else begin
             illegal_instr = 1'b1;
           end
@@ -1952,7 +1800,187 @@ module decoder
           instruction_o.rd = instr.utype.rd;
         end
 
-        default: illegal_instr = 1'b1;
+        // --------------------------------
+        // CHERI Instructions
+        // --------------------------------
+        riscv::OpcodeRVY: begin
+          if (CVA6Cfg.CheriPresent) begin
+            // 3 Op instructions
+            unique case (instr.rtype.funct3)
+              3'b0 : begin
+                instruction_o.rs1 = instr.rtype.rs1;
+                instruction_o.rs2 = instr.rtype.rs2;
+                instruction_o.rd  = instr.rtype.rd;
+                instruction_o.fu = CLU;
+                unique case (instr.rtype.funct7)
+                  // 0000001 PACKY
+                  // 0000011 YADD
+                  // 0000011 YMV
+                  // 0001011 YADDRW
+                  // 0010011 YPERMC
+                  // 0011011 YBNDSW
+                  // 0100011 YBNDSRW
+                  // 0101011 YMODEW
+                  // 0101011 YMODESWY
+                  // 0101011 YMODESWI
+                  // 0110011 YBNDSRDW
+                  // ? 0000101 YSH1ADD
+                  // ? 0001101 YSH2ADD
+                  // ? 0010101 YSH3ADD
+                  // ? 0011101 YSH4ADD
+                  // ? 0100101 YSH1ADD.UW
+                  // ? 0101101 YSH2ADD.UW
+                  // ? 0110101 YSH3ADD.UW
+                  // ? 0111101 YSH4ADD.UW
+                  // 0000110 YEQ
+                  // 0001110 YSS
+                  // 0000111 YSUNSEAL
+                  // 0001111 YBLD
+                  // ? 0010111 YSEAL   // Maybe won't implement this extension?
+                  // ? 0011111 YUNSEAL // Maybe won't implement this extension?
+                  7'b000_0001 : instruction_o.op = ariane_pkg::PACKY;
+                  7'b000_0011 : begin
+                    case (instr.rtype.rs2)
+                      // ------------------------------------
+                      // Pointer-Arithmetic Instructions
+                      // ------------------------------------
+                      5'b00000: instruction_o.op = ariane_pkg::CMV;
+                      default: instruction_o.op = ariane_pkg::YADD;
+                    endcase
+                  end
+                  7'b000_1011 : instruction_o.op = ariane_pkg::YADDRW;
+                  7'b001_0011 : instruction_o.op = ariane_pkg::YPERMC;
+                  7'b001_1011 : instruction_o.op = ariane_pkg::YBNDSW;
+                  7'b010_0011 : instruction_o.op = ariane_pkg::YBNDSRW;
+                  7'b010_1011 : begin // YMODESW
+                    if (instr.rtype.rd==5'b0) begin
+                      if (instr.rtype.rs1==5'b0) begin
+                        case (instr.rtype.rs2)
+                          5'b00000: begin
+                            instruction_o.op = ariane_pkg::YMODESWY;
+                            int_mode_o = 1'b0;
+                          end
+                          5'b00001: begin
+                            instruction_o.op = ariane_pkg::YMODESWI;
+                            int_mode_o = 1'b1;
+                          end
+                          default: illegal_instr_cheri = 1'b1;
+                        endcase
+                      end else illegal_instr_cheri = 1'b1;
+                    end else instruction_o.op = ariane_pkg::YMODEW;
+                  end
+                  7'b011_0011 : instruction_o.op = ariane_pkg::YBNDSRDW;
+                  // YSH instructions ???
+                  7'b000_0110 : instruction_o.op = ariane_pkg::YEQ;
+                  7'b000_1110 : instruction_o.op = ariane_pkg::YSS;
+                  7'b000_0111 : instruction_o.op = ariane_pkg::YSUNSEAL;
+                  7'b000_1111 : instruction_o.op = ariane_pkg::YBLD;
+                  // ----------------------------------
+                  // 2-operand encodings
+                  // ----------------------------------
+                  // 1111000 rs2:00000 YAMASK
+                  // 1111010 rs2:00000 YBASER
+                  // 1111010 rs2:00001 YPERMR
+                  // 1111010 rs2:00010 YTOPR
+                  // 1111010 rs2:00011 YLENR
+                  // 1111010 rs2:00100 YTAGR
+                  // 1111010 rs2:00101 YTYPER
+                  // 1111010 rs2:00110 YMODER
+                  // 1111011 rs2:00000 YSENTRY
+                  7'b111_1000: begin
+                    case (instr.rtype.rs2)
+                      5'b00111: begin
+                        instruction_o.op = ariane_pkg::YAMASK;
+                        instruction_o.rs1[4:0] = 5'b0; // Use C0 as the capability operand for SetBounds function.
+                        instruction_o.rs2[4:0] = instr.rtype.rs1;
+                      end
+                      default: illegal_instr_cheri = 1'b1;
+                    endcase
+                  end
+                  7'b111_1010: begin
+                    case (instr.rtype.rs2)
+                      // ----------------------------------
+                      // Capability-Inspection Instructions
+                      // ----------------------------------
+                      5'b00000: instruction_o.op = ariane_pkg::YBASER;
+                      5'b00001: instruction_o.op = ariane_pkg::YPERMR;
+                      5'b00010: instruction_o.op = ariane_pkg::YTOPR;
+                      5'b00011: instruction_o.op = ariane_pkg::YLENR;
+                      5'b00100: instruction_o.op = ariane_pkg::YTAGR;
+                      5'b00101: instruction_o.op = ariane_pkg::YTYPER;
+                      5'b00110: instruction_o.op = ariane_pkg::YMODER;
+                      default: illegal_instr_cheri = 1'b1;
+                    endcase
+                  end
+                  7'b111_1011: begin
+                    case (instr.rtype.rs2)
+                      5'b00000: instruction_o.op = ariane_pkg::YSENTRY;
+                      default: illegal_instr_cheri = 1'b1;
+                    endcase
+                  end
+                endcase
+              end
+              3'b100 : begin // YADDI
+                imm_select = IIMM;
+                instruction_o.rs1 = instr.itype.rs1;
+                instruction_o.rd = instr.itype.rd;
+                instruction_o.fu = CLU;
+                instruction_o.op = ariane_pkg::YADD;
+              end
+              3'b001 : begin // LY
+                instruction_o.fu = LOAD;
+                imm_select = IIMM;
+                instruction_o.rs1 = instr.itype.rs1;
+                instruction_o.rd = instr.itype.rd;
+                instruction_o.use_ddc = int_mode_i;
+                instruction_o.op = ariane_pkg::LY;
+                tinst = {17'b0, instr.itype.funct3, instr.itype.rd, instr.itype.opcode};
+                tinst[1] = is_compressed_i ? 1'b0 : 'b1;
+                if (instr.rtype.rs1 == 5'b0) illegal_instr_cheri = 1'b1;
+              end
+              3'b010 : begin // SY
+                instruction_o.fu = STORE;
+                imm_select = SIMM;
+                instruction_o.rs1 = instr.stype.rs1;
+                instruction_o.rs2 = instr.stype.rs2;
+                instruction_o.use_ddc = int_mode_i;
+                instruction_o.op = ariane_pkg::SY;
+                if (instr.rtype.rs1 == 5'b0) illegal_instr_cheri = 1'b1;
+              end
+              3'b011 : begin // Cap AMO instructions
+                // we are going to use the load unit for AMOs
+                if (CVA6Cfg.RVA) begin
+                  instruction_o.fu  = STORE;
+                  instruction_o.rs1 = instr.atype.rs1;
+                  instruction_o.rs2 = instr.atype.rs2;
+                  instruction_o.rd  = instr.atype.rd;
+                  instruction_o.use_ddc = int_mode_i;
+                  unique case (instr.instr[31:27])
+                    5'b00001: instruction_o.op = ariane_pkg::AMO_SWAPY;
+                    5'b00010: instruction_o.op = ariane_pkg::AMO_LRY;
+                    5'b00011: instruction_o.op = ariane_pkg::AMO_SCY;
+                    default: illegal_instr_cheri = 1'b1;
+                  endcase
+                end else illegal_instr_cheri = 1'b1;
+              end
+              3'b101 : begin // shifts and YBNDSWI
+                instruction_o.rs1 = instr.itype.rs1;
+                instruction_o.rd = instr.itype.rd;
+                if (instr.instr[31:27] == 5'b0) begin // SRLIY(+YHIR)
+                  imm_select = IIMM;
+                  instruction_o.fu = ALU;
+                  instruction_o.op = ariane_pkg::SRL;
+                end else if (instr.instr[31:29] == 3'b111) begin
+                  imm_select = SCIMM;
+                  instruction_o.fu = CLU;
+                  instruction_o.op = ariane_pkg::YBNDSW;
+                end else illegal_instr_cheri = 1'b1;
+              end
+              default illegal_instr_cheri = 1'b1;
+            endcase
+          end
+        end
+        default: illegal_instr_cheri = 1'b1;
       endcase
     end
     if (CVA6Cfg.CvxifEn) begin
@@ -2017,7 +2045,7 @@ module decoder
       };
     end
     imm_si_type = (CVA6Cfg.CheriPresent) ?
-        {{CVA6Cfg.XLEN - 9{1'b0}}, instruction_i[25] ? {instruction_i[24:20], 4'b0} : {4'b0, instruction_i[24:20]}}
+        {{CVA6Cfg.XLEN - 9{1'b0}}, instruction_i[28:20]}
       : {CVA6Cfg.XLEN{1'b0}};
 
     instruction_o.result = '{default: 0};
