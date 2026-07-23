@@ -772,7 +772,7 @@ package cva6_cheri_pkg;
 
   /**
       * @brief Function to convert from reported permissions format for andperms to encoded hardware permissions.
-      * @param permissions in the report format for ACPERM.
+      * @param permissions in the report format for YPERMC.
       * @returns hardware permissions in encoded format. Note that legalisation must be performed outside.
       */
   function automatic cap_hperms_t report_perms_to_hperms(cap_report_perms_t rp);
