@@ -487,11 +487,6 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
   ) dram_delayed();
 
   typedef logic [CVA6Cfg.AxiAddrWidth-1:0]  axi_addr_t;
-  typedef struct packed {
-    int unsigned idx;
-    axi_addr_t   start_addr;
-    axi_addr_t   end_addr;
-  } rule_full_t;
 
   typedef logic [(ariane_axi_soc::IdWidthSlave+AxiCheriExtraIdBits)-1:0] axi_mst_id_t;
   typedef logic [CVA6Cfg.AxiDataWidth-1:0] axi_data_t;
@@ -563,38 +558,33 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     ariane_soc::DRAMBase + ariane_soc::DRAMLength - (ariane_soc::DRAMLength>>7);
 
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_tag_controller
-    axi_tagctrl_reg_wrap #(
-        .DRAMMemBase     (ariane_soc::DRAMBase),
-        .DRAMMemLength   (ariane_soc::DRAMLength),
-        .CapSize         (CVA6Cfg.CLEN),
-        .TagCacheMemBase (cached_end_addr),
-        .SetAssociativity(ariane_soc::SetAssociativity),
-        .NumLines        (ariane_soc::NumLines),
-        .NumBlocks       (ariane_soc::NumBlocks),
-        .AxiIdWidth      (ariane_axi_soc::IdWidthSlave),
-        .AxiAddrWidth    (CVA6Cfg.AxiAddrWidth),
-        .AxiDataWidth    (CVA6Cfg.AxiDataWidth),
-        .AxiUserWidth    (CVA6Cfg.AxiUserWidth),
-        .slv_req_t       (ariane_axi_soc::req_slv_t),
-        .slv_resp_t      (ariane_axi_soc::resp_slv_t),
-        .mst_req_t       (axi_mst_req_t),
-        .mst_resp_t      (axi_mst_resp_t),
-        .reg_req_t       (conf_req_t),
-        .reg_resp_t      (conf_rsp_t),
-        .rule_full_t     (rule_full_t),
-        .PrintSramCfg    (1'b0)
-    ) i_axi_tagctrl_reg_wrap_raw (
+    axi_tagctrl_top #(
+        .init_covered_base       (ariane_soc::DRAMBase),
+        .init_covered_top        (ariane_soc::DRAMBase + ariane_soc::DRAMLength),
+        .init_tag_table_base     (cached_end_addr),
+        .init_start              (1'b1),
+        .init_locked             (1'b1),
+        .allow_resume            (1'b0),
+        .allow_flush_when_locked (1'b0),
+        .CapSize                 (CVA6Cfg.CLEN),
+        .AxiIdWidth              (ariane_axi_soc::IdWidthSlave),
+        .AxiAddrWidth            (CVA6Cfg.AxiAddrWidth),
+        .AxiDataWidth            (CVA6Cfg.AxiDataWidth),
+        .AxiUserWidth            (CVA6Cfg.AxiUserWidth),
+        .slv_req_t               (ariane_axi_soc::req_slv_t),
+        .slv_resp_t              (ariane_axi_soc::resp_slv_t),
+        .mst_req_t               (axi_mst_req_t),
+        .mst_resp_t              (axi_mst_resp_t)
+    ) i_axi_tagctrl_top (
         .clk_i,
         .rst_ni,
-        .test_i             (1'b0),
-        .slv_req_i          (dram_req),
-        .slv_resp_o         (dram_resp),
-        .mst_req_o          (axi_tag_req),
-        .mst_resp_i         (axi_tag_resp),
-        .conf_req_i         (  /* not used */),
-        .conf_resp_o        (  /* not used */),
-        .cached_start_addr_i(ariane_soc::DRAMBase),
-        .cached_end_addr_i  (cached_end_addr)
+        .test_i         (1'b0),
+        .cfg_slv_req_i  (/*TODO*/),
+        .cfg_slv_resp_o (/*TODO*/),
+        .slv_req_i      (dram_req),
+        .slv_resp_o     (dram_resp),
+        .mst_req_o      (axi_tag_req),
+        .mst_resp_i     (axi_tag_resp)
     );
   end else begin
     assign axi_tag_req = dram_req;
