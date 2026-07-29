@@ -284,7 +284,7 @@ module load_unit
   assign stall_ni = (inflight_stores || not_commit_time) && (paddr_ni && CVA6Cfg.NonIdemPotenceEn);
   assign cap_translation_req = (CVA6Cfg.CheriPresent) ? lsu_ctrl_i.operation inside {ariane_pkg::LC} : 1'b0;
 
-  assign translation_req_is_cap_o = cap_translation_req & ldbuf_rdata.allow_tag;
+  assign translation_req_is_cap_o = cap_translation_req & lsu_ctrl_i.allow_tag;
 
   // ---------------
   // Load Control
