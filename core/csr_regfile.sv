@@ -1125,18 +1125,23 @@ module csr_regfile
   // Perform a representability check set address on the legalised CSR write address
   cap_reg_t csr_update_cap_prelegal;
   logic [CVA6Cfg.XLEN-1:0] csr_wdata_legalised;
+  logic writing_vectored_tvec;
   cap_reg_t csr_update_cap_postlegal;
   logic csr_update_allow_sealed;
   if (CVA6Cfg.CheriPresent) begin
     always_comb begin
-      automatic
-      cap_meta_data_t
-      csr_update_cap_meta = get_cap_reg_meta_data(
-          csr_update_cap_prelegal
-      );
+      automatic cap_meta_data_t csr_update_cap_meta;
+      automatic cap_reg_t extra_rep_check_result;
+      csr_update_cap_meta = get_cap_reg_meta_data( csr_update_cap_prelegal);
       csr_update_cap_postlegal =
-          set_cap_reg_address(csr_update_cap_prelegal, csr_wdata_legalised, csr_update_cap_meta);
+          set_cap_reg_address(csr_update_cap_prelegal, {csr_wdata_legalised[CVA6Cfg.XLEN-1:1], csr_wdata_legalised[0] & ~writing_vectored_tvec}, csr_update_cap_meta);
+      extra_rep_check_result =
+          set_cap_reg_address(csr_update_cap_prelegal, {csr_wdata_legalised[CVA6Cfg.XLEN-1:8], 6'b111111, 2'b0}, csr_update_cap_meta);
+      csr_update_cap_postlegal = set_cap_reg_addr(csr_update_cap_postlegal, csr_wdata_legalised);
       if (csr_update_cap_prelegal.otype != UNSEALED_CAP && !csr_update_allow_sealed) begin
+        csr_update_cap_postlegal.tag = 1'b0;
+      end
+      if (writing_vectored_tvec & !extra_rep_check_result.tag) begin
         csr_update_cap_postlegal.tag = 1'b0;
       end
     end
@@ -1159,6 +1164,7 @@ module csr_regfile
     csr_update_cap_prelegal = CVA6Cfg.CheriPresent ? csr_wdata_i : '0;
     csr_update_allow_sealed = 1'b0;
     csr_wdata_legalised = reg_to_x(csr_wdata_i);
+    writing_vectored_tvec = 1'b0;
 
     if (CVA6Cfg.RVS) begin
       satp = satp_q;
@@ -1484,8 +1490,10 @@ module csr_regfile
             csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
             // we are in vector mode, this implementation requires the additional
             // alignment constraint of 64 * 4 bytes
-            if (csr_wdata[0])
+            if (csr_wdata[0]) begin
               csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]};
+              writing_vectored_tvec = 1'b1;
+            end
             if (CVA6Cfg.CheriPresent) begin
               // TODO We need to clear the tag if the max vector is unrepresentable
               if (!csr_write_cap) csr_update_cap_prelegal = vstvec_q;
@@ -1605,7 +1613,10 @@ module csr_regfile
           csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, csr_wdata[0]};
           // we are in vector mode, this implementation requires the additional
           // alignment constraint of 64 * 4 bytes
-          if (csr_wdata[0]) csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]};
+          if (csr_wdata[0]) begin
+            csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, csr_wdata[0]};
+            writing_vectored_tvec = 1'b1;
+          end
           if (CVA6Cfg.CheriPresent) begin
             // TODO We need to clear the tag if the max vector is unrepresentable
             if (!csr_write_cap) csr_update_cap_prelegal = stvec_q;
@@ -1941,7 +1952,10 @@ module csr_regfile
           csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:2], 1'b0, DirVecOnly};
           // we are in vector mode, this implementation requires the additional
           // alignment constraint of 64 * 4 bytes
-          if (DirVecOnly) csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, DirVecOnly};
+          if (DirVecOnly) begin
+            csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:8], 7'b0, DirVecOnly};
+            writing_vectored_tvec = 1'b1;
+          end
           if (CVA6Cfg.CheriPresent) begin
             // TODO We need to clear the tag if the max vector is unrepresentable
             if (!csr_write_cap) csr_update_cap_prelegal = mtvec_q;
