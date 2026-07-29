@@ -545,7 +545,7 @@ module cva6_mmu
       };
 
     // Cheri pte checks
-    lsu_allow_tag_o = 1'b1;  // Tags allowed by default, e.g. if translation disabled
+    lsu_allow_tag_o = lsu_is_cap_q;
     cheri_cap_err   = 1'b0;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
@@ -606,7 +606,7 @@ module cva6_mmu
 
       if (CVA6Cfg.CheriPresent) begin
         // Check if strip tag is needed on capability loads
-        lsu_allow_tag_o = dtlb_pte_q.cw;
+        lsu_allow_tag_o = lsu_allow_tag_o & dtlb_pte_q.cw;
       end
 
       // ---------
