@@ -115,6 +115,7 @@ module cva6_hpdcache_if_adapter
       assign cva6_req_o.data_ruser = hpdcache_rsp_i.ruser;
       assign cva6_req_o.data_rdata = hpdcache_rsp_i.rdata;
       assign cva6_req_o.data_rid = hpdcache_rsp_i.tid;
+      assign cva6_req_o.data_error = hpdcache_rsp_i.error;
       assign cva6_req_o.data_gnt = hpdcache_req_ready_i;
 
       //  Assertions
