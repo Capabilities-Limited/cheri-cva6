@@ -229,9 +229,6 @@ localparam int unsigned DRAMMemBase = {64'h80000000};
 localparam int unsigned DRAMMemLength = {64'h40000000};
 localparam int unsigned TagCacheMemLength = DRAMMemLength >> 7;
 localparam int unsigned TagCacheMemBase = DRAMMemBase + DRAMMemLength - TagCacheMemLength;
-localparam int unsigned SetAssociativity = 32'd8;
-localparam int unsigned NumLines = 32'd128;
-localparam int unsigned NumBlocks = 32'd4;
 
 // WARNING: If NBSlave is modified, Xilinx's IPs under fpga/xilinx need to be updated with the new AXI id width and regenerated.
 // Otherwise reads and writes to DRAM may be returned to the wrong master and the crossbar will freeze. See issue #568.
@@ -1223,12 +1220,6 @@ axi_riscv_atomics_wrap #(
 
   typedef logic [AxiAddrWidth-1:0]  axi_addr_t;
 
-  typedef struct packed {
-    int unsigned idx;
-    axi_addr_t   start_addr;
-    axi_addr_t   end_addr;
-  } rule_full_t;
-
 localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
   typedef logic [(AxiIdWidthSlaves+AxiCheriExtraIdBits)-1:0] axi_mst_id_t;
   typedef logic [AxiDataWidth-1:0] axi_data_t;
@@ -1256,14 +1247,11 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
   `REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
 
   if (CVA6Cfg.CheriPresent) begin
-    axi_tagctrl_reg_wrap #(
+    axi_tagctrl_top #(
         .DRAMMemBase     (DRAMMemBase),
         .DRAMMemLength   (DRAMMemLength-TagCacheMemLength),
         .CapSize         (CapSize),
         .TagCacheMemBase (TagCacheMemBase),
-        .SetAssociativity(SetAssociativity),
-        .NumLines        (NumLines),
-        .NumBlocks       (NumBlocks),
         .AxiIdWidth      (ariane_axi_soc::IdWidthSlave),
         .AxiAddrWidth    (AxiAddrWidth),
         .AxiDataWidth    (AxiDataWidth),
@@ -1271,23 +1259,15 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
         .slv_req_t       (ariane_axi_soc::req_slv_t),
         .slv_resp_t      (ariane_axi_soc::resp_slv_t),
         .mst_req_t       (axi_mst_req_t),
-        .mst_resp_t      (axi_mst_resp_t),
-        .reg_req_t       (conf_req_t),
-        .reg_resp_t      (conf_rsp_t),
-        .rule_full_t     (rule_full_t),
-        .PrintSramCfg    (1'b0)
-    ) i_axi_tagctrl_reg_wrap_raw (
+        .mst_resp_t      (axi_mst_resp_t)
+    ) i_axi_tagctrl_top (
         .clk_i              (clk),
         .rst_ni             (ndmreset_n),
         .test_i             (1'b0),
         .slv_req_i          (dram_req),
         .slv_resp_o         (dram_resp),
         .mst_req_o          (axi_tag_req),
-        .mst_resp_i         (axi_tag_resp),
-        .conf_req_i         (  /* not used */),
-        .conf_resp_o        (  /* not used */),
-        .cached_start_addr_i(DRAMBase),
-        .cached_end_addr_i  (TagCacheMemBase)
+        .mst_resp_i         (axi_tag_resp)
     );
   end else begin
     assign axi_tag_req = dram_req;
