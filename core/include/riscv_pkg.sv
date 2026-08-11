@@ -787,19 +787,19 @@ package riscv;
     CSR_HPM_COUNTER_31H  = 12'hC9F   // reserved
   } csr_reg_t;
 
-  localparam logic [63:0] SSTATUS_UIE = 'h00000001;
-  localparam logic [63:0] SSTATUS_SIE = 'h00000002;
+  localparam logic [63:0] SSTATUS_UIE  = 'h00000001;
+  localparam logic [63:0] SSTATUS_SIE  = 'h00000002;
   localparam logic [63:0] SSTATUS_SPIE = 'h00000020;
-  localparam logic [63:0] SSTATUS_SPP = 'h00000100;
-  localparam logic [63:0] SSTATUS_FS = 'h00006000;
-  localparam logic [63:0] SSTATUS_XS = 'h00018000;
-  localparam logic [63:0] SSTATUS_SUM = 'h00040000;
-  localparam logic [63:0] SSTATUS_MXR = 'h00080000;
+  localparam logic [63:0] SSTATUS_SPP  = 'h00000100;
+  localparam logic [63:0] SSTATUS_FS   = 'h00006000;
+  localparam logic [63:0] SSTATUS_XS   = 'h00018000;
+  localparam logic [63:0] SSTATUS_SUM  = 'h00040000;
+  localparam logic [63:0] SSTATUS_MXR  = 'h00080000;
   localparam logic [63:0] SSTATUS_UPIE = 'h00000010;
-  localparam logic [63:0] SSTATUS_UXL = 64'h0000000300000000;
+  localparam logic [63:0] SSTATUS_UXL  = 64'h0000000300000000;
   // CSR Bit Implementation Masks
 
-  localparam logic [63:0] SSTATUS_CRG = 64'h2000000000000000;
+  localparam logic [63:0] SSTATUS_CRG  = 64'h2000000000000000;
   function automatic logic [63:0] sstatus_sd(logic IS_XLEN64);
     return {IS_XLEN64, 31'h00000000, ~IS_XLEN64, 31'h00000000};
   endfunction
@@ -845,12 +845,12 @@ package riscv;
     return {IS_XLEN64, 31'h00000000, ~IS_XLEN64, 31'h00000000};
   endfunction
 
-  localparam logic [63:0] MENVCFG_FIOM = 'h00000001;
-  localparam logic [63:0] MENVCFG_CBIE = 'h00000030;
-  localparam logic [63:0] MENVCFG_CBFE = 'h00000040;
-  localparam logic [63:0] MENVCFG_CBZE = 'h00000080;
+  localparam logic [63:0] MENVCFG_FIOM  = 'h00000001;
+  localparam logic [63:0] MENVCFG_CBIE  = 'h00000030;
+  localparam logic [63:0] MENVCFG_CBFE  = 'h00000040;
+  localparam logic [63:0] MENVCFG_CBZE  = 'h00000080;
   localparam logic [63:0] MENVCFG_PBMTE = 64'h4000000000000000;
-  localparam logic [63:0] MENVCFG_STCE = 64'h8000000000000000;
+  localparam logic [63:0] MENVCFG_STCE  = 64'h8000000000000000;
 
 
 
