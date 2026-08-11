@@ -60,6 +60,7 @@ module branch_unit #(
   logic [CVA6Cfg.VLEN-1:0] target_address;
   logic [CVA6Cfg.VLEN-1:0] next_pc;
 
+
   // calculate next PC, depending on whether the instruction is compressed or not this may be different
   // TODO(zarubaf): We already calculate this a couple of times, maybe re-use?
   assign pc = pc_i[CVA6Cfg.VLEN-1:0];
@@ -151,7 +152,7 @@ module branch_unit #(
       if (CVA6Cfg.RVZCMT) begin
         if (is_zcmt_i) begin
           // Unconditional jump handling
-          resolved_branch_o.is_mispredict = 1'b1;  // miss prediction for ZCMT 
+          resolved_branch_o.is_mispredict = 1'b1;  // miss prediction for ZCMT
           resolved_branch_o.cf_type = ariane_pkg::JumpR;
         end
       end
@@ -176,38 +177,11 @@ module branch_unit #(
     end
   end
 
-  // Signals for CHERI exception handling
-  cva6_cheri_pkg::cap_meta_data_t target_pcc_meta;
-  cva6_cheri_pkg::addrw_t target_pcc_base;
-  cva6_cheri_pkg::addrwe_t target_pcc_top;
-  cva6_cheri_pkg::addrwe_t target_address_end;
-  cva6_cheri_pkg::addrwe_t min_instr_off;
-  logic target_pcc_is_sealed;
-  if (CVA6Cfg.CheriPresent) begin
-    assign target_pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(target_pcc);
-    assign target_pcc_base = cva6_cheri_pkg::get_cap_reg_base(target_pcc, target_pcc_meta);
-    assign target_pcc_top = cva6_cheri_pkg::get_cap_reg_top(target_pcc, target_pcc_meta);
-    assign min_instr_off = ((CVA6Cfg.RVC) ? {{CVA6Cfg.XLEN-1{1'b0}}, 2'h2} : {{CVA6Cfg.XLEN-2{1'b0}}, 3'h4});
-    assign target_address_end = {1'b0, target_address} + min_instr_off;
-  end else begin
-    assign target_pcc_meta = '0;
-    assign target_pcc_base = '0;
-    assign target_pcc_top = '0;
-    assign min_instr_off = '0;
-    assign target_address_end = '0;
-  end
-
   // use ALU exception signal for storing instruction fetch exceptions if
   // the target address is not aligned to a 2 byte boundary
   //
   always_comb begin : exception_handling
     automatic logic jump_taken;
-    automatic logic cheri_fault;
-    automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2 = '0;
-    jump_taken = !(ariane_pkg::op_is_branch(fu_data_i.operation)) ||
-        ((ariane_pkg::op_is_branch(fu_data_i.operation)) && branch_comp_res_i);
-    cheri_fault = 1'b0;
-    cheri_tval2.fault_type = cva6_cheri_pkg::CAP_JUMP_BRANCH_FAULT;
     // Do a jump if it is either unconditional jump (JAL | JALR) or `taken` conditional jump
     branch_exception_o.cause = riscv::INSTR_ADDR_MISALIGNED;
     branch_exception_o.valid = 1'b0;
@@ -216,44 +190,10 @@ module branch_unit #(
     branch_exception_o.tinst = '0;
     branch_exception_o.gva = CVA6Cfg.RVH ? v_i : 1'b0;
 
-    // Decode target address (next PCC) fields
-    target_pcc_is_sealed = (operand_a_cap.otype != cva6_cheri_pkg::UNSEALED_CAP);
     // Only throw instruction address misaligned exception if this is indeed a `taken` conditional branch or
     // an unconditional jump
     if (!CVA6Cfg.RVC) begin
       if (branch_valid_i && (target_address[0] || target_address[1]) && jump_taken) begin
-        branch_exception_o.valid = 1'b1;
-        branch_exception_o.tval = {
-          {CVA6Cfg.XLEN - CVA6Cfg.VLEN{target_address[CVA6Cfg.VLEN-1]}}, target_address
-        };
-      end
-    end
-    if (CVA6Cfg.CheriPresent && branch_valid_i && jump_taken) begin
-      // Check if target address is in bounds (or has become unrepresentable)
-      if (target_address < target_pcc_base || target_address_end > target_pcc_top || !target_pcc.tag) begin
-        cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
-        cheri_fault = 1'b1;
-      end
-      if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
-        if (!operand_a_cap.hperms.permit_execute) begin
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-          cheri_fault = 1'b1;
-        end
-        if ((operand_a_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) && (($signed(
-                operand_a_cap.otype
-            ) != cva6_cheri_pkg::SENTRY_CAP) || (|fu_data_i.imm[CVA6Cfg.VLEN-1:0]))) begin
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_SEAL_VIOLATION;
-          cheri_fault = 1'b1;
-        end
-        if (!operand_a_cap.tag) begin
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_TAG_VIOLATION;
-          cheri_fault = 1'b1;
-        end
-      end
-      if (cheri_fault && !debug_mode_i) begin
-        branch_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
-        branch_exception_o.tval  = '0;
-        branch_exception_o.tval2 = CVA6Cfg.GPLEN'(cva6_cheri_pkg::embed_cap_tval2(cheri_tval2));
         branch_exception_o.valid = 1'b1;
       end
     end
