@@ -559,26 +559,32 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
 
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_tag_controller
     axi_tagctrl_top #(
-        .DRAMMemBase     (ariane_soc::DRAMBase),
-        .DRAMMemLength   (ariane_soc::DRAMLength),
-        .CapSize         (CVA6Cfg.CLEN),
-        .TagCacheMemBase (cached_end_addr),
-        .AxiIdWidth      (ariane_axi_soc::IdWidthSlave),
-        .AxiAddrWidth    (CVA6Cfg.AxiAddrWidth),
-        .AxiDataWidth    (CVA6Cfg.AxiDataWidth),
-        .AxiUserWidth    (CVA6Cfg.AxiUserWidth),
-        .slv_req_t       (ariane_axi_soc::req_slv_t),
-        .slv_resp_t      (ariane_axi_soc::resp_slv_t),
-        .mst_req_t       (axi_mst_req_t),
-        .mst_resp_t      (axi_mst_resp_t)
+        .init_covered_base       (ariane_soc::DRAMBase),
+        .init_covered_top        (ariane_soc::DRAMBase + ariane_soc::DRAMLength),
+        .init_tag_table_base     (cached_end_addr),
+        .init_start              (1'b0),
+        .init_locked             (1'b1),
+        .allow_resume            (1'b0),
+        .allow_flush_when_locked (1'b0),
+        .CapSize                 (CVA6Cfg.CLEN),
+        .AxiIdWidth              (ariane_axi_soc::IdWidthSlave),
+        .AxiAddrWidth            (CVA6Cfg.AxiAddrWidth),
+        .AxiDataWidth            (CVA6Cfg.AxiDataWidth),
+        .AxiUserWidth            (CVA6Cfg.AxiUserWidth),
+        .slv_req_t               (ariane_axi_soc::req_slv_t),
+        .slv_resp_t              (ariane_axi_soc::resp_slv_t),
+        .mst_req_t               (axi_mst_req_t),
+        .mst_resp_t              (axi_mst_resp_t)
     ) i_axi_tagctrl_top (
         .clk_i,
         .rst_ni,
-        .test_i             (1'b0),
-        .slv_req_i          (dram_req),
-        .slv_resp_o         (dram_resp),
-        .mst_req_o          (axi_tag_req),
-        .mst_resp_i         (axi_tag_resp)
+        .test_i         (1'b0),
+        .cfg_slv_req_i  (/*TODO*/),
+        .cfg_slv_resp_o (/*TODO*/),
+        .slv_req_i      (dram_req),
+        .slv_resp_o     (dram_resp),
+        .mst_req_o      (axi_tag_req),
+        .mst_resp_i     (axi_tag_resp)
     );
   end else begin
     assign axi_tag_req = dram_req;

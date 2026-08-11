@@ -236,7 +236,6 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_hpdcache_configs.sv \
 	vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_hpdcache_wrapper.sv \
         vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine.sv \
-        vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_config.sv \
         vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_root_init.sv \
         vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups_read.sv \
         vendor/zero-day/axi_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups_write.sv \
