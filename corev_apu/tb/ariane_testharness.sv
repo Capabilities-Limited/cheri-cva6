@@ -505,15 +505,20 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
 
   ariane_axi_soc::req_slv_t  dram_req;
   ariane_axi_soc::resp_slv_t dram_resp;
-  axi_mst_req_t axi_tag_req;
-  axi_mst_resp_t axi_tag_resp;
-  axi_mst_req_t dram_delayed_req;
-  axi_mst_resp_t dram_delayed_resp;
-
   `AXI_ASSIGN_TO_REQ(dram_req, dram)
   `AXI_ASSIGN_FROM_RESP(dram, dram_resp)
+  axi_mst_req_t dram_delayed_req;
+  axi_mst_resp_t dram_delayed_resp;
   `AXI_ASSIGN_FROM_REQ(dram_delayed, dram_delayed_req)
   `AXI_ASSIGN_TO_RESP(dram_delayed_resp, dram_delayed)
+  ariane_axi_soc::req_slv_t  tagcfg_req;
+  ariane_axi_soc::resp_slv_t tagcfg_resp;
+  `AXI_ASSIGN_TO_REQ(tagcfg_req, master[ariane_soc::TagCfg])
+  `AXI_ASSIGN_FROM_RESP(master[ariane_soc::TagCfg], tagcfg_resp)
+
+  axi_mst_req_t axi_tag_req;
+  axi_mst_resp_t axi_tag_resp;
+
   `REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
 
   axi_fifo #(
@@ -581,8 +586,8 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
         .clk_i,
         .rst_ni,
         .test_i         (1'b0),
-        .cfg_slv_req_i  (/*TODO*/),
-        .cfg_slv_resp_o (/*TODO*/),
+        .cfg_slv_req_i  (tagcfg_req),
+        .cfg_slv_resp_o (tagcfg_resp),
         .slv_req_i      (dram_req),
         .slv_resp_o     (dram_resp),
         .mst_req_o      (axi_tag_req),
@@ -629,6 +634,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     '{ idx: ariane_soc::PLIC,     start_addr: ariane_soc::PLICBase,     end_addr: ariane_soc::PLICBase + ariane_soc::PLICLength         },
     '{ idx: ariane_soc::UART,     start_addr: ariane_soc::UARTBase,     end_addr: ariane_soc::UARTBase + ariane_soc::UARTLength         },
     '{ idx: ariane_soc::Timer,    start_addr: ariane_soc::TimerBase,    end_addr: ariane_soc::TimerBase + ariane_soc::TimerLength       },
+    '{ idx: ariane_soc::TagCfg,   start_addr: ariane_soc::TagCfgBase,   end_addr: ariane_soc::TagCfgBase + ariane_soc::TagCfgLength     },
     '{ idx: ariane_soc::SPI,      start_addr: ariane_soc::SPIBase,      end_addr: ariane_soc::SPIBase + ariane_soc::SPILength           },
     '{ idx: ariane_soc::Ethernet, start_addr: ariane_soc::EthernetBase, end_addr: ariane_soc::EthernetBase + ariane_soc::EthernetLength },
     '{ idx: ariane_soc::GPIO,     start_addr: ariane_soc::GPIOBase,     end_addr: ariane_soc::GPIOBase + ariane_soc::GPIOLength         },
