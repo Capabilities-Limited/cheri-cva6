@@ -553,14 +553,16 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     .data_i ( rdata        )
   );
 
-  localparam logic[63:0] cached_end_addr = CVA6Cfg.RVFI_DII ?
-    ariane_soc::DRAMBase + 64'h800000 :
-    ariane_soc::DRAMBase + ariane_soc::DRAMLength - (ariane_soc::DRAMLength>>7);
+  localparam logic[63:0] mem_len = CVA6Cfg.RVFI_DII ?
+    64'h800000 :
+    ariane_soc::DRAMLength - (ariane_soc::DRAMLength>>7);
+
+  localparam logic[63:0] cached_end_addr = ariane_soc::DRAMBase + mem_len;
 
   if (CVA6Cfg.CheriPresent) begin : gen_cheri_tag_controller
     axi_tagctrl_top #(
         .init_covered_base       (ariane_soc::DRAMBase),
-        .init_covered_top        (ariane_soc::DRAMBase + ariane_soc::DRAMLength),
+        .init_covered_top        (cached_end_addr),
         .init_tag_table_base     (cached_end_addr),
         .init_start              (1'b1),
         .init_locked             (1'b1),
