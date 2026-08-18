@@ -167,7 +167,8 @@ module cheri_unit
       end
       // CGetTop
       ariane_pkg::YTOPR: begin
-        clu_result = ariane_pkg::x_to_reg(operand_a_bounds_malformed ? '0 : operand_a_top);
+        clu_result = ariane_pkg::x_to_reg(operand_a_bounds_malformed ? '0 :
+                                          operand_a_top[64] ? '1 : operand_a_top);
       end
       // CGetHigh
       ariane_pkg::YHIR: begin
