@@ -137,11 +137,12 @@ package cva6_cheri_pkg;
       * Capability reported architectural permission bits
       */
   typedef struct packed {
-    logic [3:0]                     reserved_hi;
+    logic [15:0]                    reserved_0;
+    logic [4:0]                     reserved_1_hi;
     bool_t                          permit_load;
     bool_t                          permit_execute;
     bool_t                          access_sys_regs;
-    logic [10-CAP_UPERMS_WIDTH-1:0] reserved_lo;
+    logic [10-CAP_UPERMS_WIDTH-1:0] reserved_1_lo;
     upermsw_t                       uperms;
     bool_t                          permit_cap;
     bool_t                          cap_level;
@@ -754,11 +755,12 @@ package cva6_cheri_pkg;
       cap_hperms_t hp_raw, upermsw_t up, logic perms_are_malformed);
     cap_hperms_t hp = perms_are_malformed ? '0 : hp_raw;
     cap_report_perms_t rp = '{
-        reserved_hi          : 0,  //Newer spec:'1,
+        reserved_0           : 0,
+        reserved_1_hi        : '1,
         permit_load          : hp.permit_load,
         permit_execute       : hp.permit_execute,
         access_sys_regs      : hp.access_sys_regs,
-        reserved_lo          : 0,  //Newer spec:'1,
+        reserved_1_lo        : '1,
         uperms               : up,
         permit_cap           : hp.permit_cap,
         cap_level            : hp_raw.cap_level,  // Not a permission, so not legalised
