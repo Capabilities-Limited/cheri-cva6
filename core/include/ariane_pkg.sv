@@ -710,6 +710,33 @@ package ariane_pkg;
     endcase
   endfunction
 
+  function automatic logic [XLEN-1:0] decode_si_imm (
+    input logic [8:0] imm
+  );
+    // Decode according to the following logic for the YBNDSWI from the Y extension:
+    // If imm[8:0] = 0, result is 4096.
+    // If imm[8] = 0 and imm[7:0] != 0, result is imm[7:0].
+    // If imm[8] = 1 and imm[7:5] = 0, result is 256 | (imm[3:0] << 4) | (imm[4] << 3).
+    // Otherwise, result is imm[7:0] << 4.
+    logic [XLEN-1:0] result;
+
+    if (imm == 9'b0) begin
+      result = XLEN'(4096);
+    end else if (!imm[8]) begin
+      result = XLEN'(imm[7:0]);
+    end else if (imm[7:5] == 3'b000) begin
+      result = XLEN'({
+          1'b1,       // bit 8: 256
+          imm[3:0],   // bits 7:4
+          imm[4],     // bit 3
+          3'b000      // bits 2:0
+      });
+    end else begin
+      result = XLEN'(imm[7:0]) << 4;
+    end
+
+    return result;
+  endfunction
   // -------------------
   // Performance counter
   // -------------------

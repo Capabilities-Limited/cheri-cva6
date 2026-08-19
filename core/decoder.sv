@@ -2045,7 +2045,7 @@ module decoder
       };
     end
     imm_si_type = (CVA6Cfg.CheriPresent) ?
-        {{CVA6Cfg.XLEN - 9{1'b0}}, instruction_i[28:20]}
+      ariane_pkg::decode_si_imm(instruction_i[28:20])
       : {CVA6Cfg.XLEN{1'b0}};
 
     instruction_o.result = '{default: 0};
