@@ -215,10 +215,10 @@ package cva6_cheri_pkg;
   /* Capability definition in memory */
   typedef struct packed {
     bool_t        tag;
-    resw_hi_t     res_hi;
     upermsw_t     uperms;
-    cap_flags_t   flags;
+    resw_hi_t     res_hi;
     cap_hperms_t  hperms;
+    cap_flags_t   flags;
     resw_lo_t     res_lo;
     otypew_t      otype;
     cap_fmt_t     EF;
@@ -229,10 +229,10 @@ package cva6_cheri_pkg;
   /* Capability definition in register */
   typedef struct packed {
     bool_t       tag;
-    resw_hi_t    res_hi;
     upermsw_t    uperms;
-    cap_flags_t  flags;
+    resw_hi_t    res_hi;
     cap_hperms_t hperms;
+    cap_flags_t  flags;
     resw_lo_t    res_lo;
     otypew_t     otype;
     cap_fmt_t    EF;
