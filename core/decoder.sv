@@ -1889,7 +1889,7 @@ module decoder
                   // 1111011 rs2:00000 YSENTRY
                   7'b111_1000: begin
                     case (instr.rtype.rs2)
-                      5'b00111: begin
+                      5'b00000: begin
                         instruction_o.op = ariane_pkg::YAMASK;
                         instruction_o.rs1[4:0] = 5'b0; // Use C0 as the capability operand for SetBounds function.
                         instruction_o.rs2[4:0] = instr.rtype.rs1;
