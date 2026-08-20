@@ -132,7 +132,7 @@ ariane_pkg := \
               corev_apu/register_interface/src/reg_intf.sv           \
               corev_apu/tb/ariane_soc_pkg.sv                         \
               vendor/capltd/axi_cheri_tagcontroller/src/common_cells/src/cb_filter_pkg.sv \
-              vendor/capltd/axi_cheri_tagcontroller/include/axi_tagctrl_pkg.sv \
+              vendor/capltd/axi_cheri_tagcontroller/src/axi_tagctrl_pkg.sv \
               corev_apu/riscv-dbg/src/dm_pkg.sv                      \
               corev_apu/tb/ariane_axi_soc_pkg.sv
 ariane_pkg := $(addprefix $(root-dir), $(ariane_pkg))
