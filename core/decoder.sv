@@ -1886,7 +1886,7 @@ module decoder
                   // 1111010 rs2:00100 YTAGR
                   // 1111010 rs2:00101 YTYPER
                   // 1111010 rs2:00110 YMODER
-                  // 1111011 rs2:00000 YSENTRY
+                  // 0010111 rs1:00000 YSENTRY
                   7'b111_1000: begin
                     case (instr.rtype.rs2)
                       5'b00000: begin
@@ -1912,12 +1912,16 @@ module decoder
                       default: illegal_instr_cheri = 1'b1;
                     endcase
                   end
-                  7'b111_1011: begin
-                    case (instr.rtype.rs2)
-                      5'b00000: instruction_o.op = ariane_pkg::YSENTRY;
+                  7'b001_0111: begin
+                    case (instr.rtype.rs1)
+                      5'b00000: begin
+                        instruction_o.op = ariane_pkg::YSENTRY;
+                        instruction_o.rs1 = instr.rtype.rs2;
+                      end
                       default: illegal_instr_cheri = 1'b1;
                     endcase
                   end
+                  default: illegal_instr_cheri = 1'b1;
                 endcase
               end
               3'b100 : begin // YADDI
@@ -1982,6 +1986,7 @@ module decoder
         end
         default: illegal_instr_cheri = 1'b1;
       endcase
+      illegal_instr = illegal_instr_cheri;
     end
     if (CVA6Cfg.CvxifEn) begin
       if (~ex_i.valid && (is_illegal_i || illegal_instr)) begin
