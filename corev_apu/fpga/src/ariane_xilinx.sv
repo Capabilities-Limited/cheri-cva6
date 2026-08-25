@@ -346,7 +346,7 @@ assign rst = ddr_sync_reset;
 axi_pkg::xbar_rule_64_t [ariane_soc::NB_PERIPHERALS-1:0] addr_map;
 
 assign addr_map = '{
-  '{ idx: ariane_soc::TagCfg,   start_addr: ariane_soc::TagCfg,       end_addr: ariane_soc::TagCfg + ariane_soc::TagCfgLength         },
+  '{ idx: ariane_soc::TagCfg,   start_addr: ariane_soc::TagCfgBase,   end_addr: ariane_soc::TagCfgBase + ariane_soc::TagCfgLength     },
   '{ idx: ariane_soc::Debug,    start_addr: ariane_soc::DebugBase,    end_addr: ariane_soc::DebugBase + ariane_soc::DebugLength       },
   '{ idx: ariane_soc::ROM,      start_addr: ariane_soc::ROMBase,      end_addr: ariane_soc::ROMBase + ariane_soc::ROMLength           },
   '{ idx: ariane_soc::CLINT,    start_addr: ariane_soc::CLINTBase,    end_addr: ariane_soc::CLINTBase + ariane_soc::CLINTLength       },
