@@ -502,7 +502,11 @@ module cva6_rvfi
         (exception && (ex_commit_cause == riscv::ENV_CALL_MMODE ||
                   ex_commit_cause == riscv::ENV_CALL_SMODE ||
                   ex_commit_cause == riscv::ENV_CALL_UMODE ||
-                  ex_commit_cause == cva6_cheri_pkg::CAP_EXCEPTION));
+                  ex_commit_cause == cva6_cheri_pkg::CAP_INSTR_ACCESS_FAULT ||
+                  ex_commit_cause == cva6_cheri_pkg::CAP_LOAD_ACCESS_FAULT ||
+                  ex_commit_cause == cva6_cheri_pkg::CAP_STORE_AMO_ACCESS_FAULT ||
+                  ex_commit_cause == cva6_cheri_pkg::CAP_LOAD_CAPABILITY_FAULT ||
+                  ex_commit_cause == cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT));
       automatic logic rd_is_fpr;
       rd_is_fpr = CVA6Cfg.FpPresent && is_rd_fpr(commit_instr_op[i]);
       rvfi_instr_o[i].valid <= valid;

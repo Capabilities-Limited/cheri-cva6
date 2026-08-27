@@ -418,7 +418,7 @@ module commit_stage
       // ------------------------
       if (csr_exception_i.valid) begin
         exception_o = csr_exception_i;
-        if (!CVA6Cfg.CheriPresent || csr_exception_i.cause != cva6_cheri_pkg::CAP_EXCEPTION) begin
+        if (!CVA6Cfg.CheriPresent || csr_exception_i.cause < cva6_cheri_pkg::CAP_INSTR_ACCESS_FAULT) begin
           // if no earlier exception happened the commit instruction will still contain
           // the instruction bits from the ID stage. If a earlier exception happened we don't care
           // as we will overwrite it anyway in the next IF bl
