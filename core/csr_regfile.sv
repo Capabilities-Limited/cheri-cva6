@@ -1717,7 +1717,11 @@ module csr_regfile
                (1 << riscv::INSTR_PAGE_FAULT) |
                (1 << riscv::LOAD_PAGE_FAULT) |
                (1 << riscv::STORE_PAGE_FAULT) |
-               ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_EXCEPTION);
+               ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_INSTR_ACCESS_FAULT) |
+               ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_LOAD_ACCESS_FAULT) |
+               ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_STORE_AMO_ACCESS_FAULT) |
+               ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_LOAD_CAPABILITY_FAULT) |
+               ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT);
             hedeleg_d = (hedeleg_q & ~mask) | (csr_wdata & mask);
           end else begin
             update_access_exception = 1'b1;
@@ -1881,7 +1885,11 @@ module csr_regfile
                              ((CVA6Cfg.RVH ? 1 : 0)  << riscv::LOAD_GUEST_PAGE_FAULT) |
                              ((CVA6Cfg.RVH ? 1 : 0)  << riscv::VIRTUAL_INSTRUCTION) |
                              ((CVA6Cfg.RVH ? 1 : 0)  << riscv::STORE_GUEST_PAGE_FAULT) |
-                             ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_EXCEPTION);
+                             ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_INSTR_ACCESS_FAULT) |
+                             ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_LOAD_ACCESS_FAULT) |
+                             ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_STORE_AMO_ACCESS_FAULT) |
+                             ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_LOAD_CAPABILITY_FAULT) |
+                             ((CVA6Cfg.CheriPresent ? 1 : 0) << cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT);
             medeleg_d = (medeleg_q & ~mask) | (csr_wdata & mask);
           end else begin
             update_access_exception = 1'b1;
@@ -2941,11 +2949,9 @@ module csr_regfile
   // CSR Exception Control
   // ----------------------
   always_comb begin : exception_ctrl
-    automatic cva6_cheri_pkg::cap_tval2_t cheri_tval2;
     csr_exception_o = {
       {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.GPLEN{1'b0}}, {32{1'b0}}, 1'b0, 1'b0
     };
-    cheri_tval2 = '{default: 0};
     // ----------------------------------
     // Illegal Access (decode exception)
     // ----------------------------------
@@ -2969,11 +2975,8 @@ module csr_regfile
     end
 
     if (cheri_access_violation && !debug_mode_q) begin
-      cheri_tval2.fault_type = cva6_cheri_pkg::CAP_INSTR_FETCH_FAULT;
-      cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
-      csr_exception_o.cause = cva6_cheri_pkg::CAP_EXCEPTION;
+      csr_exception_o.cause = cva6_cheri_pkg::CAP_INSTR_ACCESS_FAULT;
       csr_exception_o.tval = '0;
-      csr_exception_o.tval2 = CVA6Cfg.GPLEN'(cva6_cheri_pkg::embed_cap_tval2(cheri_tval2));
       csr_exception_o.valid = 1'b1;
     end
   end

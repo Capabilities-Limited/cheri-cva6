@@ -38,21 +38,13 @@ package cva6_cheri_pkg;
   localparam CAP_RESET_TOP = {2'b01, {CAP_M_WIDTH - 2{1'b0}}};
 
   /* Capabilities RISC-V Exception Trap Encoding Extension */
-
-  localparam logic [XLEN-1:0] CAP_EXCEPTION = 28;
-  localparam logic [XLEN-1:0] CAP_GUEST_EXCEPTION = 31;
-
   /* Capabilities Exception Codes */
 
-  localparam logic [3:0] CAP_INSTR_FETCH_FAULT = 0;
-  localparam logic [3:0] CAP_DATA_ACCESS_FAULT = 1;
-  localparam logic [3:0] CAP_JUMP_BRANCH_FAULT = 2;
-
-  localparam logic [3:0] CAP_TAG_VIOLATION = 0;
-  localparam logic [3:0] CAP_SEAL_VIOLATION = 1;
-  localparam logic [3:0] CAP_PERM_VIOLATION = 2;
-  localparam logic [3:0] CAP_INVALID_ADDRESS_VIOLATION = 3;
-  localparam logic [3:0] CAP_BOUNDS_VIOLATION = 4;
+  localparam logic [XLEN-1:0] CAP_INSTR_ACCESS_FAULT = 32;
+  localparam logic [XLEN-1:0] CAP_LOAD_ACCESS_FAULT = 33;
+  localparam logic [XLEN-1:0] CAP_STORE_AMO_ACCESS_FAULT = 34;
+  localparam logic [XLEN-1:0] CAP_LOAD_CAPABILITY_FAULT = 35;
+  localparam logic [XLEN-1:0] CAP_STORE_AMO_PAGE_FAULT = 36;
 
   /* Capabilities OType Encoding */
 
@@ -80,25 +72,6 @@ package cva6_cheri_pkg;
   typedef logic [((CAP_M_WIDTH -(CAP_E_HALF_WIDTH+2))-1):0] hcmw_t;
   typedef logic [CAP_E_WIDTH-1:0] ew_t;
   typedef logic [CAP_E_HALF_WIDTH-1:0] hew_t;
-
-  /**
-      * CHERI exception tval layout fields
-      */
-  typedef struct packed {
-    logic [3:0] fault_type;   /* Type of check being performed */
-    logic [3:0] fault_cause;  /* Reason for failed check */
-  } cap_tval2_t;
-
-  function automatic logic [cva6_config_pkg::CVA6ConfigXlen-1:0] embed_cap_tval2(
-      cap_tval2_t cap_tval2);
-    return {
-      {cva6_config_pkg::CVA6ConfigXlen - 22{1'b0}},
-      cap_tval2.fault_type,
-      12'b0,
-      cap_tval2.fault_cause,
-      2'b0
-    };
-  endfunction
 
   /**
       * Capability encoded architectural permission bits
