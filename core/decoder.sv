@@ -115,7 +115,6 @@ module decoder
   logic illegal_instr;
   logic illegal_instr_bm;
   logic illegal_instr_zic;
-  logic illegal_instr_cheri;
   logic illegal_instr_non_bm;
   logic virtual_illegal_instr;
   // this instruction is an environment call (ecall), it is handled like an exception
@@ -192,7 +191,6 @@ module decoder
     illegal_instr_non_bm                   = 1'b0;
     illegal_instr_bm                       = 1'b0;
     illegal_instr_zic                      = 1'b0;
-    illegal_instr_cheri                    = 1'b0;
     virtual_illegal_instr                  = 1'b0;
     instruction_o.pc                       = pc_i;
     instruction_o.trans_id                 = '0;
@@ -1864,9 +1862,9 @@ module decoder
                             instruction_o.op = ariane_pkg::YMODESWI;
                             int_mode_o = 1'b1;
                           end
-                          default: illegal_instr_cheri = 1'b1;
+                          default: illegal_instr = 1'b1;
                         endcase
-                      end else illegal_instr_cheri = 1'b1;
+                      end else illegal_instr = 1'b1;
                     end else instruction_o.op = ariane_pkg::YMODEW;
                   end
                   7'b011_0011 : instruction_o.op = ariane_pkg::YBNDSRDW;
@@ -1894,7 +1892,7 @@ module decoder
                         instruction_o.rs1[4:0] = 5'b0; // Use C0 as the capability operand for SetBounds function.
                         instruction_o.rs2[4:0] = instr.rtype.rs1;
                       end
-                      default: illegal_instr_cheri = 1'b1;
+                      default: illegal_instr = 1'b1;
                     endcase
                   end
                   7'b111_1010: begin
@@ -1909,7 +1907,7 @@ module decoder
                       5'b00100: instruction_o.op = ariane_pkg::YTAGR;
                       5'b00101: instruction_o.op = ariane_pkg::YTYPER;
                       5'b00110: instruction_o.op = ariane_pkg::YMODER;
-                      default: illegal_instr_cheri = 1'b1;
+                      default: illegal_instr = 1'b1;
                     endcase
                   end
                   7'b001_0111: begin
@@ -1918,10 +1916,10 @@ module decoder
                         instruction_o.op = ariane_pkg::YSENTRY;
                         instruction_o.rs1 = instr.rtype.rs2;
                       end
-                      default: illegal_instr_cheri = 1'b1;
+                      default: illegal_instr = 1'b1;
                     endcase
                   end
-                  default: illegal_instr_cheri = 1'b1;
+                  default: illegal_instr = 1'b1;
                 endcase
               end
               3'b100 : begin // YADDI
@@ -1940,7 +1938,7 @@ module decoder
                 instruction_o.op = ariane_pkg::LY;
                 tinst = {17'b0, instr.itype.funct3, instr.itype.rd, instr.itype.opcode};
                 tinst[1] = is_compressed_i ? 1'b0 : 'b1;
-                if (instr.rtype.rs1 == 5'b0) illegal_instr_cheri = 1'b1;
+                if (instr.rtype.rs1 == 5'b0) illegal_instr = 1'b1;
               end
               3'b010 : begin // SY
                 instruction_o.fu = STORE;
@@ -1949,7 +1947,7 @@ module decoder
                 instruction_o.rs2 = instr.stype.rs2;
                 instruction_o.use_ddc = int_mode_i;
                 instruction_o.op = ariane_pkg::SY;
-                if (instr.rtype.rs1 == 5'b0) illegal_instr_cheri = 1'b1;
+                if (instr.rtype.rs1 == 5'b0) illegal_instr = 1'b1;
               end
               3'b011 : begin // Cap AMO instructions
                 // we are going to use the load unit for AMOs
@@ -1963,9 +1961,9 @@ module decoder
                     5'b00001: instruction_o.op = ariane_pkg::AMO_SWAPY;
                     5'b00010: instruction_o.op = ariane_pkg::AMO_LRY;
                     5'b00011: instruction_o.op = ariane_pkg::AMO_SCY;
-                    default: illegal_instr_cheri = 1'b1;
+                    default: illegal_instr = 1'b1;
                   endcase
-                end else illegal_instr_cheri = 1'b1;
+                end else illegal_instr = 1'b1;
               end
               3'b101 : begin // shifts and YBNDSWI
                 instruction_o.rs1 = instr.itype.rs1;
@@ -1978,15 +1976,14 @@ module decoder
                   imm_select = SCIMM;
                   instruction_o.fu = CLU;
                   instruction_o.op = ariane_pkg::YBNDSW;
-                end else illegal_instr_cheri = 1'b1;
+                end else illegal_instr = 1'b1;
               end
-              default illegal_instr_cheri = 1'b1;
+              default illegal_instr = 1'b1;
             endcase
           end
         end
-        default: illegal_instr_cheri = 1'b1;
+        default: illegal_instr = 1'b1;
       endcase
-      illegal_instr = illegal_instr_cheri;
     end
     if (CVA6Cfg.CvxifEn) begin
       if (~ex_i.valid && (is_illegal_i || illegal_instr)) begin
