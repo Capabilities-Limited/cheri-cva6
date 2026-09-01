@@ -118,8 +118,8 @@ module branch_unit #(
         if (fu_data_i.operation inside {ariane_pkg::CJALR}) begin
           automatic cva6_cheri_pkg::cap_reg_t compare_pcc;
           automatic cva6_cheri_pkg::cap_reg_t compare_target_cap;
-          compare_pcc = cva6_cheri_pkg::set_cap_reg_flags(pcc, 0);
-          compare_target_cap = cva6_cheri_pkg::set_cap_reg_flags(
+          compare_pcc = cva6_cheri_pkg::set_cap_reg_int_mode(pcc, 0);
+          compare_target_cap = cva6_cheri_pkg::set_cap_reg_int_mode(
               cva6_cheri_pkg::set_cap_reg_otype(operand_a_cap, cva6_cheri_pkg::UNSEALED_CAP), 0);
           if (compare_target_cap != cva6_cheri_pkg::set_cap_reg_address(
                   compare_pcc,
@@ -130,7 +130,7 @@ module branch_unit #(
             resolved_branch_o.is_pcc_change = 1'b1;
           end
           // If jumping into intmode, we must have been in capmode, so always mispredict
-          if (target_pcc.flags == 1'b1) resolved_branch_o.is_mispredict = branch_valid_i;
+          if (target_pcc.hperms.int_mode == 1'b1) resolved_branch_o.is_mispredict = branch_valid_i;
         end
       end
     end

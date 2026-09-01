@@ -108,7 +108,8 @@ module cheri_unit
         new_perms &= ~cap_report_perms_t'(operand_b_address);
         tmp_cap.uperms = new_perms.uperms;
         tmp_cap.hperms = legalize_arch_perms(report_perms_to_hperms(new_perms));
-        if (!tmp_cap.hperms.permit_execute) tmp_cap.flags.int_mode = 1'b0;
+        tmp_cap.hperms.int_mode = operand_a.hperms.int_mode;
+        if (!tmp_cap.hperms.permit_execute) tmp_cap.hperms.int_mode = 1'b0;
         clu_result = tmp_cap;
       end
       // CTestSubset
@@ -159,7 +160,7 @@ module cheri_unit
       end
       // CGetFlags
       ariane_pkg::YMODER: begin
-        clu_result = ariane_pkg::x_to_reg({{CVA6Cfg.XLEN - 1{1'b0}}, get_cap_reg_flags(operand_a)});
+        clu_result = ariane_pkg::x_to_reg({{CVA6Cfg.XLEN - 1{1'b0}}, get_cap_reg_int_mode(operand_a)});
       end
       // CGetLength
       ariane_pkg::YLENR: begin
@@ -249,7 +250,7 @@ module cheri_unit
       ariane_pkg::YMODEW: begin
         check_operand_a_violations.seal = 1'b1;
         clu_result = (operand_a_hperms_malformed) ? operand_a :
-            set_cap_reg_flags(operand_a, operand_b.addr[0]);
+            set_cap_reg_int_mode(operand_a, operand_b.addr[0]);
       end
       // CSetHigh
       ariane_pkg::PACKY: begin
@@ -279,7 +280,7 @@ module cheri_unit
     operand_a_length = get_cap_reg_length(operand_a, op_a_meta_info);
     operand_a_is_sealed = (operand_a.otype != UNSEALED_CAP);
     operand_a_hperms_malformed = (operand_a.hperms != legalize_arch_perms(operand_a.hperms)) |
-        (!operand_a.hperms.permit_execute & operand_a.flags.int_mode);
+        (!operand_a.hperms.permit_execute & operand_a.hperms.int_mode);
     operand_a_bounds_malformed = !are_cap_reg_bounds_valid(operand_a, op_a_meta_info);
     // Decode capability operand b fields
     operand_b_address = operand_b.addr;
@@ -289,7 +290,7 @@ module cheri_unit
     operand_b_bounds_malformed = !are_cap_reg_bounds_valid(operand_b, op_b_meta_info);
     operand_b_is_sealed = (operand_b.otype != UNSEALED_CAP);
     operand_b_hperms_malformed = (operand_b.hperms != legalize_arch_perms(operand_b.hperms)) |
-        (!operand_b.hperms.permit_execute & operand_b.flags.int_mode);
+        (!operand_b.hperms.permit_execute & operand_b.hperms.int_mode);
   end
 
   // ----------------

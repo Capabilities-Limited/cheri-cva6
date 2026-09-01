@@ -367,7 +367,7 @@ module issue_read_operands
     assign use_alu2 = '0;
   end
 
-  assign int_mode_o   = cva6_cheri_pkg::get_cap_reg_flags(pcc_q);
+  assign int_mode_o   = cva6_cheri_pkg::get_cap_reg_int_mode(pcc_q);
   assign commit_pcc_o = pcc_q;
   // ---------------
   // Issue Stage
@@ -491,7 +491,7 @@ module issue_read_operands
     // Update PCC with correct int mode
     always_comb begin : pcc_int_mode
       for (int unsigned i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
-        pcc[i] = cva6_cheri_pkg::set_cap_reg_flags(pcc_q, issue_instr_i[i].int_mode);
+        pcc[i] = cva6_cheri_pkg::set_cap_reg_int_mode(pcc_q, issue_instr_i[i].int_mode);
       end
     end
 
