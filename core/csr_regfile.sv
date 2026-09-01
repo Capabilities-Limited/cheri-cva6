@@ -494,7 +494,7 @@ module csr_regfile
         riscv::CSR_DINFC:
         if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
           if (csr_read_cap) begin
-            csr_rcap = set_cap_reg_flags(REG_ROOT_CAP, commit_instr_i.int_mode);
+            csr_rcap = set_cap_reg_int_mode(REG_ROOT_CAP, commit_instr_i.int_mode);
             csr_rcap_null = 1'b0;
           end
           csr_rdata = '0;
@@ -1116,19 +1116,13 @@ module csr_regfile
         end
         riscv::CSR_DDC:
         if (CVA6Cfg.CheriPresent) begin
-          if (csr_read_cap) begin
-            csr_rcap = ddc_q;
-            csr_rcap_null = 1'b0;
-          end
-          csr_rdata = reg_to_x(ddc_q);
+          csr_rcap = ddc_q;
+          csr_rcap_null = 1'b0;
         end else read_access_exception = 1'b1;
         riscv::CSR_UTID:
         if (CVA6Cfg.CheriPresent) begin
-          if (csr_read_cap) begin
-            csr_rcap = utid_q;
-            csr_rcap_null = 1'b0;
-          end
-          csr_rdata = reg_to_x(utid_q);
+          csr_rcap = utid_q;
+          csr_rcap_null = 1'b0;
         end else read_access_exception = 1'b1;
         default: read_access_exception = 1'b1;
       endcase
@@ -3058,7 +3052,7 @@ module csr_regfile
           REG_ROOT,
           CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + (commit_instr_i.int_mode ? CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0] : CVA6Cfg.ExceptionCapModeAddress[CVA6Cfg.VLEN-1:0])
         );
-        trap_vector_base_o = cva6_cheri_pkg::set_cap_reg_flags(trap_vector_base_o, 1'b0);
+        trap_vector_base_o = cva6_cheri_pkg::set_cap_reg_int_mode(trap_vector_base_o, 1'b0);
       end else begin
         trap_vector_base_o = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0];
       end

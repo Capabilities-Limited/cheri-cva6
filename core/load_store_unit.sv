@@ -178,6 +178,7 @@ module load_store_unit
 
   // data is misaligned
   logic data_misaligned;
+  logic y_len;
   // --------------------------------------
   // 1st register stage - (stall registers)
   // --------------------------------------
@@ -794,6 +795,7 @@ module load_store_unit
       {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.GPLEN{1'b0}}, {32{1'b0}}, 1'b0, 1'b0
     };
     data_misaligned = 1'b0;
+    y_len = 1'b0;
 
     if (lsu_ctrl.valid) begin
       if (CVA6Cfg.IS_XLEN64) begin
@@ -803,6 +805,7 @@ module load_store_unit
             if (CVA6Cfg.CheriPresent && lsu_ctrl.vaddr[3:0] != 4'b0000) begin
               data_misaligned = 1'b1;
             end
+            y_len = 1'b1;
           end
           // double word
           LD, SD, FLD, FSD,
@@ -842,7 +845,8 @@ module load_store_unit
     if (data_misaligned) begin
       case (lsu_ctrl.fu)
         LOAD: begin
-          cva6_misaligned_exception.cause = riscv::LD_ADDR_MISALIGNED;
+          cva6_misaligned_exception.cause = y_len ? riscv::LD_ACCESS_FAULT :
+                                                    riscv::LD_ADDR_MISALIGNED;
           cva6_misaligned_exception.valid = 1'b1;
           if (CVA6Cfg.TvalEn)
             cva6_misaligned_exception.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, lsu_ctrl.vaddr};
@@ -853,8 +857,12 @@ module load_store_unit
           end
         end
         STORE: begin
-
-          cva6_misaligned_exception.cause = lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRY} ? riscv::LD_ADDR_MISALIGNED : riscv::ST_ADDR_MISALIGNED;
+          if (lsu_ctrl.operation inside {AMO_LRB, AMO_LRH, AMO_LRW, AMO_LRD, AMO_LRY})
+            cva6_misaligned_exception.cause = y_len ? riscv::LD_ACCESS_FAULT :
+                                                      riscv::LD_ADDR_MISALIGNED;
+          else
+            cva6_misaligned_exception.cause = y_len ? riscv::ST_ACCESS_FAULT :
+                                                      riscv::ST_ADDR_MISALIGNED;
           cva6_misaligned_exception.valid = 1'b1;
           if (CVA6Cfg.TvalEn)
             cva6_misaligned_exception.tval = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{1'b0}}, lsu_ctrl.vaddr};

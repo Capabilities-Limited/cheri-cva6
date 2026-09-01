@@ -770,7 +770,7 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     boot_cap = ariane_pkg::REG_ROOT;
     boot_addr = CVA6Cfg.RVFI_DII ? ariane_soc::DRAMBase : ariane_soc::ROMBase;
     boot_cap.addr = boot_addr;
-    boot_cap.flags.int_mode = CVA6Cfg.RVFI_DII ? 1'b0 : 1'b1;
+    boot_cap.hperms.int_mode = CVA6Cfg.RVFI_DII ? 1'b0 : 1'b1;
   end
 
   ariane #(
