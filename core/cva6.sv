@@ -818,7 +818,7 @@ module cva6
       .dcache_req_ports_o(dcache_req_ports_id_cache),
       .commit_redirect_i(ex_commit.valid | eret | set_pc_ctrl_pcgen),
       .int_mode_issue_i(int_mode_issue_id),
-      .int_mode_resolved_branch_i(cva6_cheri_pkg::get_cap_reg_flags(
+      .int_mode_resolved_branch_i(cva6_cheri_pkg::get_cap_reg_int_mode(
           resolved_branch.target_address
       )),
       .mispredict_redirect_i(resolved_branch.is_mispredict)

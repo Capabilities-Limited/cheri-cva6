@@ -130,6 +130,14 @@ package cva6_cheri_pkg;
     bool_t permit_store;
     /// Permit capability memory operations (respecting permit_load/store)
     bool_t permit_cap;
+    /**
+          * RISC-V Encoding mode for PCC
+          * 0 - Conventional RISC-V execution mode, in which address operands
+          *     to existing RISC-V load and store opcodes contain integer addresses.
+          * 1 - CHERI capability encoding mode, in which address operands
+          *     to existing RISC-V load and store opcodes contain capabilities.
+          */
+    bool_t int_mode;
     // Allow this capability to be loaded without permit_store_level
     bool_t cap_level;
   } cap_hperms_t;
@@ -151,18 +159,6 @@ package cva6_cheri_pkg;
     bool_t                          permit_load_mutable;
     bool_t                          permit_store;
   } cap_report_perms_t;
-
-  /* Capability flags definition */
-  typedef struct packed {
-    /**
-          * RISC-V Encoding mode for PCC
-          * 0 - Conventional RISC-V execution mode, in which address operands
-          *     to existing RISC-V load and store opcodes contain integer addresses.
-          * 1 - CHERI capability encoding mode, in which address operands
-          *     to existing RISC-V load and store opcodes contain capabilities.
-          */
-    bool_t int_mode;
-  } cap_flags_t;
 
   /* Capability bounds definition */
   typedef struct packed {
@@ -218,7 +214,6 @@ package cva6_cheri_pkg;
     upermsw_t     uperms;
     resw_hi_t     res_hi;
     cap_hperms_t  hperms;
-    cap_flags_t   flags;
     resw_lo_t     res_lo;
     otypew_t      otype;
     cap_fmt_t     EF;
@@ -232,7 +227,6 @@ package cva6_cheri_pkg;
     upermsw_t    uperms;
     resw_hi_t    res_hi;
     cap_hperms_t hperms;
-    cap_flags_t  flags;
     resw_lo_t    res_lo;
     otypew_t     otype;
     cap_fmt_t    EF;
@@ -260,7 +254,6 @@ package cva6_cheri_pkg;
       addr            : '{default: 0},
       uperms          : '{default: '1},
       hperms          : '{default: '1},
-      flags           : 1'b1,
       res_hi          : '0,
       res_lo          : '0,
       otype           : UNSEALED_CAP,
@@ -273,7 +266,6 @@ package cva6_cheri_pkg;
       addr            : '{default: 0},
       uperms          : '{default: 0},
       hperms          : '{default: 0},
-      flags           : 1'b0,
       res_hi          : '0,
       res_lo          : '0,
       otype           : UNSEALED_CAP,
@@ -285,7 +277,6 @@ package cva6_cheri_pkg;
       tag             : 1'b0,
       res_hi          : '0,
       uperms          : '{default: 0},
-      flags           : 1'b0,
       hperms          : '{default: 0},
       res_lo          : '0,
       otype           : UNSEALED_CAP,
@@ -307,14 +298,14 @@ package cva6_cheri_pkg;
     return ret;
   endfunction
 
-  function automatic cap_flags_t get_cap_mem_flags(capw_t cap);
+  function automatic bool_t get_cap_mem_int_mode(capw_t cap);
     cap_mem_t ret = cap;
-    return ret.flags;
+    return ret.hperms.int_mode;
   endfunction
 
-  function automatic capw_t set_cap_mem_flags(capw_t cap, cap_flags_t flags);
+  function automatic capw_t set_cap_mem_int_mode(capw_t cap, bool_t int_mode);
     cap_mem_t ret = cap;
-    ret.flags = flags;
+    ret.hperms.int_mode = int_mode;
     return ret;
   endfunction
 
@@ -457,15 +448,15 @@ package cva6_cheri_pkg;
     return (are_cap_reg_bounds_valid(cap, cap_meta_data) && cap.bounds.exp == CAP_RESET_EXP);
   endfunction
 
-  function automatic cap_flags_t get_cap_reg_flags(cap_reg_t cap);
+  function automatic bool_t get_cap_reg_int_mode(cap_reg_t cap);
     cap_hperms_t perms = legalize_arch_perms(cap.hperms);
-    return (perms == cap.hperms && perms.permit_execute) ? cap.flags : 1'b0;
+    return (perms == cap.hperms && perms.permit_execute) ? cap.hperms.int_mode : 1'b0;
   endfunction
 
-  function automatic cap_reg_t set_cap_reg_flags(cap_reg_t cap, cap_flags_t flags);
+  function automatic cap_reg_t set_cap_reg_int_mode(cap_reg_t cap, bool_t int_mode);
     cap_reg_t ret = cap;
     cap_hperms_t perms = legalize_arch_perms(cap.hperms);
-    ret.flags = (perms.permit_execute) ? flags : 1'b0;
+    ret.hperms.int_mode = (perms.permit_execute) ? int_mode : 1'b0;
     return ret;
   endfunction
 
@@ -711,7 +702,6 @@ package cva6_cheri_pkg;
         hperms: cap.hperms,
         res_hi: cap.res_hi,
         res_lo: cap.res_lo,
-        flags: cap.flags,
         otype: cap.otype,
         EF: cap.EF,
         bounds: encode_bounds(cap.bounds, cap.EF),
@@ -734,7 +724,6 @@ package cva6_cheri_pkg;
         tag: cap.tag,
         uperms: cap.uperms,
         hperms: cap.hperms,
-        flags: cap.flags,
         res_hi: cap.res_hi,
         res_lo: cap.res_lo,
         otype: cap.otype,
@@ -787,6 +776,7 @@ package cva6_cheri_pkg;
         permit_load          : rp.permit_load,
         permit_store         : rp.permit_store,
         permit_cap           : rp.permit_cap,
+        int_mode             : 1'bx,
         cap_level            : rp.cap_level
     };
     return hp;

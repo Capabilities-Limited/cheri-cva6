@@ -130,7 +130,7 @@ module commit_stage
     automatic cva6_cheri_pkg::cap_reg_t pcc_o;
     pcc_meta = cva6_cheri_pkg::get_cap_reg_meta_data(pcc_i);
     pcc_o = cva6_cheri_pkg::set_cap_reg_address(pcc_i, commit_instr_i[0].pc, pcc_meta);
-    pcc_o = cva6_cheri_pkg::set_cap_reg_flags(pcc_o, commit_instr_i[0].int_mode);
+    pcc_o = cva6_cheri_pkg::set_cap_reg_int_mode(pcc_o, commit_instr_i[0].int_mode);
     pc_o = pcc_o;
   end
   if (CVA6Cfg.RVFI_DII) assign dii_id_o = commit_instr_i[0].dii_id;
