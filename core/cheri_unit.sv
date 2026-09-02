@@ -116,18 +116,30 @@ module cheri_unit
       ariane_pkg::YBLD, ariane_pkg::YSUNSEAL, ariane_pkg::YSS: begin
         tmp_cap = operand_b;
         tmp_cap.tag = 1'b1;
-        if (fu_data_i.operation == ariane_pkg::YSS) begin
-          if (operand_a.tag != operand_b.tag) begin
-            tmp_cap.tag = 1'b0;
+        unique case (fu_data_i.operation)
+          ariane_pkg::YSS: begin
+            if (operand_a.tag != operand_b.tag) begin
+              tmp_cap.tag = 1'b0;
+            end
           end
-        end else begin  // YBLD
-          if (!operand_a.tag) begin
-            tmp_cap.tag = 1'b0;
+          ariane_pkg::YSUNSEAL: begin
+            if (!operand_a.tag
+             || !operand_b.tag
+             || !operand_a_is_sealed
+             ||  operand_b_is_sealed
+            ) begin
+              tmp_cap.tag = 1'b0;
+            end
           end
-          if (operand_a_is_sealed) begin
-            tmp_cap.tag = 1'b0;
+          default: begin  // YBLD
+            if (!operand_a.tag) begin
+              tmp_cap.tag = 1'b0;
+            end
+            if (operand_a_is_sealed) begin
+              tmp_cap.tag = 1'b0;
+            end
           end
-        end
+        endcase
         if (operand_b_base < operand_a_base) begin
           tmp_cap.tag = 1'b0;
         end
@@ -149,8 +161,8 @@ module cheri_unit
         if(operand_a.res_lo != 0 | operand_a.res_hi != 0 | operand_b.res_lo != 0 | operand_b.res_hi != 0) begin
           tmp_cap.tag = 1'b0;
         end
-        if (fu_data_i.operation == ariane_pkg::YBLD || fu_data_i.operation == ariane_pkg::YSUNSEAL) clu_result = tmp_cap;
-        // fu_data_i.operation == ariane_pkg::YSS
+        if (fu_data_i.operation == ariane_pkg::YBLD || fu_data_i.operation == ariane_pkg::YSUNSEAL)
+          clu_result = tmp_cap;
         else
           clu_result = ariane_pkg::x_to_reg({{CVA6Cfg.XLEN - 1{1'b0}}, tmp_cap.tag});
       end
