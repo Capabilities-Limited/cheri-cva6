@@ -1938,7 +1938,7 @@ module decoder
                 instruction_o.op = ariane_pkg::LY;
                 tinst = {17'b0, instr.itype.funct3, instr.itype.rd, instr.itype.opcode};
                 tinst[1] = is_compressed_i ? 1'b0 : 'b1;
-                if (instr.rtype.rs1 == 5'b0) illegal_instr = 1'b1;
+                if (instr.rtype.rs1 == 5'b0 && !int_mode_i) illegal_instr = 1'b1;
               end
               3'b010 : begin // SY
                 instruction_o.fu = STORE;
