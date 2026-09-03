@@ -1740,8 +1740,24 @@ module decoder
           is_control_flow_instr_o = 1'b1;
 
           case (instr.stype.funct3)
-            3'b000: instruction_o.op = ariane_pkg::EQ;
-            3'b001: instruction_o.op = ariane_pkg::NE;
+            3'b000: begin
+              if (CVA6Cfg.CheriPresent && !int_mode_i &&
+                  instr.stype.rs1 < instr.stype.rs2) begin
+                is_control_flow_instr_o = 1'b0;
+                illegal_instr           = 1'b1;
+              end else begin
+                instruction_o.op = ariane_pkg::EQ;
+              end
+            end
+            3'b001: begin
+              if (CVA6Cfg.CheriPresent && !int_mode_i &&
+                  instr.stype.rs1 < instr.stype.rs2) begin
+                is_control_flow_instr_o = 1'b0;
+                illegal_instr           = 1'b1;
+              end else begin
+                instruction_o.op = ariane_pkg::NE;
+              end
+            end
             3'b100: instruction_o.op = ariane_pkg::LTS;
             3'b101: instruction_o.op = ariane_pkg::GES;
             3'b110: instruction_o.op = ariane_pkg::LTU;
