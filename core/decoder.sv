@@ -1742,7 +1742,7 @@ module decoder
           case (instr.stype.funct3)
             3'b000: begin
               if (CVA6Cfg.CheriPresent && !int_mode_i &&
-                  instr.stype.rs1 < instr.stype.rs2) begin
+                  instr.stype.rs1 <= instr.stype.rs2) begin
                 is_control_flow_instr_o = 1'b0;
                 illegal_instr           = 1'b1;
               end else begin
@@ -1751,7 +1751,7 @@ module decoder
             end
             3'b001: begin
               if (CVA6Cfg.CheriPresent && !int_mode_i &&
-                  instr.stype.rs1 < instr.stype.rs2) begin
+                  instr.stype.rs1 <= instr.stype.rs2) begin
                 is_control_flow_instr_o = 1'b0;
                 illegal_instr           = 1'b1;
               end else begin
