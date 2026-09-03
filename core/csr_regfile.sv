@@ -2742,10 +2742,13 @@ module csr_regfile
   always_comb begin : csr_op_logic
     csr_wdata = reg_to_x(csr_wdata_i);
     csr_we = 1'b1;
-    csr_write_cap = (CVA6Cfg.CheriPresent && !commit_instr_i.int_mode && csr_op_i == CSR_WRITE && !csr_op_is_imm_i) ? 1'b1 : 1'b0;
-    ;
+    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC}; //Are there any more in this list?
+    csr_write_cap = (CVA6Cfg.CheriPresent &&
+                     (!commit_instr_i.int_mode || csr_clen_only) &&
+                     csr_op_i == CSR_WRITE && !csr_op_is_imm_i);
     csr_read = 1'b1;
-    csr_read_cap = (CVA6Cfg.CheriPresent && !commit_instr_i.int_mode) ? 1'b1 : 1'b0;
+    csr_read_cap = (CVA6Cfg.CheriPresent &&
+                   (!commit_instr_i.int_mode || csr_clen_only));
     mret = 1'b0;
     sret = 1'b0;
     dret = 1'b0;
