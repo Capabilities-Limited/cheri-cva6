@@ -2266,13 +2266,14 @@ module csr_regfile
             update_access_exception = 1'b1;
           end
         end
-        riscv::CSR_UTID:
-        if (CVA6Cfg.CheriPresent) begin
-          csr_wdata_legalised = csr_wdata;
-          if (!csr_write_cap) csr_update_cap_prelegal = utid_q;
-          csr_update_allow_sealed = csr_write_cap;
-          utid_d = csr_update_cap_postlegal;
-        end else update_access_exception = 1'b1;
+        riscv::CSR_UTID: begin
+          if (CVA6Cfg.CheriPresent) begin
+            csr_wdata_legalised = csr_wdata;
+            if (!csr_write_cap) csr_update_cap_prelegal = utid_q;
+            csr_update_allow_sealed = csr_write_cap;
+            utid_d = csr_update_cap_postlegal;
+          end else update_access_exception = 1'b1;
+        end
         default: update_access_exception = 1'b1;
       endcase
     end
@@ -2742,7 +2743,7 @@ module csr_regfile
   always_comb begin : csr_op_logic
     csr_wdata = reg_to_x(csr_wdata_i);
     csr_we = 1'b1;
-    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC}; //Are there any more in this list?
+    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC, riscv::CSR_MTID, riscv::CSR_VSTID, riscv::CSR_STID, riscv::CSR_UTID}; //Are there any more in this list?
     csr_write_cap = (CVA6Cfg.CheriPresent &&
                      (!commit_instr_i.int_mode || csr_clen_only) &&
                      csr_op_i == CSR_WRITE && !csr_op_is_imm_i);

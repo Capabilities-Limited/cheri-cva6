@@ -114,6 +114,7 @@ module cheri_unit
       end
       // CTestSubset
       ariane_pkg::YBLD, ariane_pkg::YSUNSEAL, ariane_pkg::YSS: begin
+        automatic cap_hperms_t hperms_subset_exclude_mask;
         tmp_cap = operand_b;
         tmp_cap.tag = 1'b1;
         unique case (fu_data_i.operation)
@@ -132,10 +133,8 @@ module cheri_unit
             end
           end
           default: begin  // YBLD
-            if (!operand_a.tag) begin
-              tmp_cap.tag = 1'b0;
-            end
-            if (operand_a_is_sealed) begin
+            if (!operand_a.tag
+              || operand_a_is_sealed) begin
               tmp_cap.tag = 1'b0;
             end
           end
@@ -149,7 +148,9 @@ module cheri_unit
         if ((operand_a.uperms & operand_b.uperms) != operand_b.uperms) begin
           tmp_cap.tag = 1'b0;
         end
-        if ((operand_a.hperms & operand_b.hperms) != operand_b.hperms) begin
+        hperms_subset_exclude_mask = '0;
+        hperms_subset_exclude_mask.int_mode = 1'b1;
+        if (((hperms_subset_exclude_mask | operand_a.hperms) & operand_b.hperms) != operand_b.hperms) begin
           tmp_cap.tag = 1'b0;
         end
         if (operand_a_bounds_malformed | operand_b_bounds_malformed) begin
