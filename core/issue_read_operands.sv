@@ -523,13 +523,15 @@ module issue_read_operands
         pc_below_base = cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i[i].pc)) < pcc_base;
         pc_above_top = {next_pc_carry, cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top;
         cheri_fault = 1'b0;
+        // Special-case for ASR: unlike the other checks, this should happen after the instruction is
+        // fetched and decoded architecturally, and so only if it is not illegal for some other reason.
+        if (issue_instr_i[i].needs_asr && !issue_instr_i[i].ex.valid && !pcc[i].hperms.access_sys_regs) begin
+          cheri_fault = 1'b1;
+          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
+        end
         if (!pcc_bounds_root && (pc_below_base || pc_above_top)) begin
           cheri_fault = 1'b1;
           cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_BOUNDS_VIOLATION;
-        end
-        if (issue_instr_i[i].needs_asr && !pcc[i].hperms.access_sys_regs) begin
-          cheri_fault = 1'b1;
-          cheri_tval2.fault_cause = cva6_cheri_pkg::CAP_PERM_VIOLATION;
         end
         if (!pcc[i].hperms.permit_execute) begin
           cheri_fault = 1'b1;
