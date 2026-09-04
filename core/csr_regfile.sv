@@ -2763,7 +2763,7 @@ module csr_regfile
   always_comb begin : csr_op_logic
     csr_wdata = reg_to_x(csr_wdata_i);
     csr_we = 1'b1;
-    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC, riscv::CSR_DDDC, riscv::CSR_DINFC};
+    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC, riscv::CSR_DDDC, riscv::CSR_DINFC, riscv::CSR_MTID, riscv::CSR_VSTID, riscv::CSR_STID, riscv::CSR_UTID};
     csr_write_cap = (CVA6Cfg.CheriPresent && (!commit_instr_i.int_mode || csr_clen_only) && csr_op_i == CSR_WRITE && !csr_op_is_imm_i) ? 1'b1 : 1'b0;
     ;
     csr_read = 1'b1;
