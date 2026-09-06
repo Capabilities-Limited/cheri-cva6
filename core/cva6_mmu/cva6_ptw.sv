@@ -632,7 +632,7 @@ module cva6_ptw
                 if (((v_i && is_instr_ptw_q) || (ld_st_v_i && !is_instr_ptw_q)) && ptw_stage_q == S_STAGE && !((|pte.ppn[CVA6Cfg.PPNW-1:CVA6Cfg.GPPNW]) == 1'b0)) begin
                   state_d = PROPAGATE_ERROR;
                   if (CVA6Cfg.CheriPresent) cheri_error_d = 1'b0;
-                  ptw_stage_d = ptw_stage_q;
+                  ptw_stage_d = G_FINAL_STAGE;
                 end
               end
             end
