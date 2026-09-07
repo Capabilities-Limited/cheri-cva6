@@ -272,7 +272,6 @@ module csr_regfile
   logic [CVA6Cfg.REGLEN-1:0] dpc_q, dpc_d;
   logic [CVA6Cfg.REGLEN-1:0] dscratch0_q, dscratch0_d;
   logic [CVA6Cfg.REGLEN-1:0] dscratch1_q, dscratch1_d;
-  logic [CVA6Cfg.REGLEN-1:0] dscratch2_q, dscratch2_d;
   logic [CVA6Cfg.REGLEN-1:0] mtvec_q, mtvec_d;
   logic [CVA6Cfg.XLEN-1:0] medeleg_q, medeleg_d;
   logic [CVA6Cfg.XLEN-1:0] mideleg_q, mideleg_d;
@@ -477,14 +476,6 @@ module csr_regfile
             csr_rcap_null = 1'b0;
           end
           csr_rdata = reg_to_x(dscratch1_q);
-        end else read_access_exception = 1'b1;
-        riscv::CSR_DSCRATCH2:
-        if (CVA6Cfg.DebugEn & CVA6Cfg.CheriPresent) begin
-          if (csr_read_cap) begin
-            csr_rcap = dscratch2_q;
-            csr_rcap_null = 1'b0;
-          end
-          csr_rdata = reg_to_x(dscratch2_q);
         end else read_access_exception = 1'b1;
         // Trigger module registers
         riscv::CSR_TSELECT:
@@ -1212,7 +1203,6 @@ module csr_regfile
       dpc_d              = dpc_q;
       dscratch0_d        = dscratch0_q;
       dscratch1_d        = dscratch1_q;
-      dscratch2_d        = dscratch2_q;
       single_step_done_d = single_step_done_q;
     end
     mstatus_d = mstatus_q;
@@ -1398,9 +1388,6 @@ module csr_regfile
         else update_access_exception = 1'b1;
         riscv::CSR_DSCRATCH1:
         if (CVA6Cfg.DebugEn) dscratch1_d = csr_wdata;
-        else update_access_exception = 1'b1;
-        riscv::CSR_DSCRATCH2:
-        if (CVA6Cfg.DebugEn) dscratch2_d = csr_wdata;
         else update_access_exception = 1'b1;
         riscv::CSR_JVT: begin
           if (CVA6Cfg.RVZCMT) begin
@@ -3199,7 +3186,6 @@ module csr_regfile
         dpc_q              <= REG_ROOT;
         dscratch0_q        <= {CVA6Cfg.XLEN{1'b0}};
         dscratch1_q        <= {CVA6Cfg.XLEN{1'b0}};
-        dscratch2_q        <= {CVA6Cfg.XLEN{1'b0}};
         single_step_done_q <= 1'b0;
       end
       // machine mode registers
@@ -3312,7 +3298,6 @@ module csr_regfile
         dpc_q              <= dpc_d;
         dscratch0_q        <= dscratch0_d;
         dscratch1_q        <= dscratch1_d;
-        dscratch2_q        <= dscratch2_d;
         single_step_done_q <= single_step_done_d;
       end
       // machine mode registers
