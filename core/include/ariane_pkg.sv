@@ -94,7 +94,7 @@ package ariane_pkg;
       zero1: '0,
       nscratch: 2,  // Debug module needs at least two scratch regs
       zero0: '0,
-      dataaccess: 1'b1,  // data registers are memory mapped in the debugger
+      dataaccess: 1'b0,  // This is disabled with CHERI, forcing access via the progbuf
       datasize: DataCount,
       dataaddr: DataAddr
   };
