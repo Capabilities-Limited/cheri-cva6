@@ -459,8 +459,13 @@ module csr_regfile
         if (CVA6Cfg.DebugEn) csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, dcsr_q};
         else read_access_exception = 1'b1;
         riscv::CSR_DPC:
-        if (CVA6Cfg.DebugEn) csr_rdata = reg_to_x(dpc_q);
-        else read_access_exception = 1'b1;
+        if (CVA6Cfg.DebugEn) begin
+          if (CVA6Cfg.CheriPresent && csr_read_cap) begin
+            csr_rcap = dpc_q;
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = reg_to_x(dpc_q);
+        end else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
         if (CVA6Cfg.DebugEn) begin
           if (CVA6Cfg.CheriPresent & csr_read_cap) begin
@@ -1375,12 +1380,13 @@ module csr_regfile
         end
         riscv::CSR_DPC:
         if (CVA6Cfg.DebugEn) begin
+          csr_wdata_legalised = {csr_wdata[CVA6Cfg.XLEN-1:1], 1'b0};
           if (CVA6Cfg.CheriPresent) begin
-            // XXX debugger injects infinite cap on PCC changes
-            csr_update_cap_prelegal = REG_ROOT;
+            if (!csr_write_cap) csr_update_cap_prelegal = dpc_q;
+            csr_update_allow_sealed = (csr_wdata[0] == 1'b0) && csr_write_cap;
             dpc_d = csr_update_cap_postlegal;
           end else begin
-            dpc_d = csr_wdata;
+            dpc_d = csr_wdata_legalised;
           end
         end else update_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
@@ -2506,7 +2512,11 @@ module csr_regfile
       if (CVA6Cfg.SDTRIG && debug_from_trigger) begin
         dcsr_d.prv = priv_lvl_o;
         dcsr_d.v = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
-        dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
+        if (CVA6Cfg.CheriPresent) begin
+          dpc_d = pcc;
+        end else begin
+          dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
+        end
         debug_mode_d = 1'b1;
         set_debug_pc_o = 1'b1;
         dcsr_d.cause = ariane_pkg::CauseTrigger;
