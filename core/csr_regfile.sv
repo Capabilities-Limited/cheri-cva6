@@ -1390,11 +1390,27 @@ module csr_regfile
           end
         end else update_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
-        if (CVA6Cfg.DebugEn) dscratch0_d = csr_wdata;
-        else update_access_exception = 1'b1;
+        if (CVA6Cfg.DebugEn) begin
+          csr_wdata_legalised = csr_wdata;
+          if (CVA6Cfg.CheriPresent) begin
+            if (!csr_write_cap) csr_update_cap_prelegal = dscratch0_q;
+            csr_update_allow_sealed = csr_write_cap;
+            dscratch0_d = csr_update_cap_postlegal;
+          end else begin
+            dscratch0_d = csr_wdata_legalised;
+          end
+        end else update_access_exception = 1'b1;
         riscv::CSR_DSCRATCH1:
-        if (CVA6Cfg.DebugEn) dscratch1_d = csr_wdata;
-        else update_access_exception = 1'b1;
+        if (CVA6Cfg.DebugEn) begin
+          csr_wdata_legalised = csr_wdata;
+          if (CVA6Cfg.CheriPresent) begin
+            if (!csr_write_cap) csr_update_cap_prelegal = dscratch1_q;
+            csr_update_allow_sealed = csr_write_cap;
+            dscratch1_d = csr_update_cap_postlegal;
+          end else begin
+            dscratch1_d = csr_wdata_legalised;
+          end
+        end else update_access_exception = 1'b1;
         riscv::CSR_JVT: begin
           if (CVA6Cfg.RVZCMT) begin
             jvt_d.base = csr_wdata[CVA6Cfg.XLEN-1:6];
