@@ -23,7 +23,8 @@ module frontend
     parameter type bp_resolve_t = logic,
     parameter type fetch_entry_t = logic,
     parameter type icache_dreq_t = logic,
-    parameter type icache_drsp_t = logic
+    parameter type icache_drsp_t = logic,
+    parameter type debug_redirect_t = logic
 ) (
     // Subsystem Clock - SUBSYSTEM
     input logic clk_i,
@@ -56,7 +57,7 @@ module frontend
     // Next PC when jumping into exception - CSR
     input logic [CVA6Cfg.VLEN-1:0] trap_vector_base_i,
     // Debug event - CSR
-    input logic set_debug_pc_i,
+    input debug_redirect_t set_debug_pc_i,
     // Debug mode state - CSR
     input logic debug_mode_i,
     // Handshake between CACHE and FRONTEND (fetch) - CACHES
@@ -444,8 +445,20 @@ module frontend
     end
     // 7. Debug
     // enter debug on a hard-coded base-address
-    if (CVA6Cfg.DebugEn && set_debug_pc_i)
-      npc_d = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0];
+    if (CVA6Cfg.DebugEn && set_debug_pc_i.valid) begin
+      automatic logic [CVA6Cfg.VLEN-1:0] halt_addr;
+      $display("Entering debug mode\n");
+      halt_addr = CVA6Cfg.HaltAddress[CVA6Cfg.VLEN-1:0];
+      if (set_debug_pc_i.from_debug_mode) begin
+        // TODO These should be derived from CVA6 params
+        if (set_debug_pc_i.from_int_mode) begin
+          halt_addr = halt_addr + 12;
+        end else begin
+          halt_addr = halt_addr + 8;
+        end
+      end
+      npc_d = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + halt_addr;
+    end
     icache_dreq_o.vaddr = fetch_address;
     if (CVA6Cfg.RVFI_DII) icache_dreq_o.dii_id = fetch_dii_id;
   end

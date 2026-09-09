@@ -25,6 +25,7 @@ module csr_regfile
     parameter type                   irq_ctrl_t         = logic,
     parameter type                   scoreboard_entry_t = logic,
     parameter type                   rvfi_probes_csr_t  = logic,
+    parameter type                   debug_redirect_t   = logic,
     parameter int                    VmidWidth          = 1,
     parameter int unsigned           N_Triggers         = 4
 ) (
@@ -151,7 +152,7 @@ module csr_regfile
     // debug request in - ID_STAGE
     input logic debug_req_i,
     // TO_BE_COMPLETED - FRONTEND
-    output logic set_debug_pc_o,
+    output debug_redirect_t set_debug_pc_o,
     // trap virtual memory - ID_STAGE
     output logic tvm_o,
     // timeout wait - ID_STAGE
@@ -481,6 +482,14 @@ module csr_regfile
             csr_rcap_null = 1'b0;
           end
           csr_rdata = reg_to_x(dscratch1_q);
+        end else read_access_exception = 1'b1;
+        riscv::CSR_DINFC:
+        if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
+          if (csr_read_cap) begin
+            csr_rcap = set_cap_reg_flags(REG_ROOT_CAP, commit_instr_i.int_mode);
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = '0;
         end else read_access_exception = 1'b1;
         // Trigger module registers
         riscv::CSR_TSELECT:
@@ -1190,7 +1199,9 @@ module csr_regfile
     update_access_exception         = 1'b0;
     virtual_update_access_exception = 1'b0;
 
-    set_debug_pc_o                  = 1'b0;
+    set_debug_pc_o.valid            = 1'b0;
+    set_debug_pc_o.from_debug_mode  = debug_mode_q;
+    set_debug_pc_o.from_int_mode    = commit_instr_i.int_mode;
 
     perf_we_o                       = 1'b0;
     perf_data_o                     = 'b0;
@@ -1411,6 +1422,13 @@ module csr_regfile
             dscratch1_d = csr_wdata_legalised;
           end
         end else update_access_exception = 1'b1;
+        riscv::CSR_DINFC: begin
+          if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
+            // Do nothing: DINFC is read-only
+          end else begin
+            update_access_exception = 1'b1;
+          end
+        end
         riscv::CSR_JVT: begin
           if (CVA6Cfg.RVZCMT) begin
             jvt_d.base = csr_wdata[CVA6Cfg.XLEN-1:6];
@@ -2534,7 +2552,7 @@ module csr_regfile
           dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
         end
         debug_mode_d = 1'b1;
-        set_debug_pc_o = 1'b1;
+        set_debug_pc_o.valid = 1'b1;
         dcsr_d.cause = ariane_pkg::CauseTrigger;
       end
 
@@ -2547,18 +2565,18 @@ module csr_regfile
         unique case (priv_lvl_o)
           riscv::PRIV_LVL_M: begin
             debug_mode_d   = dcsr_q.ebreakm;
-            set_debug_pc_o = dcsr_q.ebreakm;
+            set_debug_pc_o.valid = dcsr_q.ebreakm;
           end
           riscv::PRIV_LVL_S: begin
             if (CVA6Cfg.RVS) begin
-              debug_mode_d   = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvs : dcsr_q.ebreaks;
-              set_debug_pc_o = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvs : dcsr_q.ebreaks;
+              debug_mode_d         = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvs : dcsr_q.ebreaks;
+              set_debug_pc_o.valid = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvs : dcsr_q.ebreaks;
             end
           end
           riscv::PRIV_LVL_U: begin
             if (CVA6Cfg.RVU) begin
-              debug_mode_d   = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvu : dcsr_q.ebreaku;
-              set_debug_pc_o = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvu : dcsr_q.ebreaku;
+              debug_mode_d         = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvu : dcsr_q.ebreaku;
+              set_debug_pc_o.valid = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvu : dcsr_q.ebreaku;
             end
           end
           default: ;
@@ -2585,7 +2603,7 @@ module csr_regfile
         // enter debug mode
         debug_mode_d   = 1'b1;
         // jump to the base address
-        set_debug_pc_o = 1'b1;
+        set_debug_pc_o.valid = 1'b1;
         // save the cause as external debug request
         dcsr_d.cause   = ariane_pkg::CauseRequest;
       end
@@ -2605,14 +2623,14 @@ module csr_regfile
         end else begin
           dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
         end
-        debug_mode_d   = 1'b1;
-        set_debug_pc_o = 1'b1;
-        dcsr_d.cause   = ariane_pkg::CauseSingleStep;
+        debug_mode_d         = 1'b1;
+        set_debug_pc_o.valid = 1'b1;
+        dcsr_d.cause         = ariane_pkg::CauseSingleStep;
       end
     end
     // go in halt-state again when we encounter an exception
     if (CVA6Cfg.DebugEn && debug_mode_q && ex_i.valid && ex_i.cause == riscv::BREAKPOINT) begin
-      set_debug_pc_o = 1'b1;
+      set_debug_pc_o.valid = 1'b1;
     end
 
     // ------------------------------
@@ -2753,7 +2771,7 @@ module csr_regfile
   always_comb begin : csr_op_logic
     csr_wdata = reg_to_x(csr_wdata_i);
     csr_we = 1'b1;
-    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC};
+    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC, riscv::CSR_DINFC};
     csr_write_cap = (CVA6Cfg.CheriPresent && (!commit_instr_i.int_mode || csr_clen_only) && csr_op_i == CSR_WRITE && !csr_op_is_imm_i) ? 1'b1 : 1'b0;
     ;
     csr_read = 1'b1;
@@ -3210,8 +3228,8 @@ module csr_regfile
         debug_mode_q       <= 1'b0;
         dcsr_q             <= '{xdebugver: 4'h4, prv: riscv::PRIV_LVL_M, default: '0};
         dpc_q              <= REG_ROOT;
-        dscratch0_q        <= {CVA6Cfg.XLEN{1'b0}};
-        dscratch1_q        <= {CVA6Cfg.XLEN{1'b0}};
+        dscratch0_q        <= REG_NULL;
+        dscratch1_q        <= REG_NULL;
         single_step_done_q <= 1'b0;
       end
       // machine mode registers

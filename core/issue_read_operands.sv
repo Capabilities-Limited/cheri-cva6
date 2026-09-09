@@ -31,7 +31,8 @@ module issue_read_operands
     parameter type x_issue_req_t = logic,
     parameter type x_issue_resp_t = logic,
     parameter type x_register_t = logic,
-    parameter type x_commit_t = logic
+    parameter type x_commit_t = logic,
+    parameter type debug_redirect_t = logic
 ) (
     // Subsystem Clock - SUBSYSTEM
     input logic clk_i,
@@ -149,6 +150,8 @@ module issue_read_operands
     input logic [CVA6Cfg.REGLEN-1:0] pcc_commit_i,
     // Set COMMIT PC as next PC requested by FENCE, CSR side-effect and Accelerate port - CONTROLLER
     input logic set_pc_commit_i,
+    // Set PC to debug ROM as entering debug mode - CONTROLLER
+    input debug_redirect_t set_debug_pc_i,
     // Exception event - COMMIT
     input logic ex_valid_i,
     // Mispredict event and next PC - EXECUTE
@@ -823,6 +826,9 @@ module issue_read_operands
       end else if (set_pc_commit_i) begin
         pcc_jump_change_valid_n = 1'b0;
         pcc_n = pcc_commit_i;
+      end else if (set_debug_pc_i.valid) begin
+        pcc_jump_change_valid_n = 1'b0;
+        pcc_n = cva6_cheri_pkg::set_cap_reg_flags(REG_ROOT, 1'b1);
       end else if (ex_valid_i) begin
         pcc_jump_change_valid_n = 1'b0;
         pcc_n = trap_vector_base_i;
