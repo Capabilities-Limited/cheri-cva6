@@ -41,9 +41,9 @@ package cva6_config_pkg;
   // `IFNDEF_DEFINE(UVMA_AXI_STRB_MAX_WIDTH , 8   )
 
   `define UVMA_AXI_MAX_NB_TXN_BURST 256
-  `define UVMA_AXI_LOOP_MAX_WIDTH 8  
-  `define UVMA_AXI_MMUSID_MAX_WIDTH 32 
-  `define UVMA_AXI_MMUSSID_MAX_WIDTH 20 
+  `define UVMA_AXI_LOOP_MAX_WIDTH 8
+  `define UVMA_AXI_MMUSID_MAX_WIDTH 32
+  `define UVMA_AXI_MMUSSID_MAX_WIDTH 20
 
 `endif  // __UVMA_AXI_MACROS_SV__
 
@@ -83,7 +83,7 @@ localparam config_pkg::cva6_user_cfg_t cva6_cfg = '{
    RVZiCond: bit'(1),
    RVZicntr: bit'(1),
    RVZihpm: bit'(1),
-   RVZcheripurecap: bit'(0),
+   RVY: bit'(0),
    RVZcherihybrid: bit'(0),
    NrScoreboardEntries: unsigned'(8),
    PerfCounterEn: bit'(1),

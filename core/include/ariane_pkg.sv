@@ -30,7 +30,7 @@
 package ariane_pkg;
 
   localparam XLEN = cva6_config_pkg::CVA6ConfigXlen;
-  localparam CheriPresent = cva6_config_pkg::CVA6ConfigRVZcheripurecap;
+  localparam CheriPresent = cva6_config_pkg::CVA6ConfigRVY;
   localparam CLEN = CheriPresent ? 2 * XLEN : XLEN;
   localparam REGLEN = CheriPresent ? $bits(cva6_cheri_pkg::cap_reg_t) : XLEN;
   localparam logic [REGLEN-1:0] REG_NULL = CheriPresent ? cva6_cheri_pkg::REG_NULL_CAP : '0;

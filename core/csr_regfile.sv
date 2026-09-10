@@ -376,6 +376,7 @@ module csr_regfile
   | (CVA6Cfg.XLEN'(CVA6Cfg.RVU) << 20)  // U - User mode implemented
   | (CVA6Cfg.XLEN'(CVA6Cfg.RVV) << 21)  // V - Vector extension
   | (CVA6Cfg.XLEN'(CVA6Cfg.NSX) << 23)  // X - Non-standard extensions present
+  | (CVA6Cfg.XLEN'(CVA6Cfg.RVY) << 24)  // Y - CapabilitY extension present
   | ((CVA6Cfg.XLEN == 64 ? 2 : 1) << CVA6Cfg.XLEN - 2);  // MXL
 
   assign pmpcfg_o = pmpcfg_q[(CVA6Cfg.NrPMPEntries>0?CVA6Cfg.NrPMPEntries-1 : 0):0];
@@ -645,7 +646,7 @@ module csr_regfile
               csr_rdata[6]   = scbcfe_q;
             end
             if (CVA6Cfg.CheriPresent) begin
-              csr_rdata[28] = senvcre;
+              csr_rdata[9] = senvcre;
             end
           end else begin
             read_access_exception = 1'b1;

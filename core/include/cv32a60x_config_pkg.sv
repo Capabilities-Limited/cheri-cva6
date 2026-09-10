@@ -54,7 +54,7 @@ package cva6_config_pkg;
       RVZiCbom: bit'(0),
       RVZicntr: bit'(0),
       RVZihpm: bit'(0),
-      RVZcheripurecap: bit'(0),
+      RVY: bit'(0),
       RVZcherihybrid: bit'(0),
       NrScoreboardEntries: unsigned'(4),
       PerfCounterEn: bit'(0),
