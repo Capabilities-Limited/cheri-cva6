@@ -140,8 +140,8 @@ package riscv;
     logic         stce;   // not implemented - requires Sctc extension
     logic         pbmte;  // not implemented - requires Svpbmt extension
     logic [61:28] wpri2;  // writes preserved reads ignored
+    logic [28:9]  wpri1;  // writes preserved reads ignored
     logic         cheri;  // CHERI extension
-    logic [27:8]  wpri1;  // writes preserved reads ignored
     logic         cbze;   // not implemented - requires Zicboz extension
     logic         cbcfe;  // not implemented - requires Zicbom extension
     logic [1:0]   cbie;   // not implemented - requires Zicbom extension

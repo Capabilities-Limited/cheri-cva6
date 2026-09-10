@@ -776,9 +776,9 @@ module csr_regfile
             csr_rdata[6]   = mcbcfe_q;
           end
           if (CVA6Cfg.CheriPresent) begin
-            csr_rdata[28] = menvcre;
+            csr_rdata[9] = menvcre;
           end
-          if (!CVA6Cfg.RVU && !CVA6Cfg.RVZiCbom) begin
+          if (!CVA6Cfg.RVU && !CVA6Cfg.RVZiCbom && !CVA6Cfg.CheriPresent) begin
             read_access_exception = 1'b1;
           end
         end
