@@ -60,8 +60,10 @@ package riscv;
   typedef struct packed {
     logic sd;  // signal dirty state - read-only
     logic wpri7;  // writes preserved reads ignored
-    logic ucrg;  // load barrier user mode capability read generation
-    logic [60:34] wpri6;  // writes preserved reads ignored
+    logic uyrg;  // user capability read generation
+    logic syrg;  // supervisor capability read generation
+    logic yrge;  // capability read generation enable
+    logic [58:34] wpri6;  // writes preserved reads ignored
     xlen_e uxl;  // variable user mode xlen - hardwired to zero
     logic [11:0] wpri5;  // writes preserved reads ignored
     logic mxr;  // make executable readable
@@ -102,8 +104,10 @@ package riscv;
   typedef struct packed {
     logic sd;  // signal dirty state - read-only
     logic wpri5;  // writes preserved reads ignored
-    logic ucrg;
-    logic [60:40] wpri4;  // writes preserved reads ignored
+    logic uyrg;  // user capability read generation
+    logic syrg;  // supervisor capability read generation
+    logic yrge;  // capability read generation enable
+    logic [58:40] wpri4;  // writes preserved reads ignored
     logic mpv;  // machine previous virtualization mode
     logic gva;  // variable set when trap writes to stval
     logic mbe;  // endianness memory accesses made from M-mode
@@ -723,7 +727,9 @@ package riscv;
   localparam logic [63:0] SSTATUS_UXL  = 64'h0000000300000000;
   // CSR Bit Implementation Masks
 
-  localparam logic [63:0] SSTATUS_CRG  = 64'h2000000000000000;
+  localparam logic [63:0] SSTATUS_UYRG = 64'h2000000000000000;
+  localparam logic [63:0] SSTATUS_SYRG = 64'h1000000000000000;
+  localparam logic [63:0] SSTATUS_YRGE = 64'h0800000000000000;
   function automatic logic [63:0] sstatus_sd(logic IS_XLEN64);
     return {IS_XLEN64, 31'h00000000, ~IS_XLEN64, 31'h00000000};
   endfunction
@@ -758,7 +764,7 @@ package riscv;
   localparam logic [63:0] MSTATUS_TVM = 'h00100000;
   localparam logic [63:0] MSTATUS_TW = 'h00200000;
   localparam logic [63:0] MSTATUS_TSR = 'h00400000;
-  localparam logic [63:0] MSTATUS_CRG = 64'h2000000000000000;
+  localparam logic [63:0] MSTATUS_YRG = 64'h2000000000000000;
   function automatic logic [63:0] mstatus_uxl(logic IS_XLEN64);
     return {30'h0000000, IS_XLEN64, IS_XLEN64, 32'h00000000};
   endfunction
