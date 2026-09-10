@@ -576,11 +576,11 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
         .init_locked             (1'b1),
         .allow_resume            (1'b0),
         .allow_flush_when_locked (1'b0),
-        .CapSize                 (CVA6Cfg.CLEN),
-        .AxiIdWidth              (ariane_axi_soc::IdWidthSlave),
-        .AxiAddrWidth            (CVA6Cfg.AxiAddrWidth),
-        .AxiDataWidth            (CVA6Cfg.AxiDataWidth),
-        .AxiUserWidth            (CVA6Cfg.AxiUserWidth),
+        .cap_size                (CVA6Cfg.CLEN),
+        .axi_id_width            (ariane_axi_soc::IdWidthSlave),
+        .axi_addr_width          (CVA6Cfg.AxiAddrWidth),
+        .axi_data_width          (CVA6Cfg.AxiDataWidth),
+        .axi_user_width          (CVA6Cfg.AxiUserWidth),
         .slv_req_t               (ariane_axi_soc::req_slv_t),
         .slv_resp_t              (ariane_axi_soc::resp_slv_t),
         .mst_req_t               (axi_mst_req_t),
@@ -588,13 +588,13 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
     ) i_axi_tagctrl_top (
         .clk_i,
         .rst_ni,
-        .test_i         (1'b0),
-        .cfg_slv_req_i  (tagcfg_req),
-        .cfg_slv_resp_o (tagcfg_resp),
-        .slv_req_i      (dram_req),
-        .slv_resp_o     (dram_resp),
-        .mst_req_o      (axi_tag_req),
-        .mst_resp_i     (axi_tag_resp)
+        .test_i              (1'b0),
+        .config_sub_req_i    (tagcfg_req),
+        .config_sub_resp_o   (tagcfg_resp),
+        .tagged_sub_req_i    (dram_req),
+        .tagged_sub_resp_o   (dram_resp),
+        .untagged_mgr_req_o  (axi_tag_req),
+        .untagged_mgr_resp_i (axi_tag_resp)
     );
   end else begin
     assign axi_tag_req = dram_req;
