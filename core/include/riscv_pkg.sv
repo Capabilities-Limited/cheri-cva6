@@ -60,8 +60,10 @@ package riscv;
   typedef struct packed {
     logic sd;  // signal dirty state - read-only
     logic wpri7;  // writes preserved reads ignored
-    logic ucrg;  // load barrier user mode capability read generation
-    logic [60:34] wpri6;  // writes preserved reads ignored
+    logic ucrg; // user capability read generation
+    logic scrg; // supervisor capability read generation
+    logic crge; // capability read generation enable
+    logic [58:34] wpri6;  // writes preserved reads ignored
     xlen_e uxl;  // variable user mode xlen - hardwired to zero
     logic [11:0] wpri5;  // writes preserved reads ignored
     logic mxr;  // make executable readable
@@ -102,8 +104,10 @@ package riscv;
   typedef struct packed {
     logic sd;  // signal dirty state - read-only
     logic wpri5;  // writes preserved reads ignored
-    logic ucrg;
-    logic [60:40] wpri4;  // writes preserved reads ignored
+    logic ucrg; // user capability read generation
+    logic scrg; // supervisor capability read generation
+    logic crge; // capability read generation enable
+    logic [58:40] wpri4;  // writes preserved reads ignored
     logic mpv;  // machine previous virtualization mode
     logic gva;  // variable set when trap writes to stval
     logic mbe;  // endianness memory accesses made from M-mode

@@ -77,7 +77,8 @@ module cva6_mmu
     input logic vmxr_i,
     input logic hlvx_inst_i,
     input logic hs_ld_st_inst_i,
-    input logic cap_ucrg_i,
+    input logic cap_crg_i,
+    input logic cap_crge_i,
     // input logic flag_mprv_i,
     input logic [CVA6Cfg.PPNW-1:0] satp_ppn_i,
     input logic [CVA6Cfg.PPNW-1:0] vsatp_ppn_i,
@@ -111,10 +112,12 @@ module cva6_mmu
   // memory management, pte for cva6
   localparam type pte_cva6_t = struct packed {
     logic n;
-    logic [1:0] res_hi;
-    logic cw;  // capability write
-    logic crg;  // capability read generation
-    logic [4:0] reserved;
+    logic [3:0] res_hi;
+    logic cd; // capability dirty
+    logic cw; // capability write
+    logic crg;
+    logic cr; // capability read
+    logic reserved;
     logic [CVA6Cfg.PPNW-1:0] ppn;  // PPN length for
     logic [1:0] rsw;
     logic d;
@@ -356,7 +359,8 @@ module cva6_mmu
       .mxr_i,
       .vmxr_i,
 
-      .cap_ucrg_i,
+      .cap_crg_i,
+      .cap_crge_i,
 
       // Performance counters
       .shared_tlb_miss_o(shared_tlb_miss),  //open for now
@@ -552,10 +556,10 @@ module cva6_mmu
     cheri_cap_err   = 1'b0;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
-      if (!lsu_is_store_q && dtlb_pte_q.u && dtlb_pte_q.cw && (dtlb_pte_q.crg != cap_ucrg_i)) begin
+      if (!lsu_is_store_q && dtlb_pte_q.u && dtlb_pte_q.cr && cap_crge_i && (dtlb_pte_q.crg != cap_crg_i)) begin
         cheri_cap_err = 1'b1;
       end
-      if (lsu_is_store_q && !dtlb_pte_q.cw) begin
+      if (lsu_is_store_q && (!dtlb_pte_q.cw || !dtlb_pte_q.cd)) begin
         cheri_cap_err = 1'b1;
       end
     end
@@ -609,7 +613,7 @@ module cva6_mmu
 
       if (CVA6Cfg.CheriPresent) begin
         // Check if strip tag is needed on capability loads
-        lsu_allow_tag_o = lsu_allow_tag_o & dtlb_pte_q.cw;
+        lsu_allow_tag_o = lsu_allow_tag_o & (dtlb_pte_q.cr || dtlb_pte_q.crg);
       end
 
       // ---------
@@ -634,7 +638,7 @@ module cva6_mmu
               lsu_exception_o.tinst = '0;
               lsu_exception_o.gva = ld_st_v_i;
             end
-          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || (CVA6Cfg.CheriPresent && cheri_cap_err) || !dtlb_pte_q.d)) begin
+          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin
             lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;
             lsu_exception_o.valid = 1'b1;
             if (CVA6Cfg.RVH) begin
@@ -642,10 +646,13 @@ module cva6_mmu
               lsu_exception_o.tinst = lsu_tinst_q;
               lsu_exception_o.gva   = ld_st_v_i;
             end
-            if (CVA6Cfg.CheriPresent) begin
-              if (cheri_cap_err)
-                lsu_exception_o.tval2 = CVA6Cfg.GPLEN'({daccess_err ? 2'd2 : 2'd1, 2'b0});
-              else lsu_exception_o.tval2 = '0;
+          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (CVA6Cfg.CheriPresent && cheri_cap_err)) begin
+            lsu_exception_o.cause = cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT;
+            lsu_exception_o.valid = 1'b1;
+            if (CVA6Cfg.RVH) begin
+              lsu_exception_o.tval2 = '0;
+              lsu_exception_o.tinst = lsu_tinst_q;
+              lsu_exception_o.gva   = ld_st_v_i;
             end
           end
           // this is a load
@@ -659,7 +666,7 @@ module cva6_mmu
               lsu_exception_o.gva = ld_st_v_i;
             end
             // check for sufficient access privileges - throw a page fault if necessary
-          end else if (daccess_err || canonical_addr_check || (CVA6Cfg.CheriPresent && cheri_cap_err)) begin
+          end else if (daccess_err || canonical_addr_check) begin
             lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;
             lsu_exception_o.valid = 1'b1;
             if (CVA6Cfg.RVH) begin
@@ -667,10 +674,13 @@ module cva6_mmu
               lsu_exception_o.tinst = lsu_tinst_q;
               lsu_exception_o.gva   = ld_st_v_i;
             end
-            if (CVA6Cfg.CheriPresent) begin
-              if (cheri_cap_err)
-                lsu_exception_o.tval2 = CVA6Cfg.GPLEN'({daccess_err ? 2'd2 : 2'd1, 2'b0});
-              else lsu_exception_o.tval2 = '0;
+          end else if (CVA6Cfg.CheriPresent && cheri_cap_err) begin
+            lsu_exception_o.cause = cva6_cheri_pkg::CAP_LOAD_CAPABILITY_FAULT;
+            lsu_exception_o.valid = 1'b1;
+            if (CVA6Cfg.RVH) begin
+              lsu_exception_o.tval2 = '0;
+              lsu_exception_o.tinst = lsu_tinst_q;
+              lsu_exception_o.gva   = ld_st_v_i;
             end
           end
         end
@@ -699,7 +709,7 @@ module cva6_mmu
                 lsu_exception_o.tinst = (ptw_err_at_g_int_st ? (CVA6Cfg.IS_XLEN64 ? riscv::READ_64_PSEUDOINSTRUCTION : riscv::READ_32_PSEUDOINSTRUCTION) : '0);
                 lsu_exception_o.gva = ld_st_v_i;
               end
-            end else begin
+            end else if (!CVA6Cfg.CheriPresent || !ptw_cheri_error) begin
               lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;
               lsu_exception_o.valid = 1'b1;
               if (CVA6Cfg.RVH) begin
@@ -707,8 +717,13 @@ module cva6_mmu
                 lsu_exception_o.tinst = lsu_tinst_q;
                 lsu_exception_o.gva   = ld_st_v_i;
               end
-              if (CVA6Cfg.CheriPresent) begin
-                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN - 4{1'b0}}, ptw_cheri_error, 2'b0};
+            end else begin
+              lsu_exception_o.cause = cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT;
+              lsu_exception_o.valid = 1'b1;
+              if (CVA6Cfg.RVH) begin
+                lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
+                lsu_exception_o.tinst = lsu_tinst_q;
+                lsu_exception_o.gva   = ld_st_v_i;
               end
             end
           end else begin
@@ -720,7 +735,7 @@ module cva6_mmu
                 lsu_exception_o.tinst = (ptw_err_at_g_int_st ? (CVA6Cfg.IS_XLEN64 ? riscv::READ_64_PSEUDOINSTRUCTION : riscv::READ_32_PSEUDOINSTRUCTION) : '0);
                 lsu_exception_o.gva = ld_st_v_i;
               end
-            end else begin
+            end else if (!CVA6Cfg.CheriPresent || !ptw_cheri_error) begin
               lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;
               lsu_exception_o.valid = 1'b1;
               if (CVA6Cfg.RVH) begin
@@ -728,8 +743,13 @@ module cva6_mmu
                 lsu_exception_o.tinst = lsu_tinst_q;
                 lsu_exception_o.gva   = ld_st_v_i;
               end
-              if (CVA6Cfg.CheriPresent) begin
-                lsu_exception_o.tval2 = {{CVA6Cfg.GPLEN - 4{1'b0}}, ptw_cheri_error, 2'b0};
+            end else begin
+              lsu_exception_o.cause = cva6_cheri_pkg::CAP_LOAD_CAPABILITY_FAULT;
+              lsu_exception_o.valid = 1'b1;
+              if (CVA6Cfg.RVH) begin
+                lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
+                lsu_exception_o.tinst = lsu_tinst_q;
+                lsu_exception_o.gva   = ld_st_v_i;
               end
             end
           end

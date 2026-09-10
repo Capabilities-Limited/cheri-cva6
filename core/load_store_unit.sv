@@ -132,7 +132,9 @@ module load_store_unit
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input  logic             [CVA6Cfg.VMID_WIDTH-1:0] vmid_i,
     // Capability load barrier generation - EX_STAGE
-    input  logic                                      cap_ucrg_i,
+    input  logic                                      cap_crg_i,
+    // Capability revocation generation enable - EX_STAGE
+    input  logic                                      cap_crge_i,
     // Default Data Capability - CSR_REGFILE
     input  logic             [    CVA6Cfg.REGLEN-1:0] ddc_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
@@ -327,7 +329,8 @@ module load_store_unit
         .mxr_i,
         .vmxr_i,
 
-        .cap_ucrg_i,
+        .cap_crg_i,
+        .cap_crge_i,
 
         .hlvx_inst_i    (mmu_hlvx_inst),
         .hs_ld_st_inst_i(mmu_hs_ld_st_inst),

@@ -143,7 +143,9 @@ module csr_regfile
     // hypervisor-mode clean/flush cache block invalidate enable - ID_STAGE
     output logic hcbcfe_o,
     // Capability load barrier generation - EX_STAGE
-    output logic cap_ucrg_o,
+    output logic cap_crg_o,
+    // Capability revocation generation enable - EX_STAGE
+    output logic cap_crge_o,
     // external interrupt in - SUBSYSTEM
     input logic [1:0] irq_i,
     // inter processor interrupt -> connected to machine mode sw - SUBSYSTEM
@@ -3181,7 +3183,8 @@ module csr_regfile
   assign mcountinhibit_o = {{29 - MHPMCounterNum{1'b0}}, mcountinhibit_q};
 
   // Extract capability revocation generation
-  assign cap_ucrg_o = CVA6Cfg.CheriPresent ? mstatus_q.ucrg : '0;
+  assign cap_crg_o = CVA6Cfg.CheriPresent ? (priv_lvl_o == riscv::PRIV_LVL_U ? mstatus_q.ucrg : mstatus_q.scrg) : '0;
+  assign cap_crge_o = CVA6Cfg.CheriPresent ? mstatus_q.crge : '0;
 
   // sequential process
   always_ff @(posedge clk_i or negedge rst_ni) begin
