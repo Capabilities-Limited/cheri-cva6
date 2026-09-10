@@ -4,7 +4,7 @@ package build_config_pkg;
     bit IS_XLEN32 = (CVA6Cfg.XLEN == 32) ? 1'b1 : 1'b0;
     bit IS_XLEN64 = (CVA6Cfg.XLEN == 32) ? 1'b0 : 1'b1;
     bit FpPresent = CVA6Cfg.RVF | CVA6Cfg.RVD | CVA6Cfg.XF16 | CVA6Cfg.XF16ALT | CVA6Cfg.XF8;
-    bit CheriPresent = CVA6Cfg.RVZcheripurecap;
+    bit CheriPresent = CVA6Cfg.RVY;
     bit NSX = CVA6Cfg.XF16 | CVA6Cfg.XF16ALT | CVA6Cfg.XF8 | CVA6Cfg.XFVec;  // Are non-standard extensions present?
     int unsigned FLen = CVA6Cfg.RVD ? 64 :  // D ext.
     CVA6Cfg.RVF ? 32 :  // F ext.
@@ -77,6 +77,7 @@ package build_config_pkg;
     cfg.RVV = CVA6Cfg.RVV;
     cfg.RVC = CVA6Cfg.RVC;
     cfg.RVH = CVA6Cfg.RVH;
+    cfg.RVY = CVA6Cfg.RVY;
     cfg.RVZCB = CVA6Cfg.RVZCB;
     cfg.RVZCMT = CVA6Cfg.RVZCMT;
     cfg.RVZCMP = CVA6Cfg.RVZCMP;
@@ -87,7 +88,7 @@ package build_config_pkg;
     cfg.RVZiCbom = CVA6Cfg.RVZiCbom;
     cfg.RVZicntr = CVA6Cfg.RVZicntr;
     cfg.RVZihpm = CVA6Cfg.RVZihpm;
-    cfg.RVZcheripurecap = CVA6Cfg.RVZcheripurecap;
+    cfg.RVY = CVA6Cfg.RVY;
     cfg.RVZcherihybrid = CVA6Cfg.RVZcherihybrid;
     cfg.NR_SB_ENTRIES = CVA6Cfg.NrScoreboardEntries;
     cfg.TRANS_ID_BITS = $clog2(CVA6Cfg.NrScoreboardEntries);

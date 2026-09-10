@@ -76,6 +76,8 @@ package config_pkg;
     bit                          RVC;
     // Hypervisor RISC-V extension
     bit                          RVH;
+    // CapabilitY RISC-V extension
+    bit                          RVY;
     // Zcb RISC-V extension
     bit                          RVZCB;
     // Zcmp RISC-V extension
@@ -90,8 +92,6 @@ package config_pkg;
     bit                          RVZicntr;
     // Zihpm RISC-V extension
     bit                          RVZihpm;
-    // Zcheripurecap RISC-V extension
-    bit                          RVZcheripurecap;
     // Zcherihybrid RISC-V extension
     bit                          RVZcherihybrid;
     // Floating Point
@@ -202,8 +202,8 @@ package config_pkg;
     // DcacheInvalidateOnFlush causes dcache to also be invalidated when flushed
     // tradeoff between coherence and efficiency, depending on remaining configuration:
 
-    // DcacheFlushOnFenceI is required for write-back caches - otherwise, 
-    // no way to reliably write instruction memory with store instructions, 
+    // DcacheFlushOnFenceI is required for write-back caches - otherwise,
+    // no way to reliably write instruction memory with store instructions,
     // as data and instruction cache are currently not coherent
     // DcacheFlushOnFence is required for write-back caches to ensure coherency
     // with other harts or DMA devices --> a fence forces all stores to commit to memory
@@ -320,6 +320,7 @@ package config_pkg;
     bit          RVV;
     bit          RVC;
     bit          RVH;
+    bit          RVY;
     bit          RVZCB;
     bit          RVZCMP;
     bit          RVZCMT;
@@ -330,7 +331,6 @@ package config_pkg;
     bit          RVZiCbom;
     bit          RVZicntr;
     bit          RVZihpm;
-    bit          RVZcheripurecap;
     bit          RVZcherihybrid;
 
     int unsigned NR_SB_ENTRIES;
@@ -480,7 +480,7 @@ package config_pkg;
     assert (!(Cfg.RVH && !Cfg.SoftwareInterruptEn));
     assert (!(Cfg.RVZCMT && ~Cfg.MmuPresent));
     // Can only have CHERI hybrid support if CHERI purecap is supported
-    assert (!(!Cfg.RVZcheripurecap && Cfg.RVZcherihybrid));
+    assert (!(!Cfg.RVY && Cfg.RVZcherihybrid));
     // pragma translate_on
   endfunction
 
