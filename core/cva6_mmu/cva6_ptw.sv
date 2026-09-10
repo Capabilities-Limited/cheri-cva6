@@ -552,6 +552,8 @@ module cva6_ptw
                 end
               end
 
+              if (CVA6Cfg.SvnapotEn && pte.n && !is_napot_64k) shared_tlb_update_valid = 1'b0;
+
               // if there is a misaligned page, propagate error
               if (|misaligned_page) begin
                 state_d = PROPAGATE_ERROR;
@@ -566,6 +568,7 @@ module cva6_ptw
                   if (CVA6Cfg.CheriPresent) cheri_error_d = cheri_pte_fail;
                   state_d = PROPAGATE_ERROR;
                   ptw_stage_d = G_FINAL_STAGE;
+                  shared_tlb_update_valid = 1'b0;
                 end
               end
               // this is a pointer to the next TLB level
