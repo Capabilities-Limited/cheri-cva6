@@ -623,9 +623,6 @@ module csr_regfile
         riscv::CSR_STVAL:
         if (CVA6Cfg.RVS) csr_rdata = stval_q;
         else read_access_exception = 1'b1;
-        riscv::CSR_STVAL2:
-        if (CVA6Cfg.CheriPresent) csr_rdata = stval2_q;
-        else read_access_exception = 1'b1;
         riscv::CSR_SATP: begin
           if (CVA6Cfg.RVS) begin
             // intercept reads to SATP if in S-Mode and TVM is enabled
@@ -763,7 +760,7 @@ module csr_regfile
         if (CVA6Cfg.RVH) csr_rdata = mtinst_q;
         else read_access_exception = 1'b1;
         riscv::CSR_MTVAL2:
-        if (CVA6Cfg.RVH | CVA6Cfg.CheriPresent) csr_rdata = mtval2_q;
+        if (CVA6Cfg.RVH) csr_rdata = mtval2_q;
         else read_access_exception = 1'b1;
         riscv::CSR_MIP: csr_rdata = mip_q;
         riscv::CSR_MENVCFG: begin
@@ -1240,7 +1237,7 @@ module csr_regfile
     if (CVA6Cfg.CheriPresent) mtid_d = mtid_q;
     if (CVA6Cfg.TvalEn) mtval_d = mtval_q;
     if (CVA6Cfg.RVH) mtinst_d = mtinst_q;
-    if (CVA6Cfg.CheriPresent | CVA6Cfg.RVH) mtval2_d = mtval2_q;
+    if (CVA6Cfg.RVH) mtval2_d = mtval2_q;
     mfiom_d    = mfiom_q;
     dcache_d   = dcache_q;
     icache_d   = icache_q;
@@ -1275,8 +1272,7 @@ module csr_regfile
       satp_d       = satp_q;
       sfiom_d      = sfiom_q;
       if (CVA6Cfg.CheriPresent) begin
-        stid_d   = stid_q;
-        stval2_d = stval2_q;
+        stid_d = stid_q;
       end
     end
 
@@ -1646,9 +1642,7 @@ module csr_regfile
         riscv::CSR_STVAL:
         if (CVA6Cfg.RVS && CVA6Cfg.TvalEn) stval_d = csr_wdata;
         else update_access_exception = 1'b1;
-        riscv::CSR_STVAL2:
-        if (CVA6Cfg.CheriPresent) stval2_d = {csr_wdata[19:16], 12'b0, csr_wdata[3:0]};
-        else update_access_exception = 1'b1;
+        riscv::CSR_STVAL2: update_access_exception = 1'b1;
         // supervisor address translation and protection
         riscv::CSR_SATP: begin
           if (CVA6Cfg.RVS) begin
@@ -1993,7 +1987,6 @@ module csr_regfile
         else update_access_exception = 1'b1;
         riscv::CSR_MTVAL2:
         if (CVA6Cfg.RVH) mtval2_d = csr_wdata;
-        else if (CVA6Cfg.CheriPresent) mtval2_d = {csr_wdata[19:16], 12'b0, csr_wdata[3:0]};
         else update_access_exception = 1'b1;
         riscv::CSR_MIP: begin
           if (CVA6Cfg.RVH) begin
@@ -2441,9 +2434,6 @@ module csr_regfile
             hstatus_d.gva = ex_i.gva;
             hstatus_d.spv = v_q;
           end
-          if (CVA6Cfg.CheriPresent) begin
-            stval2_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN + 2{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:2]};
-          end
         end
         // trap to machine mode
       end else begin
@@ -2491,7 +2481,7 @@ module csr_regfile
                             } || ex_i.cause[CVA6Cfg.XLEN-1])) ? '0 : {{CVA6Cfg.XLEN - 32 {1'b0}}, ex_i.tinst};
           mstatus_d.gva = ex_i.gva;
         end
-        if (CVA6Cfg.CheriPresent || CVA6Cfg.RVH) begin
+        if (CVA6Cfg.RVH) begin
           mtval2_d = {{CVA6Cfg.XLEN - CVA6Cfg.GPLEN + 2{1'b0}}, ex_i.tval2[CVA6Cfg.GPLEN-1:2]};
         end
       end
@@ -3240,7 +3230,7 @@ module csr_regfile
         end
       end
 
-      if (CVA6Cfg.RVH | CVA6Cfg.CheriPresent) begin
+      if (CVA6Cfg.RVH) begin
         mtval2_q <= {CVA6Cfg.XLEN{1'b0}};
       end
       if (CVA6Cfg.RVH) begin
@@ -3344,14 +3334,13 @@ module csr_regfile
         sscratch_q   <= sscratch_d;
         if (CVA6Cfg.CheriPresent) stid_q <= stid_d;
         if (CVA6Cfg.TvalEn) stval_q <= stval_d;
-        if (CVA6Cfg.CheriPresent & CVA6Cfg.TvalEn) stval2_q <= stval2_d;
         satp_q <= satp_d;
         if (CVA6Cfg.RVZiCbom) begin
           scbie_q  <= scbie_d;
           scbcfe_q <= scbcfe_d;
         end
       end
-      if (CVA6Cfg.CheriPresent | CVA6Cfg.RVH) begin
+      if (CVA6Cfg.RVH) begin
         mtval2_q <= mtval2_d;
       end
       if (CVA6Cfg.RVH) begin
