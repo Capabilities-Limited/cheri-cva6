@@ -47,6 +47,7 @@ module cva6_rvfi
   | (CVA6Cfg.XLEN'(CVA6Cfg.RVU) << 20)  // U - User mode implemented
   | (CVA6Cfg.XLEN'(CVA6Cfg.RVV) << 21)  // V - Vector extension
   | (CVA6Cfg.XLEN'(CVA6Cfg.NSX) << 23)  // X - Non-standard extensions present
+  | (CVA6Cfg.XLEN'(CVA6Cfg.RVY) << 24)  // Y - CapabilitY extension present
   | ((CVA6Cfg.XLEN == 64 ? 2 : 1) << CVA6Cfg.XLEN - 2);  // MXL
 
   localparam logic [CVA6Cfg.XLEN-1:0] hart_id_i = '0;
