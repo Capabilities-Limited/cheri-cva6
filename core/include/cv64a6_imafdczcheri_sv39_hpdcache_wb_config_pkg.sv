@@ -28,7 +28,7 @@ package cva6_config_pkg;
   localparam CVA6ConfigVExtEn = 0;
   localparam CVA6ConfigHExtEn = 0;
   localparam CVA6ConfigRVZiCond = 1;
-  localparam CVA6ConfigRVZcheripurecap = 1;
+  localparam CVA6ConfigRVY = 1;
   localparam CVA6ConfigRVZcherihybrid = 1;
   localparam CVA6ConfigCheriCapTagWidth = 1;
   localparam CVA6ConfigRVFI_DII = 0;
@@ -120,7 +120,7 @@ package cva6_config_pkg;
       RVZiCbom : bit'(0),
       RVZicntr: bit'(1),
       RVZihpm: bit'(1),
-      RVZcheripurecap: bit'(CVA6ConfigRVZcheripurecap),
+      RVY: bit'(CVA6ConfigRVY),
       RVZcherihybrid: bit'(CVA6ConfigRVZcherihybrid),
       NrScoreboardEntries: unsigned'(CVA6ConfigNrScoreboardEntries),
       PerfCounterEn: bit'(CVA6ConfigPerfCounterEn),
