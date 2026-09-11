@@ -172,7 +172,7 @@ module branch_unit #(
       if (fu_data_i.operation inside {ariane_pkg::JALR, ariane_pkg::CJALR}
           // check if the address of the jump register is correct and that we actually predicted
           // mispredict in case the PCC metadata changes
-          && (branch_predict_i.cf == ariane_pkg::NoCF || target_address != branch_predict_i.predict_address)) begin
+          && (!branch_predict_i.valid || target_address != branch_predict_i.predict_address)) begin
         resolved_branch_o.is_mispredict = 1'b1;
         // update BTB only if this wasn't a return
         if (branch_predict_i.cf != ariane_pkg::Return)
