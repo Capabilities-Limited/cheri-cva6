@@ -1963,7 +1963,7 @@ module decoder
                 instruction_o.rs2 = instr.stype.rs2;
                 instruction_o.use_ddc = int_mode_i;
                 instruction_o.op = ariane_pkg::SY;
-                if (instr.rtype.rs1 == 5'b0) illegal_instr = 1'b1;
+                if (instr.rtype.rs1 == 5'b0 && !int_mode_i) illegal_instr = 1'b1;
               end
               3'b011 : begin // Cap AMO instructions
                 // we are going to use the load unit for AMOs
