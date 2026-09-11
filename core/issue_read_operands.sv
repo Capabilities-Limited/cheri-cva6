@@ -520,6 +520,7 @@ module issue_read_operands
         if (issue_instr_i[i].needs_asr && !issue_instr_i[i].ex.valid && !pcc[i].hperms.access_sys_regs) begin
           issue_pcc_ex_o[i].cause = riscv::ILLEGAL_INSTR;
           issue_pcc_ex_o[i].valid = 1'b1;
+          issue_pcc_ex_o[i].tval = orig_instr_i[i];
         end else if ((!pcc_bounds_root && (pc_below_base || pc_above_top)) ||
             !pcc[i].hperms.permit_execute ||
             ((pcc[i].otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc[i].tag) ||
