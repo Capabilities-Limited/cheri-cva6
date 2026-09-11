@@ -128,8 +128,8 @@ module cheri_unit
           ariane_pkg::YSUNSEAL: begin
             if (!operand_a.tag
              || !operand_b.tag
-             || !operand_a_is_sealed
-             ||  operand_b_is_sealed
+             ||  operand_a_is_sealed
+             || !operand_b_is_sealed
             ) begin
               tmp_cap.tag = 1'b0;
             end
