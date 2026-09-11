@@ -517,8 +517,10 @@ module issue_read_operands
         {next_pc_carry, next_pc_addr} = {1'b0, issue_instr_i[i].pc} + {1'b0, next_pc_off};
         pc_below_base = cva6_cheri_pkg::addrw_t'(signed'(issue_instr_i[i].pc)) < pcc_base;
         pc_above_top = {next_pc_carry, cva6_cheri_pkg::addrw_t'(signed'(next_pc_addr))} > pcc_top;
-        if ((issue_instr_i[i].needs_asr && !issue_instr_i[i].ex.valid && !pcc[i].hperms.access_sys_regs) ||
-            (!pcc_bounds_root && (pc_below_base || pc_above_top)) ||
+        if (issue_instr_i[i].needs_asr && !issue_instr_i[i].ex.valid && !pcc[i].hperms.access_sys_regs) begin
+          issue_pcc_ex_o[i].cause = riscv::ILLEGAL_INSTR;
+          issue_pcc_ex_o[i].valid = 1'b1;
+        end else if ((!pcc_bounds_root && (pc_below_base || pc_above_top)) ||
             !pcc[i].hperms.permit_execute ||
             ((pcc[i].otype != cva6_cheri_pkg::UNSEALED_CAP) && pcc[i].tag) ||
             !pcc[i].tag) begin
