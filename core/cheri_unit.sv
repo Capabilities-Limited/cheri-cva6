@@ -46,6 +46,7 @@ module cheri_unit
   cap_meta_data_t op_a_meta_info;
   logic operand_a_hperms_malformed;
   logic operand_a_bounds_malformed;
+  logic operand_a_malformed;
 
   // operand b decode fields
   cap_reg_t operand_b;
@@ -56,6 +57,7 @@ module cheri_unit
   cap_meta_data_t op_b_meta_info;
   logic operand_b_hperms_malformed;
   logic operand_b_bounds_malformed;
+  logic operand_b_malformed;
 
   // Common operations signals
   // Set address operations signals
@@ -104,7 +106,7 @@ module cheri_unit
         check_operand_a_violations.seal = 1'b1;
         tmp_cap = operand_a;
         new_perms = hperms_and_uperms_to_report_perms(operand_a.hperms, operand_a.uperms,
-                                                      operand_a_hperms_malformed);
+                                                      operand_a_malformed);
         new_perms &= ~cap_report_perms_t'(operand_b_address);
         tmp_cap.uperms = new_perms.uperms;
         tmp_cap.hperms = legalize_arch_perms(report_perms_to_hperms(new_perms));
@@ -153,13 +155,7 @@ module cheri_unit
         if (((hperms_subset_exclude_mask | operand_a.hperms) & operand_b.hperms) != operand_b.hperms) begin
           tmp_cap.tag = 1'b0;
         end
-        if (operand_a_bounds_malformed | operand_b_bounds_malformed) begin
-          tmp_cap.tag = 1'b0;
-        end
-        if (operand_a_hperms_malformed | operand_b_hperms_malformed) begin
-          tmp_cap.tag = 1'b0;
-        end
-        if(operand_a.res_lo != 0 | operand_a.res_hi != 0 | operand_b.res_lo != 0 | operand_b.res_hi != 0) begin
+        if (operand_a_malformed | operand_b_malformed) begin
           tmp_cap.tag = 1'b0;
         end
         if (fu_data_i.operation == ariane_pkg::YBLD || fu_data_i.operation == ariane_pkg::YSUNSEAL)
@@ -169,7 +165,7 @@ module cheri_unit
       end
       // CGetBase
       ariane_pkg::YBASER: begin
-        clu_result = ariane_pkg::x_to_reg(operand_a_bounds_malformed ? '0 : operand_a_base);
+        clu_result = ariane_pkg::x_to_reg(operand_a_malformed ? '0 : operand_a_base);
       end
       // CGetFlags
       ariane_pkg::YMODER: begin
@@ -177,11 +173,11 @@ module cheri_unit
       end
       // CGetLength
       ariane_pkg::YLENR: begin
-        clu_result = ariane_pkg::x_to_reg(operand_a_bounds_malformed ? '0 : operand_a_length);
+        clu_result = ariane_pkg::x_to_reg(operand_a_malformed ? '0 : operand_a_length);
       end
       // CGetTop
       ariane_pkg::YTOPR: begin
-        clu_result = ariane_pkg::x_to_reg(operand_a_bounds_malformed ? '0 :
+        clu_result = ariane_pkg::x_to_reg(operand_a_malformed ? '0 :
                                           operand_a_top[64] ? '1 : operand_a_top);
       end
       // CGetHigh
@@ -195,7 +191,7 @@ module cheri_unit
           {
             {CVA6Cfg.XLEN - $bits(cap_report_perms_t) {1'b0}},
             hperms_and_uperms_to_report_perms(
-              operand_a.hperms, operand_a.uperms, operand_a_hperms_malformed
+              operand_a.hperms, operand_a.uperms, operand_a_malformed
             )
           }
         );
@@ -262,7 +258,7 @@ module cheri_unit
       // CSetFlags
       ariane_pkg::YMODEW: begin
         check_operand_a_violations.seal = 1'b1;
-        clu_result = (operand_a_hperms_malformed) ? operand_a :
+        clu_result = (operand_a_malformed) ? operand_a :
             set_cap_reg_int_mode(operand_a, operand_b.addr[0]);
       end
       // CSetHigh
@@ -295,6 +291,7 @@ module cheri_unit
     operand_a_hperms_malformed = (operand_a.hperms != legalize_arch_perms(operand_a.hperms)) |
         (!operand_a.hperms.permit_execute & operand_a.hperms.int_mode);
     operand_a_bounds_malformed = !are_cap_reg_bounds_valid(operand_a, op_a_meta_info);
+    operand_a_malformed = operand_a_bounds_malformed | operand_a_hperms_malformed | operand_a.res_lo != 0 | operand_a.res_hi != 0;
     // Decode capability operand b fields
     operand_b_address = operand_b.addr;
     op_b_meta_info = get_cap_reg_meta_data(operand_b);
@@ -304,6 +301,7 @@ module cheri_unit
     operand_b_is_sealed = (operand_b.otype != UNSEALED_CAP);
     operand_b_hperms_malformed = (operand_b.hperms != legalize_arch_perms(operand_b.hperms)) |
         (!operand_b.hperms.permit_execute & operand_b.hperms.int_mode);
+    operand_b_malformed = operand_b_bounds_malformed | operand_b_hperms_malformed | operand_b.res_lo != 0 | operand_b.res_hi != 0;
   end
 
   // ----------------

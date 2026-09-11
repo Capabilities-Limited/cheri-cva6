@@ -1103,13 +1103,19 @@ module csr_regfile
         end
         riscv::CSR_DDC:
         if (CVA6Cfg.CheriPresent) begin
-          csr_rcap = ddc_q;
-          csr_rcap_null = 1'b0;
+          if (csr_read_cap) begin
+            csr_rcap = ddc_q;
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = reg_to_x(ddc_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_UTID:
         if (CVA6Cfg.CheriPresent) begin
-          csr_rcap = utid_q;
-          csr_rcap_null = 1'b0;
+          if (csr_read_cap) begin
+            csr_rcap = utid_q;
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = reg_to_x(utid_q);
         end else read_access_exception = 1'b1;
         default: read_access_exception = 1'b1;
       endcase
