@@ -426,6 +426,7 @@ module load_store_unit
       .lsu_vaddr_i         (mmu_vaddr),
       .lsu_exception_i     (mmu_exception),
       .lsu_is_store_i      (st_translation_req && !st_translation_req_is_actually_lr),
+      .lsu_hlvx_inst_i     (mmu_hlvx_inst),
       .lsu_valid_o         (translation_valid),
       .lsu_paddr_o         (mmu_paddr),
       .lsu_exception_o     (pmp_exception),
