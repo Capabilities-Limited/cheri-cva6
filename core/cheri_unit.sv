@@ -260,7 +260,7 @@ module cheri_unit
       // CSetFlags
       ariane_pkg::YMODEW: begin
         check_operand_a_violations.seal = 1'b1;
-        clu_result = (operand_a_malformed) ? operand_a :
+        clu_result = (operand_a_malformed | operand_a_is_sealed | !operand_a.hperms.permit_execute) ? operand_a :
             set_cap_reg_int_mode(operand_a, operand_b.addr[0]);
       end
       // CSetHigh
