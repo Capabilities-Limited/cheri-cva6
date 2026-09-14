@@ -1270,15 +1270,15 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
         .mst_req_t               (axi_mst_req_t),
         .mst_resp_t              (axi_mst_resp_t)
     ) i_axi_tagctrl_top (
-        .clk_i          (clk),
-        .rst_ni         (ndmreset_n),
-        .test_i         (1'b0),
-        .cfg_slv_req_i  (tagcfg_req),
-        .cfg_slv_resp_o (tagcfg_resp),
-        .slv_req_i      (dram_req),
-        .slv_resp_o     (dram_resp),
-        .mst_req_o      (axi_tag_req),
-        .mst_resp_i     (axi_tag_resp)
+        .clk_i               (clk),
+        .rst_ni              (ndmreset_n),
+        .test_i              (1'b0),
+        .config_sub_req_i    (tagcfg_req),
+        .config_sub_resp_o   (tagcfg_resp),
+        .tagged_sub_req_i    (dram_req),
+        .tagged_sub_resp_o   (dram_resp),
+        .untagged_mgr_req_o  (axi_tag_req),
+        .untagged_mgr_resp_i (axi_tag_resp)
     );
   end else begin
     assign axi_tag_req = dram_req;
