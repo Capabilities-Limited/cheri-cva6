@@ -77,7 +77,7 @@ module cva6_mmu
     input logic vmxr_i,
     input logic hlvx_inst_i,
     input logic hs_ld_st_inst_i,
-    input logic cap_crg_i,
+    input logic [1:0] cap_crg_i,
     input logic cap_crge_i,
     // input logic flag_mprv_i,
     input logic [CVA6Cfg.PPNW-1:0] satp_ppn_i,
@@ -556,7 +556,10 @@ module cva6_mmu
     cheri_cap_err   = 1'b0;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
-      if (!lsu_is_store_q && dtlb_pte_q.u && dtlb_pte_q.cr && cap_crge_i && (dtlb_pte_q.crg != cap_crg_i)) begin
+      if (!lsu_is_store_q && dtlb_pte_q.cr && cap_crge_i &&
+          (dtlb_pte_q.crg != cap_crg_i[dtlb_pte_q.u ?
+              cva6_cheri_pkg::CAP_CRG_USER_BIT :
+              cva6_cheri_pkg::CAP_CRG_SUPERVISOR_BIT])) begin
         cheri_cap_err = 1'b1;
       end
       if (lsu_is_store_q && (!dtlb_pte_q.cw || !dtlb_pte_q.cd)) begin

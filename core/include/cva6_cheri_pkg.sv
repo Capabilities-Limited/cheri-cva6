@@ -46,6 +46,9 @@ package cva6_cheri_pkg;
   localparam logic [XLEN-1:0] CAP_LOAD_CAPABILITY_FAULT = 35;
   localparam logic [XLEN-1:0] CAP_STORE_AMO_PAGE_FAULT = 36;
 
+  localparam int unsigned CAP_CRG_USER_BIT = 0;
+  localparam int unsigned CAP_CRG_SUPERVISOR_BIT = 1;
+
   /* Capabilities OType Encoding */
 
   localparam logic [CAP_OTYPE_WIDTH-1:0] UNSEALED_CAP = 0;

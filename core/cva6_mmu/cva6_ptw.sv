@@ -81,7 +81,7 @@ module cva6_ptw
     input logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_i,  // ppn from hgatp
     input logic                    mxr_i,
     input logic                    vmxr_i,
-    input logic                    cap_crg_i,
+    input logic              [1:0] cap_crg_i,
     input logic                    cap_crge_i,
 
     // Performance counters
@@ -465,7 +465,10 @@ module cva6_ptw
               if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && lsu_is_cap_i) begin
                 // These checks have to be duplicated here in case the PTW throws a non-CHERI error
                 // so that we can report "both" a CHERI and non-CHERI error occurred.
-                if (!lsu_is_store_i && pte.u && pte.cr && cap_crge_i && (pte.crg != cap_crg_i)) begin
+                if (!lsu_is_store_i && pte.cr && cap_crge_i &&
+                    (pte.crg != cap_crg_i[pte.u ?
+                        cva6_cheri_pkg::CAP_CRG_USER_BIT :
+                        cva6_cheri_pkg::CAP_CRG_SUPERVISOR_BIT])) begin
                   cheri_pte_fail = 1'b1;
                 end
                 if (lsu_is_store_i && (!pte.cw || !pte.cd)) begin

@@ -606,7 +606,7 @@ module cva6
   logic [CVA6Cfg.ASID_WIDTH-1:0] vs_asid_csr_ex;
   logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_csr_ex;
   logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_csr_ex;
-  logic cap_crg_ex;
+  logic [1:0] cap_crg_ex;
   logic cap_crge_ex;
   logic [11:0] csr_addr_ex_csr;
   fu_op csr_op_commit_csr;

@@ -223,8 +223,8 @@ module ex_stage
     input logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_i,
     // TO_BE_COMPLETED - CSR_REGFILE
     input logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_i,
-    // Capability load barrier generation - CSR_REGFILE
-    input logic cap_crg_i,
+    // Capability load barrier generations - CSR_REGFILE
+    input logic [1:0] cap_crg_i,
     // Capability revocation generation enable - CSR_REGFILE
     input logic cap_crge_i,
     // icache translation response - CACHE
