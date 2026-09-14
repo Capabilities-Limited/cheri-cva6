@@ -119,6 +119,9 @@ module cheri_unit
         automatic cap_hperms_t hperms_subset_exclude_mask;
         tmp_cap = operand_b;
         tmp_cap.tag = 1'b1;
+        if (fu_data_i.operation == ariane_pkg::YSUNSEAL) begin
+          tmp_cap.otype = UNSEALED_CAP;
+        end
         unique case (fu_data_i.operation)
           ariane_pkg::YSS: begin
             if (operand_a.tag != operand_b.tag) begin

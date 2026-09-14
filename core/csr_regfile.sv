@@ -2785,7 +2785,6 @@ module csr_regfile
     // if we are violating our privilges do not update the architectural state
     if (privilege_violation || (CVA6Cfg.CheriPresent && cheri_access_violation)) begin
       csr_we   = 1'b0;
-      csr_read = 1'b0;
     end
   end
 
@@ -2949,6 +2948,11 @@ module csr_regfile
     csr_exception_o = {
       {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.GPLEN{1'b0}}, {32{1'b0}}, 1'b0, 1'b0
     };
+
+    if (cheri_access_violation && !debug_mode_q) begin
+      csr_exception_o.cause = cva6_cheri_pkg::CAP_INSTR_ACCESS_FAULT;
+      csr_exception_o.valid = 1'b1;
+    end
     // ----------------------------------
     // Illegal Access (decode exception)
     // ----------------------------------
@@ -2971,11 +2975,6 @@ module csr_regfile
       csr_exception_o.valid = 1'b1;
     end
 
-    if (cheri_access_violation && !debug_mode_q) begin
-      csr_exception_o.cause = cva6_cheri_pkg::CAP_INSTR_ACCESS_FAULT;
-      csr_exception_o.tval = '0;
-      csr_exception_o.valid = 1'b1;
-    end
   end
 
   // -------------------
