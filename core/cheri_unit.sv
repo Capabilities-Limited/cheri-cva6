@@ -172,7 +172,7 @@ module cheri_unit
       end
       // CGetFlags
       ariane_pkg::YMODER: begin
-        clu_result = ariane_pkg::x_to_reg({{CVA6Cfg.XLEN - 1{1'b0}}, get_cap_reg_int_mode(operand_a)});
+        clu_result = ariane_pkg::x_to_reg({{CVA6Cfg.XLEN - 1{1'b0}}, get_cap_reg_int_mode(operand_a) & !operand_a_malformed});
       end
       // CGetLength
       ariane_pkg::YLENR: begin
