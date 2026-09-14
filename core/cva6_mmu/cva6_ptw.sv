@@ -437,7 +437,7 @@ module cva6_ptw
 
 
           // If pte.v = 0, or if pte.r = 0 and pte.w = 1, or if pte.reserved !=0 in sv39 and sv39x4, stop and raise a page-fault exception.
-          if (!pte.v || (!pte.r && pte.w) || ((|pte.reserved || |pte.res_hi) && CVA6Cfg.XLEN == 64) || (!CVA6Cfg.SvnapotEn && pte.n) || (CVA6Cfg.SvnapotEn && !(pte.r || pte.x) && pte.n)) begin
+          if (!pte.v || (!pte.r && pte.w) || ((|pte.reserved || |pte.res_hi) && CVA6Cfg.XLEN == 64) || (!cap_crge_i && (pte.cr || pte.crg || pte.cw)) || (!CVA6Cfg.SvnapotEn && pte.n) || (CVA6Cfg.SvnapotEn && !(pte.r || pte.x) && pte.n)) begin
             // -------------
             // Invalid PTE
             // -------------
@@ -465,14 +465,20 @@ module cva6_ptw
               if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && lsu_is_cap_i) begin
                 // These checks have to be duplicated here in case the PTW throws a non-CHERI error
                 // so that we can report "both" a CHERI and non-CHERI error occurred.
-                if (!lsu_is_store_i && pte.cr && cap_crge_i &&
-                    (pte.crg != cap_crg_i[pte.u ?
-                        cva6_cheri_pkg::CAP_CRG_USER_BIT :
-                        cva6_cheri_pkg::CAP_CRG_SUPERVISOR_BIT])) begin
-                  cheri_pte_fail = 1'b1;
-                end
-                if (lsu_is_store_i && (!pte.cw || !pte.cd)) begin
-                  cheri_pte_fail = 1'b1;
+                if (cap_crge_i) begin
+                  if (!lsu_is_store_i && pte.cr && cap_crge_i &&
+                      (pte.crg != cap_crg_i[pte.u ?
+                          cva6_cheri_pkg::CAP_CRG_USER_BIT :
+                          cva6_cheri_pkg::CAP_CRG_SUPERVISOR_BIT])) begin
+                    cheri_pte_fail = 1'b1;
+                  end
+                  if (lsu_is_store_i && (!pte.cw || !pte.cd)) begin
+                    cheri_pte_fail = 1'b1;
+                  end
+                end else begin
+                  if (lsu_is_store_i && !pte.cd) begin
+                    cheri_pte_fail = 1'b1;
+                  end
                 end
               end
               if (CVA6Cfg.RVH) begin

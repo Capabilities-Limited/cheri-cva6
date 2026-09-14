@@ -556,14 +556,20 @@ module cva6_mmu
     cheri_cap_err   = 1'b0;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
-      if (!lsu_is_store_q && dtlb_pte_q.cr && cap_crge_i &&
-          (dtlb_pte_q.crg != cap_crg_i[dtlb_pte_q.u ?
-              cva6_cheri_pkg::CAP_CRG_USER_BIT :
-              cva6_cheri_pkg::CAP_CRG_SUPERVISOR_BIT])) begin
-        cheri_cap_err = 1'b1;
-      end
-      if (lsu_is_store_q && (!dtlb_pte_q.cw || !dtlb_pte_q.cd)) begin
-        cheri_cap_err = 1'b1;
+      if (cap_crge_i) begin
+        if (!lsu_is_store_q && dtlb_pte_q.cr &&
+            (dtlb_pte_q.crg != cap_crg_i[dtlb_pte_q.u ?
+                cva6_cheri_pkg::CAP_CRG_USER_BIT :
+                cva6_cheri_pkg::CAP_CRG_SUPERVISOR_BIT])) begin
+          cheri_cap_err = 1'b1;
+        end
+        if (lsu_is_store_q && (!dtlb_pte_q.cw || !dtlb_pte_q.cd)) begin
+          cheri_cap_err = 1'b1;
+        end
+      end else begin
+        if (lsu_is_store_q && !dtlb_pte_q.cd) begin
+          cheri_cap_err = 1'b1;
+        end
       end
     end
 
