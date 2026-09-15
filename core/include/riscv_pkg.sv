@@ -803,7 +803,9 @@ package riscv;
   localparam logic [63:0] SSTATUS_UXL  = 64'h0000000300000000;
   // CSR Bit Implementation Masks
 
-  localparam logic [63:0] SSTATUS_CRG  = 64'h2000000000000000;
+  localparam logic [63:0] SSTATUS_UCRG  = 64'h2000000000000000;
+  localparam logic [63:0] SSTATUS_SCRG  = 64'h1000000000000000;
+  localparam logic [63:0] SSTATUS_CRGE  = 64'h0800000000000000;
   function automatic logic [63:0] sstatus_sd(logic IS_XLEN64);
     return {IS_XLEN64, 31'h00000000, ~IS_XLEN64, 31'h00000000};
   endfunction

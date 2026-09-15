@@ -129,7 +129,9 @@ package ariane_pkg;
     | riscv::SSTATUS_UPIE
     | riscv::SSTATUS_SPIE
     | riscv::SSTATUS_UXL
-    | (Cfg.CheriPresent ? riscv::SSTATUS_CRG : '0)
+    | (Cfg.CheriPresent ? riscv::SSTATUS_UCRG : '0)
+    | (Cfg.CheriPresent ? riscv::SSTATUS_SCRG : '0)
+    | (Cfg.CheriPresent ? riscv::SSTATUS_CRGE : '0)
     | riscv::sstatus_sd(Cfg.IS_XLEN64);
   endfunction
 
@@ -139,7 +141,9 @@ package ariane_pkg;
     | riscv::SSTATUS_SPP
     | riscv::SSTATUS_FS
     | riscv::SSTATUS_SUM
-    | (Cfg.CheriPresent ? riscv::SSTATUS_CRG : '0)
+    | (Cfg.CheriPresent ? riscv::SSTATUS_UCRG : '0)
+    | (Cfg.CheriPresent ? riscv::SSTATUS_SCRG : '0)
+    | (Cfg.CheriPresent ? riscv::SSTATUS_CRGE : '0)
     | riscv::SSTATUS_MXR;
   endfunction
 
