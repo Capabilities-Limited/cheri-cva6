@@ -214,8 +214,8 @@ module cheri_unit
         address                         = operand_a_address + operand_b_address;
         clu_result                      = res_set_addr;
       end
-      // CMV
-      ariane_pkg::CMV: begin
+      // YMV
+      ariane_pkg::YMV: begin
         clu_result = operand_a;
       end
       // CSealEntry

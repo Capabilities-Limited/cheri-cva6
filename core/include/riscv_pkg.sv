@@ -60,9 +60,9 @@ package riscv;
   typedef struct packed {
     logic sd;  // signal dirty state - read-only
     logic wpri7;  // writes preserved reads ignored
-    logic ucrg; // user capability read generation
-    logic scrg; // supervisor capability read generation
-    logic crge; // capability read generation enable
+    logic uyrg; // user capability read generation
+    logic syrg; // supervisor capability read generation
+    logic yrge; // capability read generation enable
     logic [58:34] wpri6;  // writes preserved reads ignored
     xlen_e uxl;  // variable user mode xlen - hardwired to zero
     logic [11:0] wpri5;  // writes preserved reads ignored
@@ -104,9 +104,9 @@ package riscv;
   typedef struct packed {
     logic sd;  // signal dirty state - read-only
     logic wpri5;  // writes preserved reads ignored
-    logic ucrg; // user capability read generation
-    logic scrg; // supervisor capability read generation
-    logic crge; // capability read generation enable
+    logic uyrg; // user capability read generation
+    logic syrg; // supervisor capability read generation
+    logic yrge; // capability read generation enable
     logic [58:40] wpri4;  // writes preserved reads ignored
     logic mpv;  // machine previous virtualization mode
     logic gva;  // variable set when trap writes to stval
@@ -314,11 +314,6 @@ package riscv;
   // ----------------------
   // memory management, pte for sv39
   typedef struct packed {
-    logic cw;
-    logic cr;
-    logic cd;
-    logic crm;
-    logic crg;
     logic [9:0] reserved;
     logic [44-1:0] ppn;  // PPN length for
     logic [1:0] rsw;
@@ -346,34 +341,7 @@ package riscv;
     logic v;
   } pte_sv32_t;
 
-  // memory management, pte for sv39 CHERI
-  // capability store bits behavior table
-  // ----------------------------------------------------------------------
-  // | CW | CD | Behavior                                                 |
-  // |----|----|-----------------------------------------------------------
-  // | 0  | X  | Trap on capability stores (exception code 0x1B)          |
-  // | 1  | 0  | Capability stores atomically raise CD or fault (as above)|
-  // | 1  | 1  | Capability stores permitted                              |
-  // ----------------------------------------------------------------------
-  // capability load bits behavior table
-  // ----------------------------------------------------------------------
-  // | CR | CRM | CRG | Behavior                                          |
-  // |----|-----|----------------------------------------------------------
-  // | 0  | 0   |  0  | Capability loads strip tags on loaded result      |
-  // | 0  | 1   |  0  | Capability loads fault (exception code 0x1A)      |
-  // | 0  | X   |  1  | Reserved for future use                           |
-  // | 1  | 0   |  0  | Capability loads are unaltered                    |
-  // | 1  | 0   |  1  | Reserved for future use                           |
-  // | 1  | 1   |  X  | Reserved for generational load barriers           |
-  // ----------------------------------------------------------------------
-
   typedef struct packed {
-    logic cw;
-    logic cr;
-    logic cd;
-    logic crm;
-    logic crg;
-    logic [4:0] reserved;
     logic [44-1:0] ppn;  // PPN length for
     logic [1:0] rsw;
     logic d;
@@ -803,9 +771,9 @@ package riscv;
   localparam logic [63:0] SSTATUS_UXL  = 64'h0000000300000000;
   // CSR Bit Implementation Masks
 
-  localparam logic [63:0] SSTATUS_UCRG  = 64'h2000000000000000;
-  localparam logic [63:0] SSTATUS_SCRG  = 64'h1000000000000000;
-  localparam logic [63:0] SSTATUS_CRGE  = 64'h0800000000000000;
+  localparam logic [63:0] SSTATUS_UYRG  = 64'h2000000000000000;
+  localparam logic [63:0] SSTATUS_SYRG  = 64'h1000000000000000;
+  localparam logic [63:0] SSTATUS_YRGE  = 64'h0800000000000000;
   function automatic logic [63:0] sstatus_sd(logic IS_XLEN64);
     return {IS_XLEN64, 31'h00000000, ~IS_XLEN64, 31'h00000000};
   endfunction
@@ -840,7 +808,7 @@ package riscv;
   localparam logic [63:0] MSTATUS_TVM = 'h00100000;
   localparam logic [63:0] MSTATUS_TW = 'h00200000;
   localparam logic [63:0] MSTATUS_TSR = 'h00400000;
-  localparam logic [63:0] MSTATUS_CRG = 64'h2000000000000000;
+  localparam logic [63:0] MSTATUS_YRG = 64'h2000000000000000;
   function automatic logic [63:0] mstatus_uxl(logic IS_XLEN64);
     return {30'h0000000, IS_XLEN64, IS_XLEN64, 32'h00000000};
   endfunction

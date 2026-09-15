@@ -63,7 +63,7 @@ module cva6_mmu
     // Cycle 1
     output logic lsu_valid_o,  // translation is valid
     output logic [CVA6Cfg.PLEN-1:0] lsu_paddr_o,  // translated address
-    output logic lsu_allow_tag_o,  // If clear, strip tag from result capability, happens when PTE.CR = PTE.CRM = PTE.CRG = 0;
+    output logic lsu_allow_tag_o,  // If clear, strip tag from result capability
 
     output exception_t lsu_exception_o,  // address translation threw an exception
     // General control signals
@@ -77,8 +77,8 @@ module cva6_mmu
     input logic vmxr_i,
     input logic hlvx_inst_i,
     input logic hs_ld_st_inst_i,
-    input logic [1:0] cap_crg_i,
-    input logic cap_crge_i,
+    input logic [1:0] cap_yrg_i,
+    input logic cap_yrge_i,
     // input logic flag_mprv_i,
     input logic [CVA6Cfg.PPNW-1:0] satp_ppn_i,
     input logic [CVA6Cfg.PPNW-1:0] vsatp_ppn_i,
@@ -113,10 +113,10 @@ module cva6_mmu
   localparam type pte_cva6_t = struct packed {
     logic n;
     logic [3:0] res_hi;
-    logic cd; // capability dirty
-    logic cw; // capability write
-    logic crg;
-    logic cr; // capability read
+    logic yd; // capability dirty
+    logic yw; // capability write
+    logic yrg;
+    logic yr; // capability read
     logic reserved;
     logic [CVA6Cfg.PPNW-1:0] ppn;  // PPN length for
     logic [1:0] rsw;
@@ -359,8 +359,8 @@ module cva6_mmu
       .mxr_i,
       .vmxr_i,
 
-      .cap_crg_i,
-      .cap_crge_i,
+      .cap_yrg_i,
+      .cap_yrge_i,
 
       // Performance counters
       .shared_tlb_miss_o(shared_tlb_miss),  //open for now
@@ -552,26 +552,26 @@ module cva6_mmu
       };
 
     // Cheri pte checks
-    lsu_allow_tag_o = lsu_is_cap_q;
     cheri_cap_err   = 1'b0;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
-      if (cap_crge_i) begin
-        if (!lsu_is_store_q && dtlb_pte_q.cr &&
-            (dtlb_pte_q.crg != cap_crg_i[dtlb_pte_q.u ?
-                cva6_cheri_pkg::CAP_CRG_USER_BIT :
-                cva6_cheri_pkg::CAP_CRG_SUPERVISOR_BIT])) begin
+      if (cap_yrge_i) begin
+        if (!lsu_is_store_q && dtlb_pte_q.yr &&
+            (dtlb_pte_q.yrg != cap_yrg_i[dtlb_pte_q.u ?
+                cva6_cheri_pkg::CAP_YRG_USER_BIT :
+                cva6_cheri_pkg::CAP_YRG_SUPERVISOR_BIT])) begin
           cheri_cap_err = 1'b1;
         end
-        if (lsu_is_store_q && (!dtlb_pte_q.cw || !dtlb_pte_q.cd)) begin
+        if (lsu_is_store_q && (!dtlb_pte_q.yw || !dtlb_pte_q.yd)) begin
           cheri_cap_err = 1'b1;
         end
       end else begin
-        if (lsu_is_store_q && !dtlb_pte_q.cd) begin
+        if (lsu_is_store_q && !dtlb_pte_q.yd) begin
           cheri_cap_err = 1'b1;
         end
       end
     end
+    lsu_allow_tag_o = lsu_is_cap_q & !cheri_cap_err; // Conservatively clear the tag if we're trapping
 
     // mute misaligned and CHERI exceptions if there is no request otherwise they will throw accidental exceptions
     pre_mmu_ex_n.valid = pre_mmu_ex_i.valid & lsu_req_i;
@@ -622,7 +622,7 @@ module cva6_mmu
 
       if (CVA6Cfg.CheriPresent) begin
         // Check if strip tag is needed on capability loads
-        lsu_allow_tag_o = lsu_allow_tag_o & (dtlb_pte_q.cr || dtlb_pte_q.crg);
+        lsu_allow_tag_o = lsu_allow_tag_o & (cap_yrge_i ? dtlb_pte_q.yr : dtlb_pte_q.yd);
       end
 
       // ---------

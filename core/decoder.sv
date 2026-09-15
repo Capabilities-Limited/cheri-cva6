@@ -1858,7 +1858,7 @@ module decoder
                       // ------------------------------------
                       // Pointer-Arithmetic Instructions
                       // ------------------------------------
-                      5'b00000: instruction_o.op = ariane_pkg::CMV;
+                      5'b00000: instruction_o.op = ariane_pkg::YMV;
                       default: instruction_o.op = ariane_pkg::YADD;
                     endcase
                   end
