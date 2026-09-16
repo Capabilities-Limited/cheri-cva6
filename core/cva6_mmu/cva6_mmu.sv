@@ -719,7 +719,7 @@ module cva6_mmu
                 lsu_exception_o.gva = ld_st_v_i;
               end
             end else begin
-              lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;
+              lsu_exception_o.cause = (CVA6Cfg.CheriPresent && ptw_cheri_error) ?  cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT : riscv::STORE_PAGE_FAULT;
               lsu_exception_o.valid = 1'b1;
               if (CVA6Cfg.RVH) begin
                 lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
@@ -737,7 +737,7 @@ module cva6_mmu
                 lsu_exception_o.gva = ld_st_v_i;
               end
             end else begin
-              lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;
+              lsu_exception_o.cause = (CVA6Cfg.CheriPresent && ptw_cheri_error) ?  cva6_cheri_pkg::CAP_LOAD_CAPABILITY_FAULT : riscv::LOAD_PAGE_FAULT;
               lsu_exception_o.valid = 1'b1;
               if (CVA6Cfg.RVH) begin
                 lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
