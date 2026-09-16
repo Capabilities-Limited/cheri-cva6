@@ -648,7 +648,7 @@ module cva6_mmu
               lsu_exception_o.gva = ld_st_v_i;
             end
           end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (CVA6Cfg.CheriPresent && cheri_cap_err)) begin
-            lsu_exception_o.cause = cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT;
+            lsu_exception_o.cause = (!dtlb_pte_q.w) ? riscv::STORE_PAGE_FAULT : cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT;
             lsu_exception_o.valid = 1'b1;
             if (CVA6Cfg.RVH) begin
               lsu_exception_o.tval2 = '0;
@@ -718,16 +718,8 @@ module cva6_mmu
                 lsu_exception_o.tinst = (ptw_err_at_g_int_st ? (CVA6Cfg.IS_XLEN64 ? riscv::READ_64_PSEUDOINSTRUCTION : riscv::READ_32_PSEUDOINSTRUCTION) : '0);
                 lsu_exception_o.gva = ld_st_v_i;
               end
-            end else if (!CVA6Cfg.CheriPresent || !ptw_cheri_error) begin
-              lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;
-              lsu_exception_o.valid = 1'b1;
-              if (CVA6Cfg.RVH) begin
-                lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
-                lsu_exception_o.tinst = lsu_tinst_q;
-                lsu_exception_o.gva   = ld_st_v_i;
-              end
             end else begin
-              lsu_exception_o.cause = cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT;
+              lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;
               lsu_exception_o.valid = 1'b1;
               if (CVA6Cfg.RVH) begin
                 lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
@@ -744,16 +736,8 @@ module cva6_mmu
                 lsu_exception_o.tinst = (ptw_err_at_g_int_st ? (CVA6Cfg.IS_XLEN64 ? riscv::READ_64_PSEUDOINSTRUCTION : riscv::READ_32_PSEUDOINSTRUCTION) : '0);
                 lsu_exception_o.gva = ld_st_v_i;
               end
-            end else if (!CVA6Cfg.CheriPresent || !ptw_cheri_error) begin
-              lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;
-              lsu_exception_o.valid = 1'b1;
-              if (CVA6Cfg.RVH) begin
-                lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
-                lsu_exception_o.tinst = lsu_tinst_q;
-                lsu_exception_o.gva   = ld_st_v_i;
-              end
             end else begin
-              lsu_exception_o.cause = cva6_cheri_pkg::CAP_LOAD_CAPABILITY_FAULT;
+              lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;
               lsu_exception_o.valid = 1'b1;
               if (CVA6Cfg.RVH) begin
                 lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
