@@ -39,6 +39,8 @@ module cva6_ptw
     output logic walking_instr_o,  // set when walking for TLB
     output logic ptw_error_o,  // set when an error occurred
     output logic ptw_cheri_error_o,  // set when a CHERI error occurred
+    output logic ptw_cheri_store_fault_o,  // selected CHERI store leaf fault
+    output logic ptw_store_page_fault_o,  // selected ordinary store leaf fault
     output logic ptw_error_at_g_st_o,  // set when an error occurred at the G-Stage
     output logic ptw_err_at_g_int_st_o,  // set when an error occurred at the G-Stage during S-Stage translation
     output logic ptw_access_exception_o,  // set when an PMP access exception occurred
@@ -47,6 +49,7 @@ module cva6_ptw
     input logic en_ld_st_translation_i,  // enable virtual memory translation for load/stores
     input logic en_ld_st_g_translation_i,  // enable G-Stage translation for load/stores
     input logic v_i,  // current virtualization mode bit
+    input riscv::priv_lvl_t ld_st_priv_lvl_i,  // load/store privilege level
     input logic ld_st_v_i,  // load/store virtualization mode bit
     input logic hlvx_inst_i,  // is a HLVX load/store instruction
 
@@ -119,6 +122,8 @@ module cva6_ptw
   }
       state_q, state_d;
   logic cheri_error_q, cheri_error_d;
+  logic cheri_store_fault_q, cheri_store_fault_d;
+  logic store_page_fault_q, store_page_fault_d;
 
   logic [CVA6Cfg.PtLevels-2:0] misaligned_page;
   logic shared_tlb_update_valid;
@@ -310,6 +315,8 @@ module cva6_ptw
     req_port_o.data_size    = CVA6Cfg.DCACHE_DATA_SIZE_WIDTH'(CVA6Cfg.PtLevels);
     req_port_o.data_we      = 1'b0;
     ptw_error_o             = 1'b0;
+    ptw_cheri_store_fault_o = 1'b0;
+    ptw_store_page_fault_o  = 1'b0;
     ptw_error_at_g_st_o     = 1'b0;
     ptw_err_at_g_int_st_o   = 1'b0;
     ptw_access_exception_o  = 1'b0;
@@ -326,6 +333,9 @@ module cva6_ptw
     tlb_update_asid_n       = tlb_update_asid_q;
     vaddr_n                 = vaddr_q;
     pptr                    = ptw_pptr_q;
+
+    cheri_store_fault_d = cheri_store_fault_q;
+    store_page_fault_d  = store_page_fault_q;
 
     if (CVA6Cfg.CheriPresent) begin
       ptw_cheri_error_o = 1'b0;
@@ -348,7 +358,9 @@ module cva6_ptw
         // by default we start with the top-most page table
         ptw_lvl_n        = '0;
         global_mapping_n = 1'b0;
-        is_instr_ptw_n   = 1'b0;
+        is_instr_ptw_n      = 1'b0;
+        cheri_store_fault_d  = 1'b0;
+        store_page_fault_d   = 1'b0;
 
 
         if (CVA6Cfg.RVH) begin
@@ -435,7 +447,6 @@ module cva6_ptw
           // check if the global mapping bit is set
           if (pte.g && (ptw_stage_q == S_STAGE || !CVA6Cfg.RVH)) global_mapping_n = 1'b1;
 
-
           // If pte.v = 0, or if pte.r = 0 and pte.w = 1, or if pte.reserved !=0 in sv39 and sv39x4, stop and raise a page-fault exception.
           if (!pte.v || (!pte.r && pte.w) || ((|pte.reserved || |pte.res_hi) && CVA6Cfg.XLEN == 64) || (!cap_yrge_i && (pte.yr || pte.yrg || pte.yw)) || (!CVA6Cfg.SvnapotEn && pte.n) || (CVA6Cfg.SvnapotEn && !(pte.r || pte.x) && pte.n)) begin
             // -------------
@@ -448,6 +459,8 @@ module cva6_ptw
             // Valid PTE
             // -----------
             automatic logic cheri_pte_fail = 1'b0;
+            automatic logic selected_cheri_store_fault = 1'b0;
+            automatic logic selected_store_page_fault = 1'b0;
             state_d = LATENCY;
             // if pte.r = 1 or pte.x = 1 it is a valid leaf PTE
             if (pte.r || pte.x) begin
@@ -463,23 +476,39 @@ module cva6_ptw
               end
 
               if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && lsu_is_cap_i) begin
-                // These checks have to be duplicated here in case the PTW throws a non-CHERI error
-                // so that we can report "both" a CHERI and non-CHERI error occurred.
+                // These checks have to be duplicated here in case the PTW throws a non-CHERI error.
                 if (cap_yrge_i) begin
-                  if (!lsu_is_store_i && pte.yr && cap_yrge_i &&
+                  if (!lsu_is_store_i && pte.yr &&
                       (pte.yrg != cap_yrg_i[pte.u ?
                           cva6_cheri_pkg::CAP_YRG_USER_BIT :
                           cva6_cheri_pkg::CAP_YRG_SUPERVISOR_BIT])) begin
                     cheri_pte_fail = 1'b1;
                   end
-                  if (lsu_is_store_i && (!pte.yw || !pte.yd)) begin
-                    cheri_pte_fail = 1'b1;
-                  end
                 end else begin
-                  if (lsu_is_store_i && !pte.yd) begin
+                  if (!lsu_is_store_i && !pte.yd) begin
                     cheri_pte_fail = 1'b1;
                   end
                 end
+              end
+
+              // Select exactly one S-stage store-leaf failure in architectural priority order:
+              // YW, PTE.W/ordinary access, YD, then PTE.A/D.
+              if (!is_instr_ptw_q && lsu_is_store_i && en_ld_st_translation_i &&
+                  (!CVA6Cfg.RVH || ptw_stage_q == S_STAGE)) begin
+                if (CVA6Cfg.CheriPresent && lsu_is_cap_i &&
+                    (cap_yrge_i ? !pte.yw : !pte.yd)) begin
+                  selected_cheri_store_fault = 1'b1;
+                end else if (!pte.w || (ld_st_priv_lvl_i == riscv::PRIV_LVL_U && !pte.u) ||
+                             !((pte.r && !hlvx_inst_i) ||
+                               (pte.x && (mxr_i || hlvx_inst_i ||
+                                (ptw_stage_q == S_STAGE && vmxr_i && ld_st_v_i && CVA6Cfg.RVH))))) begin
+                  selected_store_page_fault = 1'b1;
+                end else if (CVA6Cfg.CheriPresent && lsu_is_cap_i && cap_yrge_i && !pte.yd) begin
+                  selected_cheri_store_fault = 1'b1;
+                end else if (!pte.a || !pte.d) begin
+                  selected_store_page_fault = 1'b1;
+                end
+                cheri_pte_fail = (CVA6Cfg.CheriPresent && selected_cheri_store_fault);
               end
               if (CVA6Cfg.RVH) begin
                 case (ptw_stage_q)
@@ -550,6 +579,17 @@ module cva6_ptw
                   if (CVA6Cfg.CheriPresent) cheri_error_d = cheri_pte_fail;
                   if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
                 end
+              end
+
+              if (selected_cheri_store_fault || selected_store_page_fault) begin
+                state_d                = PROPAGATE_ERROR;
+                shared_tlb_update_valid = 1'b0;
+                if (CVA6Cfg.CheriPresent) begin
+                  cheri_store_fault_d     = selected_cheri_store_fault;
+                  store_page_fault_d      = selected_store_page_fault;
+                  cheri_error_d = selected_cheri_store_fault;
+                end
+                if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
               end
 
               // if there is a misaligned page, propagate error
@@ -626,7 +666,7 @@ module cva6_ptw
                 end
 
               end
-
+              cheri_store_fault_d &= cheri_error_d;
               // check if 63:41 are all zeros
               if (CVA6Cfg.RVH) begin
                 if (((v_i && is_instr_ptw_q) || (ld_st_v_i && !is_instr_ptw_q)) && ptw_stage_q == S_STAGE && !((|pte.ppn[CVA6Cfg.PPNW-1:CVA6Cfg.GPPNW]) == 1'b0)) begin
@@ -649,6 +689,8 @@ module cva6_ptw
             state_d = PROPAGATE_ACCESS_ERROR;
             if (CVA6Cfg.CheriPresent) cheri_error_d = 1'b0;
           end
+
+
         end
         // we've got a data WAIT_GRANT so tell the cache that the tag is valid
       end
@@ -660,7 +702,9 @@ module cva6_ptw
           ptw_error_at_g_st_o   = (ptw_stage_q != S_STAGE) ? 1'b1 : 1'b0;
           ptw_err_at_g_int_st_o = (ptw_stage_q == G_INTERMED_STAGE) ? 1'b1 : 1'b0;
         end
+        ptw_store_page_fault_o  = store_page_fault_q;
         if (CVA6Cfg.CheriPresent) begin
+          ptw_cheri_store_fault_o = cheri_store_fault_q;
           ptw_cheri_error_o = cheri_error_q;
         end
       end
@@ -724,8 +768,10 @@ module cva6_ptw
         gpte_q            <= '0;
         tlb_update_vmid_q <= '0;
       end
+      cheri_store_fault_q <= 1'b0;
+      store_page_fault_q  <= 1'b0;
       if (CVA6Cfg.CheriPresent) begin
-        cheri_error_q <= 2'b0;
+        cheri_error_q <= 1'b0;
       end
     end else begin
       state_q           <= state_d;
@@ -746,6 +792,8 @@ module cva6_ptw
         gpte_q            <= gpte_d;
         tlb_update_vmid_q <= tlb_update_vmid_n;
       end
+      cheri_store_fault_q <= cheri_store_fault_d;
+      store_page_fault_q  <= store_page_fault_d;
       if (CVA6Cfg.CheriPresent) begin
         cheri_error_q <= cheri_error_d;
       end

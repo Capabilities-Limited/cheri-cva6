@@ -145,6 +145,10 @@ module cva6_mmu
   logic iaccess_err;  // insufficient privilege to access this instruction page
   logic i_g_st_access_err;  // insufficient privilege at g stage to access this instruction page
   logic cheri_cap_err;  // insufficient privilege to access this data page
+  logic cheri_cap_store_write_err;
+  logic cheri_cap_store_dirty_err;
+  logic cheri_store_fault;
+  logic store_page_fault;
   logic daccess_err;  // insufficient privilege to access this data page
   logic canonical_addr_check;  // canonical check on the virtual address for SV39
   logic d_g_st_access_err;  // insufficient privilege to access this data page
@@ -152,6 +156,8 @@ module cva6_mmu
   logic walking_instr;  // PTW is walking because of an ITLB miss
   logic ptw_error;  // PTW threw an exception
   logic [1:0] ptw_cheri_error;  // PTW threw a CHERI exception
+  logic ptw_cheri_store_fault;  // PTW selected a CHERI store leaf fault
+  logic ptw_store_page_fault;  // PTW selected an ordinary store leaf fault
   logic ptw_error_at_g_st;  // PTW threw an exception at the G-Stage
   logic ptw_err_at_g_int_st;  // PTW threw an exception at the G-Stage during S-Stage translation
   logic ptw_access_exception;  // PTW threw an access exception (PMPs)
@@ -317,9 +323,11 @@ module cva6_mmu
 
       .ptw_active_o          (ptw_active),
       .walking_instr_o       (walking_instr),
-      .ptw_error_o           (ptw_error),
-      .ptw_cheri_error_o     (ptw_cheri_error),
-      .ptw_error_at_g_st_o   (ptw_error_at_g_st),
+      .ptw_error_o             (ptw_error),
+      .ptw_cheri_error_o       (ptw_cheri_error),
+      .ptw_cheri_store_fault_o (ptw_cheri_store_fault),
+      .ptw_store_page_fault_o  (ptw_store_page_fault),
+      .ptw_error_at_g_st_o     (ptw_error_at_g_st),
       .ptw_err_at_g_int_st_o (ptw_err_at_g_int_st),
       .ptw_access_exception_o(ptw_access_exception),
       .enable_translation_i,
@@ -327,6 +335,7 @@ module cva6_mmu
       .en_ld_st_translation_i,
       .en_ld_st_g_translation_i,
       .v_i,
+      .ld_st_priv_lvl_i,
       .ld_st_v_i,
       .hlvx_inst_i           (hlvx_inst_i),
 
@@ -551,8 +560,10 @@ module cva6_mmu
         {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q
       };
 
-    // Cheri pte checks
-    cheri_cap_err   = 1'b0;
+    // CHERI PTE checks
+    cheri_cap_err             = 1'b0;
+    cheri_cap_store_write_err = 1'b0;
+    cheri_cap_store_dirty_err = 1'b0;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
       if (cap_yrge_i) begin
@@ -562,15 +573,15 @@ module cva6_mmu
                 cva6_cheri_pkg::CAP_YRG_SUPERVISOR_BIT])) begin
           cheri_cap_err = 1'b1;
         end
-        if (lsu_is_store_q && (!dtlb_pte_q.yw || !dtlb_pte_q.yd)) begin
-          cheri_cap_err = 1'b1;
+        if (lsu_is_store_q) begin
+          if (!dtlb_pte_q.yw) cheri_cap_store_write_err = 1'b1;
+          if (!dtlb_pte_q.yd) cheri_cap_store_dirty_err = 1'b1;
         end
-      end else begin
-        if (lsu_is_store_q && !dtlb_pte_q.yd) begin
-          cheri_cap_err = 1'b1;
-        end
+      end else if (lsu_is_store_q && !dtlb_pte_q.yd) begin
+        cheri_cap_store_write_err = 1'b1;
       end
     end
+    cheri_cap_err |= cheri_cap_store_write_err | cheri_cap_store_dirty_err;
     lsu_allow_tag_o = lsu_is_cap_q & !cheri_cap_err; // Conservatively clear the tag if we're trapping
 
     // mute misaligned and CHERI exceptions if there is no request otherwise they will throw accidental exceptions
@@ -637,6 +648,19 @@ module cva6_mmu
 
         // this is a store
         if (lsu_is_store_q) begin
+          // Store-fault priority: YW, W/access, YD, then A/D.
+          cheri_store_fault = 1'b0;
+          store_page_fault  = 1'b0;
+          if (CVA6Cfg.CheriPresent && cheri_cap_store_write_err) begin
+            cheri_store_fault = 1'b1;
+          end else if (!dtlb_pte_q.w || daccess_err || canonical_addr_check) begin
+            store_page_fault = 1'b1;
+          end else if (CVA6Cfg.CheriPresent && cheri_cap_store_dirty_err) begin
+            cheri_store_fault = 1'b1;
+          end else if (!dtlb_pte_q.d || !dtlb_pte_q.a) begin
+            store_page_fault = 1'b1;
+          end
+
           // check if the page is write-able and we are not violating privileges
           // also check if the dirty flag is set
           if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin
@@ -647,16 +671,10 @@ module cva6_mmu
               lsu_exception_o.tinst = '0;
               lsu_exception_o.gva = ld_st_v_i;
             end
-          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (CVA6Cfg.CheriPresent && cheri_cap_err)) begin
-            lsu_exception_o.cause = (!dtlb_pte_q.w) ? riscv::STORE_PAGE_FAULT : cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT;
-            lsu_exception_o.valid = 1'b1;
-            if (CVA6Cfg.RVH) begin
-              lsu_exception_o.tval2 = '0;
-              lsu_exception_o.tinst = lsu_tinst_q;
-              lsu_exception_o.gva   = ld_st_v_i;
-            end
-          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin
-            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;
+          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) &&
+                       (cheri_store_fault || store_page_fault)) begin
+            lsu_exception_o.cause = (CVA6Cfg.CheriPresent && cheri_store_fault) ?
+                cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT : riscv::STORE_PAGE_FAULT;
             lsu_exception_o.valid = 1'b1;
             if (CVA6Cfg.RVH) begin
               lsu_exception_o.tval2 = '0;
@@ -719,7 +737,10 @@ module cva6_mmu
                 lsu_exception_o.gva = ld_st_v_i;
               end
             end else begin
-              lsu_exception_o.cause = (CVA6Cfg.CheriPresent && ptw_cheri_error) ?  cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT : riscv::STORE_PAGE_FAULT;
+              lsu_exception_o.cause =
+                  (CVA6Cfg.CheriPresent && ptw_cheri_store_fault &&
+                   !ptw_store_page_fault) ? cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT :
+                                            riscv::STORE_PAGE_FAULT;
               lsu_exception_o.valid = 1'b1;
               if (CVA6Cfg.RVH) begin
                 lsu_exception_o.tval2 = {CVA6Cfg.GPLEN{1'b0}};
