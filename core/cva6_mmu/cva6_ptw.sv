@@ -462,7 +462,7 @@ module cva6_ptw
                 end
               end
 
-              if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && lsu_is_cap_i) begin
+              if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && lsu_is_cap_i && !is_instr_ptw_q) begin
                 // These checks have to be duplicated here in case the PTW throws a non-CHERI error
                 // so that we can report "both" a CHERI and non-CHERI error occurred.
                 if (cap_yrge_i) begin
@@ -547,7 +547,7 @@ module cva6_ptw
                     shared_tlb_update_valid = 1'b1;
                 end else begin
                   state_d = PROPAGATE_ERROR;
-                  if (CVA6Cfg.CheriPresent) cheri_error_d = cheri_pte_fail;
+                  if (CVA6Cfg.CheriPresent) cheri_error_d = 1'b0;
                   if (CVA6Cfg.RVH) ptw_stage_d = ptw_stage_q;
                 end
               end
