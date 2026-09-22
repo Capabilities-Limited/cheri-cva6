@@ -621,7 +621,7 @@ module cva6_mmu
       end
 
       if (CVA6Cfg.CheriPresent) begin // Check if strip tag is needed on capability loads
-        lsu_allow_tag_o = lsu_is_cap_q &
+        lsu_allow_tag_o = /*lsu_is_cap_q &*/
                           !cheri_cap_err &
                           (cap_yrge_i ?
                             (dtlb_pte_q.yr || dtlb_pte_q.yrg) :
