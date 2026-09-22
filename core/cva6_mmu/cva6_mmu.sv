@@ -553,7 +553,7 @@ module cva6_mmu
 
     // Cheri pte checks
     cheri_cap_err   = 1'b0;
-    lsu_allow_tag_o = 1'b1;
+    lsu_allow_tag_o = lsu_is_cap_q;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
       if (cap_yrge_i) begin
