@@ -466,7 +466,7 @@ module cva6_ptw
                 // These checks have to be duplicated here in case the PTW throws a non-CHERI error
                 // so that we can report "both" a CHERI and non-CHERI error occurred.
                 if (cap_yrge_i) begin
-                  if (!lsu_is_store_i && pte.yr && cap_yrge_i &&
+                  if (!lsu_is_store_i && pte.yr &&
                       (pte.yrg != cap_yrg_i[pte.u ?
                           cva6_cheri_pkg::CAP_YRG_USER_BIT :
                           cva6_cheri_pkg::CAP_YRG_SUPERVISOR_BIT])) begin
