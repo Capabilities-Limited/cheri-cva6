@@ -553,6 +553,7 @@ module cva6_mmu
 
     // Cheri pte checks
     cheri_cap_err   = 1'b0;
+    lsu_allow_tag_o = 1'b1;
 
     if (CVA6Cfg.CheriPresent && en_ld_st_translation_i && dtlb_pte_q.v && lsu_is_cap_q) begin
       if (cap_yrge_i) begin
@@ -571,14 +572,6 @@ module cva6_mmu
         end
       end
     end
-
-    if (CVA6Cfg.CheriPresent) begin // Check if strip tag is needed on capability loads
-      lsu_allow_tag_o = lsu_is_cap_q &
-                        !cheri_cap_err &
-                        (cap_yrge_i ?
-                          (dtlb_pte_q.yr || dtlb_pte_q.yrg) :
-                          dtlb_pte_q.yd);
-    end else lsu_allow_tag_o = 1'b0;
 
     // mute misaligned and CHERI exceptions if there is no request otherwise they will throw accidental exceptions
     pre_mmu_ex_n.valid = pre_mmu_ex_i.valid & lsu_req_i;
@@ -626,6 +619,14 @@ module cva6_mmu
         lsu_dtlb_ppn_o[PPNWMin:12] = lsu_vaddr_n[PPNWMin:12];
         lsu_paddr_o[PPNWMin:12] = lsu_vaddr_q[PPNWMin:12];
       end
+
+      if (CVA6Cfg.CheriPresent) begin // Check if strip tag is needed on capability loads
+        lsu_allow_tag_o = lsu_is_cap_q &
+                          !cheri_cap_err &
+                          (cap_yrge_i ?
+                            (dtlb_pte_q.yr || dtlb_pte_q.yrg) :
+                            dtlb_pte_q.yd);
+      end else lsu_allow_tag_o = 1'b1;
 
       // ---------
       // DTLB Hit
