@@ -1970,12 +1970,16 @@ module decoder
                 if (CVA6Cfg.RVA) begin
                   instruction_o.fu  = STORE;
                   instruction_o.rs1 = instr.atype.rs1;
+                  if (instruction_o.rs1 == 5'b0) illegal_instr = 1'b1;
                   instruction_o.rs2 = instr.atype.rs2;
                   instruction_o.rd  = instr.atype.rd;
                   instruction_o.use_ddc = int_mode_i;
                   unique case (instr.instr[31:27])
                     5'b00001: instruction_o.op = ariane_pkg::AMO_SWAPY;
-                    5'b00010: instruction_o.op = ariane_pkg::AMO_LRY;
+                    5'b00010: begin
+                      instruction_o.op = ariane_pkg::AMO_LRY;
+                      if (instruction_o.rs2 != 5'b0) illegal_instr = 1'b1;
+                    end
                     5'b00011: instruction_o.op = ariane_pkg::AMO_SCY;
                     default: illegal_instr = 1'b1;
                   endcase
