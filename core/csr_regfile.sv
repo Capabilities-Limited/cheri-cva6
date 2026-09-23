@@ -3183,7 +3183,7 @@ module csr_regfile
 
   // Extract user and supervisor capability revocation generations
   assign cap_yrg_o = CVA6Cfg.CheriPresent ? {mstatus_q.syrg,mstatus_q.uyrg} : 2'b0;
-  assign cap_yrge_o = CVA6Cfg.CheriPresent ? mstatus_q.yrge : '0;
+  assign cap_yrge_o = 1'b1;//CVA6Cfg.CheriPresent ? mstatus_q.yrge : '0; // XXX temporary yrge hack
 
   // sequential process
   always_ff @(posedge clk_i or negedge rst_ni) begin
