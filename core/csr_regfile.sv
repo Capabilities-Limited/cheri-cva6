@@ -2735,6 +2735,8 @@ module csr_regfile
         debug_mode_d = 1'b0;
       end
     end
+
+    mstatus_d.yrge = 1'b1; // XXX Temporary hack to hardwire yrge to 1.
   end
 
   // ---------------------------
