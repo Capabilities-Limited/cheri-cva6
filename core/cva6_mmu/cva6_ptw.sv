@@ -214,7 +214,7 @@ module cva6_ptw
       for (int unsigned x = 0; x < CVA6Cfg.PtLevels - 1; x++) begin
         if(((enable_g_translation_i && enable_translation_i) || (en_ld_st_g_translation_i && en_ld_st_translation_i)) && CVA6Cfg.RVH) begin
           // VS + G-Translation
-          shared_tlb_update_o.is_page[x][y] = (ptw_lvl_q[y==1?0 : 1] == x);
+          shared_tlb_update_o.is_page[x][y] = (ptw_lvl_q[y == 1 ? 0 : 1] == x);
         end else if (enable_translation_i || en_ld_st_translation_i || !CVA6Cfg.RVH) begin
           // non-V, S-Translation
           shared_tlb_update_o.is_page[x][y] = y == 0 ? (ptw_lvl_q[0] == x) : 1'b0;

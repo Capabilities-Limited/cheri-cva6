@@ -376,8 +376,8 @@ module csr_regfile
   | (CVA6Cfg.XLEN'(CVA6Cfg.NSX) << 23)  // X - Non-standard extensions present
   | ((CVA6Cfg.XLEN == 64 ? 2 : 1) << CVA6Cfg.XLEN - 2);  // MXL
 
-  assign pmpcfg_o = pmpcfg_q[(CVA6Cfg.NrPMPEntries>0?CVA6Cfg.NrPMPEntries-1 : 0):0];
-  assign pmpaddr_o = pmpaddr_q[(CVA6Cfg.NrPMPEntries>0?CVA6Cfg.NrPMPEntries-1 : 0):0];
+  assign pmpcfg_o = pmpcfg_q[(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries - 1 : 0):0];
+  assign pmpaddr_o = pmpaddr_q[(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries - 1 : 0):0];
 
   assign pcc = cva6_cheri_pkg::cap_reg_t'(pc_i);
 
