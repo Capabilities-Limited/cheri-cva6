@@ -2943,7 +2943,7 @@ module csr_regfile
       cheri_access_violation = 1'b0;
 
       if (csr_op_i inside {CSR_WRITE, CSR_SET, CSR_CLEAR, CSR_READ}) begin
-        if (!pcc.hperms.access_sys_regs) begin
+        if (!debug_mode_q && !pcc.hperms.access_sys_regs) begin
           cheri_access_violation = 1'b1;
         end
         // check for system registers access violation using a whitelist approach
