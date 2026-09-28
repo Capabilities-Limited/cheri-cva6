@@ -268,8 +268,8 @@ module csr_regfile
   logic debug_mode_q, debug_mode_d;
   logic mtvec_rst_load_q;  // used to determine whether we came out of reset
 
-  // TODO-cheri(ninolomata): There should be the CHERI extended registers for debug module
   logic [CVA6Cfg.REGLEN-1:0] dpc_q, dpc_d;
+  logic [CVA6Cfg.REGLEN-1:0] dddc_q, dddc_d;
   logic [CVA6Cfg.REGLEN-1:0] dscratch0_q, dscratch0_d;
   logic [CVA6Cfg.REGLEN-1:0] dscratch1_q, dscratch1_d;
   logic [CVA6Cfg.REGLEN-1:0] mtvec_q, mtvec_d;
@@ -465,6 +465,14 @@ module csr_regfile
             csr_rcap_null = 1'b0;
           end
           csr_rdata = reg_to_x(dpc_q);
+        end else read_access_exception = 1'b1;
+        riscv::CSR_DDDC:
+        if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
+          if (csr_read_cap) begin
+            csr_rcap = dddc_q;
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = reg_to_x(dddc_q);
         end else read_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
         if (CVA6Cfg.DebugEn) begin
@@ -1214,6 +1222,7 @@ module csr_regfile
     if (CVA6Cfg.DebugEn) begin
       dcsr_d             = dcsr_q;
       dpc_d              = dpc_q;
+      dddc_d             = dddc_q;
       dscratch0_d        = dscratch0_q;
       dscratch1_d        = dscratch1_q;
       single_step_done_d = single_step_done_q;
@@ -1396,6 +1405,13 @@ module csr_regfile
           end else begin
             dpc_d = csr_wdata_legalised;
           end
+        end else update_access_exception = 1'b1;
+        riscv::CSR_DDDC:
+        if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
+          csr_wdata_legalised = csr_wdata;
+          if (!csr_write_cap) csr_update_cap_prelegal = dddc_q;
+          csr_update_allow_sealed = csr_write_cap;
+          dddc_d = csr_update_cap_postlegal;
         end else update_access_exception = 1'b1;
         riscv::CSR_DSCRATCH0:
         if (CVA6Cfg.DebugEn) begin
@@ -2541,7 +2557,8 @@ module csr_regfile
       dcsr_d.v   = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
       // save PC of next this instruction e.g.: the next one to be executed
       if (CVA6Cfg.CheriPresent) begin
-        dpc_d = pcc;
+        dpc_d  = pcc;
+        dddc_d = ddc_q;
       end else begin
         dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
       end
@@ -2597,6 +2614,12 @@ module csr_regfile
       if (debug_mode_d) begin
         // redirect fetch
         set_debug_pc_o = 1'b1;
+        // Update DDC if we're actually entering debug mode.
+        // Since this is a register accessible outside of debug mode, we can't
+        // treat it like the updates to dcsr and dpc.
+        if (CVA6Cfg.CheriPresent) begin
+          ddc_d = set_cap_reg_addr(REG_ROOT, ddc_q[CVA6Cfg.XLEN-1:0]);
+        end
       end
     end
     // go in halt-state again when we encounter an exception
@@ -2730,6 +2753,9 @@ module csr_regfile
           // restore the previous virtualization mode
           v_d = dcsr_q.v;
         end
+        if (CVA6Cfg.CheriPresent) begin
+          ddc_d = dddc_q;
+        end
         // actually return from debug mode
         debug_mode_d = 1'b0;
       end
@@ -2742,7 +2768,7 @@ module csr_regfile
   always_comb begin : csr_op_logic
     csr_wdata = reg_to_x(csr_wdata_i);
     csr_we = 1'b1;
-    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC, riscv::CSR_DINFC};
+    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC, riscv::CSR_DDDC, riscv::CSR_DINFC};
     csr_write_cap = (CVA6Cfg.CheriPresent && (!commit_instr_i.int_mode || csr_clen_only) && csr_op_i == CSR_WRITE && !csr_op_is_imm_i) ? 1'b1 : 1'b0;
     ;
     csr_read = 1'b1;
@@ -3199,6 +3225,7 @@ module csr_regfile
         debug_mode_q       <= 1'b0;
         dcsr_q             <= '{xdebugver: 4'h4, prv: riscv::PRIV_LVL_M, default: '0};
         dpc_q              <= REG_ROOT;
+        dddc_q             <= REG_NULL;
         dscratch0_q        <= REG_NULL;
         dscratch1_q        <= REG_NULL;
         single_step_done_q <= 1'b0;
@@ -3311,6 +3338,7 @@ module csr_regfile
         debug_mode_q       <= debug_mode_d;
         dcsr_q             <= dcsr_d;
         dpc_q              <= dpc_d;
+        dddc_q             <= dddc_d;
         dscratch0_q        <= dscratch0_d;
         dscratch1_q        <= dscratch1_d;
         single_step_done_q <= single_step_done_d;
