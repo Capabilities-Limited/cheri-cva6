@@ -2511,70 +2511,51 @@ module csr_regfile
     // 4: The hart single stepped because step was set. (priority 1)
     // we are currently not in debug mode and could potentially enter
     if (CVA6Cfg.DebugEn && !debug_mode_q) begin
+      // Save debug registers regardless of whether we are entering debug mode
       dcsr_d.prv = priv_lvl_o;
       // save virtualization mode bit
       dcsr_d.v   = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
+      // save PC of next this instruction e.g.: the next one to be executed
+      if (CVA6Cfg.CheriPresent) begin
+        dpc_d = pcc;
+      end else begin
+        dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
+      end
 
       // trigger module fired
       if (CVA6Cfg.SDTRIG && debug_from_trigger) begin
-        dcsr_d.prv = priv_lvl_o;
-        dcsr_d.v = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
-        dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i};
         debug_mode_d = 1'b1;
-        set_debug_pc_o = 1'b1;
         dcsr_d.cause = ariane_pkg::CauseTrigger;
       end
 
       // caused by a breakpoint
       if (ex_i.valid && ex_i.cause == riscv::BREAKPOINT) begin
-        dcsr_d.prv = priv_lvl_o;
-        // save virtualization mode bit
-        dcsr_d.v   = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
         // check that we actually want to enter debug depending on the privilege level we are currently in
         unique case (priv_lvl_o)
           riscv::PRIV_LVL_M: begin
-            debug_mode_d   = dcsr_q.ebreakm;
-            set_debug_pc_o = dcsr_q.ebreakm;
+            debug_mode_d = dcsr_q.ebreakm;
           end
           riscv::PRIV_LVL_S: begin
             if (CVA6Cfg.RVS) begin
-              debug_mode_d   = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvs : dcsr_q.ebreaks;
-              set_debug_pc_o = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvs : dcsr_q.ebreaks;
+              debug_mode_d = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvs : dcsr_q.ebreaks;
             end
           end
           riscv::PRIV_LVL_U: begin
             if (CVA6Cfg.RVU) begin
-              debug_mode_d   = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvu : dcsr_q.ebreaku;
-              set_debug_pc_o = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvu : dcsr_q.ebreaku;
+              debug_mode_d = (CVA6Cfg.RVH && v_q) ? dcsr_q.ebreakvu : dcsr_q.ebreaku;
             end
           end
           default: ;
         endcase
-        // save PC of next this instruction e.g.: the next one to be executed
-        if (CVA6Cfg.CheriPresent) begin
-          dpc_d = pcc;
-        end else begin
-          dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
-        end
         dcsr_d.cause = ariane_pkg::CauseBreakpoint;
       end
 
       // we've got a debug request
       if (ex_i.valid && ex_i.cause == riscv::DEBUG_REQUEST) begin
-        dcsr_d.prv = priv_lvl_o;
-        dcsr_d.v   = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
-        // save the PC
-        if (CVA6Cfg.CheriPresent) begin
-          dpc_d = pcc;
-        end else begin
-          dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
-        end
         // enter debug mode
-        debug_mode_d   = 1'b1;
-        // jump to the base address
-        set_debug_pc_o = 1'b1;
+        debug_mode_d = 1'b1;
         // save the cause as external debug request
-        dcsr_d.cause   = ariane_pkg::CauseRequest;
+        dcsr_d.cause = ariane_pkg::CauseRequest;
       end
 
       // single step enable and we just retired an instruction
@@ -2584,17 +2565,14 @@ module csr_regfile
 
       if (CVA6Cfg.DebugEn && commit_single_step_i) begin
         single_step_done_d = 1'b0;
-        dcsr_d.prv = priv_lvl_o;
-        dcsr_d.v = (!CVA6Cfg.RVH) ? 1'b0 : v_q;
-        // save the PC
-        if (CVA6Cfg.CheriPresent) begin
-          dpc_d = pcc;
-        end else begin
-          dpc_d = {{CVA6Cfg.XLEN - CVA6Cfg.VLEN{pc_i[CVA6Cfg.VLEN-1]}}, pc_i[CVA6Cfg.VLEN-1:0]};
-        end
-        debug_mode_d   = 1'b1;
+        debug_mode_d = 1'b1;
+        dcsr_d.cause = ariane_pkg::CauseSingleStep;
+      end
+
+      // If we have entered debug mode for any of the above reasons
+      if (debug_mode_d) begin
+        // redirect fetch
         set_debug_pc_o = 1'b1;
-        dcsr_d.cause   = ariane_pkg::CauseSingleStep;
       end
     end
     // go in halt-state again when we encounter an exception
