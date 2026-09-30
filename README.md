@@ -2,7 +2,7 @@
 
 CVA6-CHERI is an implementation of the "RVY" [RISC-V CHERI specification](https://github.com/riscv/riscv-cheri) proposed for ratification.
 It is maintained by Capabilities Limited: see the [website](https://www.capabilitieslimited.co.uk/current-projects/cheri-cva6) for project information and updates.
-It is currently compliant with version 0.9.3 of that specification.
+It is currently compliant with version 0.9.9 of that specification.
 
 It is a fork of the OpenHW Foundation CVA6 core (see original README below).
 
