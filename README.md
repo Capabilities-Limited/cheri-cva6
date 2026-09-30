@@ -12,6 +12,8 @@ The core implements the purecap and hybrid variants of the CHERI specification.
 
 Please check the [issue tracker](https://github.com/Capabilities-Limited/cheri-cva6/issues) to see the status of the core and any known issues.
 
+[cheri.md](docs/03_cva6_design/cheri.md) gives information on how the architecture and microarchitecture have been modified to support CHERI.
+
 Below is the upstream CVA6 README for reference:
 
 # CVA6 RISC-V CPU [![Build Status](https://github.com/openhwgroup/cva6/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/openhwgroup/cva6/actions/workflows/ci.yml) [![CVA6 dashboard](https://riscv-ci.pages.thales-invia.fr/dashboard/badge_master.svg)](https://riscv-ci.pages.thales-invia.fr/dashboard/dashboard_cva6.html) [![Documentation Status](https://readthedocs.com/projects/openhw-group-cva6-user-manual/badge/?version=latest)](https://docs.openhwgroup.org/projects/cva6-user-manual/?badge=latest) [![GitHub release](https://img.shields.io/github/release/openhwgroup/cva6?include_prereleases=&sort=semver&color=blue)](https://github.com/openhwgroup/cva6/releases/)
