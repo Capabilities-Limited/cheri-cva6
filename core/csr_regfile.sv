@@ -482,6 +482,14 @@ module csr_regfile
           end
           csr_rdata = reg_to_x(dscratch1_q);
         end else read_access_exception = 1'b1;
+        riscv::CSR_DINFC:
+        if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
+          if (csr_read_cap) begin
+            csr_rcap = set_cap_reg_flags(REG_ROOT_CAP, commit_instr_i.int_mode);
+            csr_rcap_null = 1'b0;
+          end
+          csr_rdata = '0;
+        end else read_access_exception = 1'b1;
         // Trigger module registers
         riscv::CSR_TSELECT:
         if (CVA6Cfg.SDTRIG) csr_rdata = tselect_from_tm;
@@ -1411,6 +1419,13 @@ module csr_regfile
             dscratch1_d = csr_wdata_legalised;
           end
         end else update_access_exception = 1'b1;
+        riscv::CSR_DINFC: begin
+          if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
+            // Do nothing: DINFC is read-only
+          end else begin
+            update_access_exception = 1'b1;
+          end
+        end
         riscv::CSR_JVT: begin
           if (CVA6Cfg.RVZCMT) begin
             jvt_d.base = csr_wdata[CVA6Cfg.XLEN-1:6];
@@ -2727,7 +2742,7 @@ module csr_regfile
   always_comb begin : csr_op_logic
     csr_wdata = reg_to_x(csr_wdata_i);
     csr_we = 1'b1;
-    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC};
+    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC, riscv::CSR_DINFC};
     csr_write_cap = (CVA6Cfg.CheriPresent && (!commit_instr_i.int_mode || csr_clen_only) && csr_op_i == CSR_WRITE && !csr_op_is_imm_i) ? 1'b1 : 1'b0;
     ;
     csr_read = 1'b1;
