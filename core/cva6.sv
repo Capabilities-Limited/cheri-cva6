@@ -393,6 +393,12 @@ module cva6
       HS_EXT: (CVA6Cfg.XLEN'(1) << (CVA6Cfg.XLEN - 1)) | CVA6Cfg.XLEN'(riscv::IRQ_HS_EXT)
   };
 
+  localparam type debug_redirect_t = struct packed {
+    logic valid;
+    logic from_int_mode;
+    logic from_debug_mode;
+  };
+
   // ------------------------------------------
   // Global Signals
   // Signals connecting more than one module
@@ -677,9 +683,9 @@ module cva6
   logic halt_csr_ctrl;
   logic dcache_flush_ctrl_cache;
   logic dcache_flush_ack_cache_ctrl;
-  logic set_debug_pc;
   logic flush_commit;
   logic flush_acc;
+  debug_redirect_t set_debug_pc;
 
   icache_areq_t icache_areq_ex_cache;
   icache_arsp_t icache_areq_cache_ex;
@@ -723,7 +729,8 @@ module cva6
       .bp_resolve_t(bp_resolve_t),
       .fetch_entry_t(fetch_entry_t),
       .icache_dreq_t(icache_dreq_t),
-      .icache_drsp_t(icache_drsp_t)
+      .icache_drsp_t(icache_drsp_t),
+      .debug_redirect_t(debug_redirect_t)
   ) i_frontend (
       .clk_i,
       .rst_ni,
@@ -816,7 +823,7 @@ module cva6
       // DCACHE interfaces
       .dcache_req_ports_i(dcache_req_ports_cache_id),
       .dcache_req_ports_o(dcache_req_ports_id_cache),
-      .commit_redirect_i(ex_commit.valid | eret | set_pc_ctrl_pcgen),
+      .commit_redirect_i(ex_commit.valid | eret | set_pc_ctrl_pcgen | set_debug_pc.valid),
       .int_mode_issue_i(int_mode_issue_id),
       .int_mode_resolved_branch_i(cva6_cheri_pkg::get_cap_reg_flags(
           resolved_branch.target_address
@@ -910,7 +917,8 @@ module cva6
       .x_issue_req_t(x_issue_req_t),
       .x_issue_resp_t(x_issue_resp_t),
       .x_register_t(x_register_t),
-      .x_commit_t(x_commit_t)
+      .x_commit_t(x_commit_t),
+      .debug_redirect_t(debug_redirect_t)
   ) issue_stage_i (
       .clk_i,
       .rst_ni,
@@ -1005,6 +1013,8 @@ module cva6
       .commit_ack_i   (commit_ack_commit_id),
       .pcc_commit_i   (pc_commit),
       .set_pc_commit_i(set_pc_ctrl_pcgen),
+
+      .set_debug_pc_i(set_debug_pc),
 
       // Performance Counters
       .stall_issue_o        (stall_issue),
@@ -1236,6 +1246,7 @@ module cva6
       .exception_t       (exception_t),
       .jvt_t             (jvt_t),
       .irq_ctrl_t        (irq_ctrl_t),
+      .debug_redirect_t  (debug_redirect_t),
       .scoreboard_entry_t(scoreboard_entry_t),
       .rvfi_probes_csr_t (rvfi_probes_csr_t)
   ) csr_regfile_i (
@@ -1385,7 +1396,8 @@ module cva6
   // ------------
   controller #(
       .CVA6Cfg(CVA6Cfg),
-      .bp_resolve_t(bp_resolve_t)
+      .bp_resolve_t(bp_resolve_t),
+      .debug_redirect_t(debug_redirect_t)
   ) controller_i (
       .clk_i,
       .rst_ni,

@@ -25,6 +25,7 @@ module csr_regfile
     parameter type                   irq_ctrl_t         = logic,
     parameter type                   scoreboard_entry_t = logic,
     parameter type                   rvfi_probes_csr_t  = logic,
+    parameter type                   debug_redirect_t   = logic,
     parameter int                    VmidWidth          = 1,
     parameter int unsigned           N_Triggers         = 4
 ) (
@@ -151,7 +152,7 @@ module csr_regfile
     // debug request in - ID_STAGE
     input logic debug_req_i,
     // TO_BE_COMPLETED - FRONTEND
-    output logic set_debug_pc_o,
+    output debug_redirect_t set_debug_pc_o,
     // trap virtual memory - ID_STAGE
     output logic tvm_o,
     // timeout wait - ID_STAGE
@@ -1206,7 +1207,9 @@ module csr_regfile
     update_access_exception         = 1'b0;
     virtual_update_access_exception = 1'b0;
 
-    set_debug_pc_o                  = 1'b0;
+    set_debug_pc_o.valid            = 1'b0;
+    set_debug_pc_o.from_debug_mode  = debug_mode_q;
+    set_debug_pc_o.from_int_mode    = commit_instr_i.int_mode;
 
     perf_we_o                       = 1'b0;
     perf_data_o                     = 'b0;
@@ -2613,7 +2616,7 @@ module csr_regfile
       // If we have entered debug mode for any of the above reasons
       if (debug_mode_d) begin
         // redirect fetch
-        set_debug_pc_o = 1'b1;
+        set_debug_pc_o.valid = 1'b1;
         // Update DDC if we're actually entering debug mode.
         // Since this is a register accessible outside of debug mode, we can't
         // treat it like the updates to dcsr and dpc.
@@ -2624,7 +2627,7 @@ module csr_regfile
     end
     // go in halt-state again when we encounter an exception
     if (CVA6Cfg.DebugEn && debug_mode_q && ex_i.valid && ex_i.cause == riscv::BREAKPOINT) begin
-      set_debug_pc_o = 1'b1;
+      set_debug_pc_o.valid = 1'b1;
     end
 
     // ------------------------------
@@ -3053,8 +3056,9 @@ module csr_regfile
       if (CVA6Cfg.CheriPresent) begin
         trap_vector_base_o = cva6_cheri_pkg::set_cap_reg_addr(
           REG_ROOT,
-          CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0]
+          CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + (commit_instr_i.int_mode ? CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0] : CVA6Cfg.ExceptionCapModeAddress[CVA6Cfg.VLEN-1:0])
         );
+        trap_vector_base_o = cva6_cheri_pkg::set_cap_reg_flags(trap_vector_base_o, 1'b0);
       end else begin
         trap_vector_base_o = CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0];
       end
