@@ -645,8 +645,9 @@ package riscv;
     CSR_DPC              = 12'h7b1,
     CSR_DSCRATCH0        = 12'h7b2,  // optional
     CSR_DSCRATCH1        = 12'h7b3,  // optional
+    CSR_DROOTCSEL        = 12'h7ba,
     CSR_DDDC             = 12'h7bc,
-    CSR_DINFC            = 12'h7bd,
+    CSR_DROOTC           = 12'h7bd,
     // Counters and Timers from Zicntr extension (User Mode - R/O Shadows)
     CSR_CYCLE            = 12'hC00,
     CSR_CYCLEH           = 12'hC80,
