@@ -17,7 +17,8 @@ module controller
   import ariane_pkg::*;
 #(
     parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
-    parameter type bp_resolve_t = logic
+    parameter type bp_resolve_t = logic,
+    parameter type debug_redirect_t = logic
 ) (
     // Subsystem Clock - SUBSYSTEM
     input logic clk_i,
@@ -62,7 +63,7 @@ module controller
     // We got an exception, flush the pipeline - FRONTEND
     input logic ex_valid_i,
     // set the debug pc from CSR - FRONTEND
-    input logic set_debug_pc_i,
+    input debug_redirect_t set_debug_pc_i,
     // We got a resolved branch, check if we need to flush the front-end - EX_STAGE
     input bp_resolve_t resolved_branch_i,
     // We got an instruction which altered the CSR, flush the pipeline - CSR_REGFILE
@@ -233,7 +234,7 @@ module controller
     // 1. Exception
     // 2. Return from exception
     // ---------------------------------
-    if (ex_valid_i || eret_i || (CVA6Cfg.DebugEn && set_debug_pc_i)) begin
+    if (ex_valid_i || eret_i || (CVA6Cfg.DebugEn && set_debug_pc_i.valid)) begin
       // don't flush pcgen as we want to take the exception: Flush PCGen is not a flush signal
       // for the PC Gen stage but instead tells it to take the PC we gave it
       set_pc_commit_o        = 1'b0;

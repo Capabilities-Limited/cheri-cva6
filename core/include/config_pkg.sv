@@ -354,7 +354,15 @@ package config_pkg;
     bit          SoftwareInterruptEn;
 
     logic [63:0] HaltAddress;
+    // CHERI: Address to jump to when halt request from debug capmode
+    logic [63:0] ReenterCapModeAddress;
+    // CHERI: Address to jump to when halt request from debug intmode
+    logic [63:0] ReenterIntModeAddress;
     logic [63:0] ExceptionAddress;
+    // CHERI: Address to jump to when exception from debug capmode
+    logic [63:0] ExceptionCapModeAddress;
+    // CHERI: Address to jump to when exception from debug intmode
+    logic [63:0] ExceptionIntModeAddress;
     int unsigned RASDepth;
     int unsigned BTBEntries;
     bp_type_t    BPType;

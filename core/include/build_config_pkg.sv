@@ -112,7 +112,11 @@ package build_config_pkg;
     cfg.SoftwareInterruptEn = CVA6Cfg.SoftwareInterruptEn;
 
     cfg.HaltAddress = CVA6Cfg.HaltAddress;
-    cfg.ExceptionAddress = CVA6Cfg.ExceptionAddress;
+    cfg.ExceptionAddress = cfg.CheriPresent ? 0 : CVA6Cfg.ExceptionAddress;
+    cfg.ExceptionCapModeAddress = cfg.CheriPresent ? CVA6Cfg.ExceptionAddress : 0;
+    cfg.ExceptionIntModeAddress = cfg.CheriPresent ? CVA6Cfg.ExceptionAddress + 4 : 0;
+    cfg.ReenterCapModeAddress = cfg.CheriPresent ? CVA6Cfg.ExceptionAddress + 8 : 0;
+    cfg.ReenterIntModeAddress = cfg.CheriPresent ? CVA6Cfg.ExceptionAddress + 12 : 0;
     cfg.RASDepth = CVA6Cfg.RASDepth;
     cfg.BTBEntries = CVA6Cfg.BTBEntries;
     cfg.BPType = CVA6Cfg.BPType;
