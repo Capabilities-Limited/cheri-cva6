@@ -494,12 +494,17 @@ module csr_regfile
           end
           csr_rdata = reg_to_x(dscratch1_q);
         end else read_access_exception = 1'b1;
-        riscv::CSR_DINFC:
+        riscv::CSR_DROOTC:
         if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
           if (csr_read_cap) begin
             csr_rcap = set_cap_reg_int_mode(REG_ROOT_CAP, commit_instr_i.int_mode);
             csr_rcap_null = 1'b0;
           end
+          csr_rdata = '0;
+        end else read_access_exception = 1'b1;
+        riscv::CSR_DROOTCSEL:
+        if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
+          // Read-only zero
           csr_rdata = '0;
         end else read_access_exception = 1'b1;
         // Trigger module registers
@@ -1437,9 +1442,16 @@ module csr_regfile
             dscratch1_d = csr_wdata_legalised;
           end
         end else update_access_exception = 1'b1;
-        riscv::CSR_DINFC: begin
+        riscv::CSR_DROOTC: begin
           if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
-            // Do nothing: DINFC is read-only
+            // Do nothing: DROOTC is read-only
+          end else begin
+            update_access_exception = 1'b1;
+          end
+        end
+        riscv::CSR_DROOTCSEL: begin
+          if (CVA6Cfg.DebugEn && CVA6Cfg.CheriPresent) begin
+            // Do nothing: DROOTCSEL is read-only
           end else begin
             update_access_exception = 1'b1;
           end
@@ -2772,7 +2784,7 @@ module csr_regfile
   always_comb begin : csr_op_logic
     csr_wdata = reg_to_x(csr_wdata_i);
     csr_we = 1'b1;
-    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC, riscv::CSR_DDDC, riscv::CSR_DINFC, riscv::CSR_MTID, riscv::CSR_VSTID, riscv::CSR_STID, riscv::CSR_UTID};
+    csr_clen_only = csr_addr_i inside {riscv::CSR_DDC, riscv::CSR_DDDC, riscv::CSR_DROOTC, riscv::CSR_MTID, riscv::CSR_VSTID, riscv::CSR_STID, riscv::CSR_UTID};
     csr_write_cap = (CVA6Cfg.CheriPresent && (!commit_instr_i.int_mode || csr_clen_only) && csr_op_i == CSR_WRITE && !csr_op_is_imm_i) ? 1'b1 : 1'b0;
     ;
     csr_read = 1'b1;
