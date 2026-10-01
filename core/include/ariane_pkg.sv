@@ -732,18 +732,6 @@ package ariane_pkg;
     AMO_CAS2 = 4'b1101   // unused, not part of riscv spec, but provided in OpenPiton
   } amo_t;
 
-  // Bits required for representation of physical address space as 4K pages
-  // (e.g. 27*4K == 39bit address space).
-  localparam PPN4K_WIDTH = 38;
-
-  typedef struct packed {
-    logic             valid;    // valid flag
-    logic             is_4M;    //
-    logic [20-1:0]    vpn;      //VPN (32bits) = 20bits + 12bits offset
-    logic [9-1:0]     asid;     //ASID length = 9 for Sv32 mmu
-    riscv::pte_sv32_t content;
-  } tlb_update_sv32_t;
-
   typedef enum logic [2:0] {
     FE_NONE,
     FE_INSTR_ACCESS_FAULT,
@@ -982,56 +970,6 @@ package ariane_pkg;
       default:                                                                return 3'b000;
     endcase
   endfunction
-  // ----------------------
-  // MMU Functions
-  // ----------------------
-
-  // checks if final translation page size is 1G when H-extension is enabled
-  function automatic logic is_trans_1G(input logic s_st_enbl, input logic g_st_enbl,
-                                       input logic is_s_1G, input logic is_g_1G);
-    return (((is_s_1G && s_st_enbl) || !s_st_enbl) && ((is_g_1G && g_st_enbl) || !g_st_enbl));
-  endfunction : is_trans_1G
-
-  // checks if final translation page size is 2M when H-extension is enabled
-  function automatic logic is_trans_2M(input logic s_st_enbl, input logic g_st_enbl,
-                                       input logic is_s_1G, input logic is_s_2M,
-                                       input logic is_g_1G, input logic is_g_2M);
-    return  (s_st_enbl && g_st_enbl) ?
-                ((is_s_2M && (is_g_1G || is_g_2M)) || (is_g_2M && (is_s_1G || is_s_2M))) :
-                ((is_s_2M && s_st_enbl) || (is_g_2M && g_st_enbl));
-  endfunction : is_trans_2M
-
-  // computes the paddr based on the page size, ppn and offset
-  function automatic logic [40:0] make_gpaddr(input logic s_st_enbl, input logic is_1G,
-                                              input logic is_2M, input logic [63:0] vaddr,
-                                              input riscv::pte_t pte);
-    logic [40:0] gpaddr;
-    if (s_st_enbl) begin
-      gpaddr = {pte.ppn[28:0], vaddr[11:0]};
-      // Giga page
-      if (is_1G) gpaddr[29:12] = vaddr[29:12];
-      // Mega page
-      if (is_2M) gpaddr[20:12] = vaddr[20:12];
-    end else begin
-      gpaddr = vaddr[40:0];
-    end
-    return gpaddr;
-  endfunction : make_gpaddr
-
-  // computes the final gppn based on the guest physical address
-  function automatic logic [28:0] make_gppn(input logic s_st_enbl, input logic is_1G,
-                                            input logic is_2M, input logic [28:0] vpn,
-                                            input riscv::pte_t pte);
-    logic [28:0] gppn;
-    if (s_st_enbl) begin
-      gppn = pte.ppn[28:0];
-      if (is_2M) gppn[8:0] = vpn[8:0];
-      if (is_1G) gppn[17:0] = vpn[17:0];
-    end else begin
-      gppn = vpn;
-    end
-    return gppn;
-  endfunction : make_gppn
 
   // ----------------------
   // Helper functions
