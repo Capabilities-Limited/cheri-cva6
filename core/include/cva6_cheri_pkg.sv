@@ -396,10 +396,16 @@ package cva6_cheri_pkg;
   function automatic top_base_t get_cap_reg_top_base(cap_reg_t cap, cap_meta_data_t cap_meta_data);
     ew_t exp = cap.bounds.exp;
     addrw_t addr_bits = CAP_ADDR_WIDTH'({2'b0, cap.addr} & ~(~66'b0 >> exp)); // mask in relevant addr bits
+    // precompute correction factors for both values of addr_hi to improve timing.
+    logic [1:0] cb0 = cap_meta_data.base_hi_r ? 2'b01 : 2'b00;
+    logic [1:0] cb1 = cap_meta_data.base_hi_r ? 2'b00 : 2'b11;
+    logic [1:0] ct0 = cap_meta_data.top_hi_r ? 2'b01 : 2'b00;
+    logic [1:0] ct1 = cap_meta_data.top_hi_r ? 2'b00 : 2'b11;
     // base
-    addrw_t base_corr_bits = CAP_ADDR_WIDTH'($signed({cap_meta_data.cb, 66'b0}) >>> exp);
     addrw_t base_bits = CAP_ADDR_WIDTH'({cap.bounds.base_bits, 52'b0} >> exp);
-    addrw_t base = (addr_bits + base_corr_bits) | base_bits;
+    addrw_t base0 = (addr_bits + CAP_ADDR_WIDTH'($signed({cb0, 66'b0}) >>> exp)) | base_bits;
+    addrw_t base1 = (addr_bits + CAP_ADDR_WIDTH'($signed({cb1, 66'b0}) >>> exp)) | base_bits;
+    addrw_t base = cap_meta_data.addr_hi_r ? base1 : base0;
     // are the bounds a valid set of bounds (not malformed)
     bool_t malformed_msb =    ((exp == 0) && (cap.bounds.base_bits != 0))
                                || ((exp == 1) && (cap.bounds.base_bits[CAP_M_WIDTH-1] != 0));
@@ -407,8 +413,9 @@ package cva6_cheri_pkg;
     bool_t bounds_valid = (cap.EF == IMPLIED_EXP) || (!malformed_msb && !malformed_lsb);
     // top
     addrwe_t top_bits = (CAP_ADDR_WIDTH + 1)'({cap.bounds.top_bits, 52'b0} >> exp);
-    addrwe_t top_corr_bits = (CAP_ADDR_WIDTH + 1)'($signed({cap_meta_data.ct, 66'b0}) >>> exp);
-    addrwe_t top = (addr_bits + top_corr_bits) | top_bits;
+    addrwe_t top0 = (addr_bits + (CAP_ADDR_WIDTH + 1)'($signed({ct0, 66'b0}) >>> exp)) | top_bits;
+    addrwe_t top1 = (addr_bits + (CAP_ADDR_WIDTH + 1)'($signed({ct1, 66'b0}) >>> exp)) | top_bits;
+    addrwe_t top = cap_meta_data.addr_hi_r ? top1 : top0;
     logic [1:0] diff = top[CAP_ADDR_WIDTH:CAP_ADDR_WIDTH-1] - {1'b0, base[CAP_ADDR_WIDTH-1]};
     if ((exp > 1) && (diff > 1)) top[CAP_ADDR_WIDTH] = ~top[CAP_ADDR_WIDTH];
     // return
