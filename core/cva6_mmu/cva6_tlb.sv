@@ -282,10 +282,6 @@ module cva6_tlb
   logic gpaddr_to_be_flushed_is0;  // indicates that the GPADDR provided is 0, active high
   logic flush_addr_napot_match;
   logic flush_addr_matches;
-  logic [CVA6Cfg.VpnLen-1:0] temp_stored_vpn;
-  logic [CVA6Cfg.VpnLen-1:0] flush_vpn_masked;
-  logic [CVA6Cfg.VpnLen-1:0] stored_vpn_masked;
-  logic [CVA6Cfg.VpnLen-1:0] vpn_to_store;
 
   assign asid_to_be_flushed_is0   = ~(|asid_to_be_flushed_i);
   assign vaddr_to_be_flushed_is0  = ~(|vaddr_to_be_flushed_i);
@@ -300,8 +296,7 @@ module cva6_tlb
     content_n = content_q;
 
     for (int unsigned i = 0; i < TLB_ENTRIES; i++) begin
-
-
+      gppn[i] = '0;
       if (CVA6Cfg.RVH) begin
 
         if (tags_q[i].v_st_enbl[0]) begin
@@ -318,10 +313,13 @@ module cva6_tlb
       end
 
       if (tags_q[i].is_napot_64k && CVA6Cfg.SvnapotEn) begin
-        temp_stored_vpn = {tags_q[i].vpn[2], tags_q[i].vpn[1], tags_q[i].vpn[0]};
+        automatic logic [CVA6Cfg.VpnLen-1:0] stored_vpn;
+        automatic logic [CVA6Cfg.VpnLen-1:0] flush_vpn_masked;
+        automatic logic [CVA6Cfg.VpnLen-1:0] stored_vpn_masked;
+        stored_vpn = {tags_q[i].vpn[2], tags_q[i].vpn[1], tags_q[i].vpn[0]};
         // Mask the lower 4 bits of the VPN (addr[15:12]) for comparison
         flush_vpn_masked = vaddr_to_be_flushed_i[CVA6Cfg.VpnLen+11:12] & ~'hF;
-        stored_vpn_masked = temp_stored_vpn & ~'hF;
+        stored_vpn_masked = stored_vpn & ~'hF;
         flush_addr_napot_match = (flush_vpn_masked == stored_vpn_masked);
       end else begin
         flush_addr_napot_match = 1'b0;
@@ -376,7 +374,7 @@ module cva6_tlb
         end
         // normal replacement
       end else if (update_i.valid & replace_en[i] & !lu_hit_o) begin
-        vpn_to_store = update_i.vpn;
+        automatic logic [CVA6Cfg.VpnLen-1:0] vpn_to_store = update_i.vpn;
         if (update_i.is_napot_64k && CVA6Cfg.SvnapotEn) begin
           // Svnapot: For a NAPOT entry, normalize the VPN by clearing the lower bits before storage
           // This ensures that any address within the 64KiB range will match the same stored tag
