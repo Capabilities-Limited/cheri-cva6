@@ -804,7 +804,7 @@ module csr_regfile
           if (CVA6Cfg.RVU && CVA6Cfg.XLEN == 32) csr_rdata = '0;
           else read_access_exception = 1'b1;
         end
-        riscv::CSR_MSECCFG: csr_rdata = {{CVA6Cfg.XLEN - 4{1'b0}}, mseccre, 3'b0};
+        riscv::CSR_MSECCFG: csr_rdata = '0;
         riscv::CSR_MSECCFGH: csr_rdata = '0;
         riscv::CSR_MVENDORID: csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, OPENHWGROUP_MVENDORID};
         riscv::CSR_MARCHID: csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, ARIANE_MARCHID};
