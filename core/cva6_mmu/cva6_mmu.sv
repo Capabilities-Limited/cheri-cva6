@@ -395,7 +395,9 @@ module cva6_mmu
     iaccess_err = icache_areq_i.fetch_req && enable_translation_i &&  //
     (((priv_lvl_i == riscv::PRIV_LVL_U) && ~itlb_content.u)  //
     || ((priv_lvl_i == riscv::PRIV_LVL_S) && itlb_content.u));
-
+    // Safe defaults for these.
+    i_g_st_access_err = 1'b0;
+    final_fetch_ppn = '0;
     if (CVA6Cfg.RVH)
       i_g_st_access_err = icache_areq_i.fetch_req && enable_g_translation_i && !itlb_g_content.u;
     // MMU enabled: address from TLB, request delayed until hit. Error when TLB
