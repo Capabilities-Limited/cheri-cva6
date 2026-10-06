@@ -315,7 +315,7 @@ module issue_read_operands
 
   // TODO check only for 1st instruction ??
   // Allow a cvxif transaction if we WaW condition are ok.
-  assign cvxif_req_allowed = (issue_instr_i[0].fu == CVXIF);
+  assign cvxif_req_allowed = CVA6Cfg.CvxifEn && (issue_instr_i[0].fu == CVXIF);
   assign cvxif_instruction_valid = !issue_instr_i[0].ex.valid && issue_instr_valid_i[0] && cvxif_req_allowed;
   assign x_transaction_accepted_o = x_issue_valid_o && x_issue_ready_i && x_issue_resp_i.accept;
   assign x_transaction_rejected = x_issue_valid_o && x_issue_ready_i && ~x_issue_resp_i.accept;
@@ -1040,7 +1040,7 @@ module issue_read_operands
 
     issue_ack_o = issue_ack;
     // Do not acknowledge the issued instruction if transaction is not completed.
-    if (issue_instr_i[0].fu == CVXIF && !(x_transaction_accepted_o || x_transaction_rejected)) begin
+    if (CVA6Cfg.CvxifEn && issue_instr_i[0].fu == CVXIF && !(x_transaction_accepted_o || x_transaction_rejected)) begin
       issue_ack_o[0] = issue_instr_i[0].ex.valid && issue_instr_valid_i[0];
     end
     if (CVA6Cfg.SuperscalarEn) begin
@@ -1223,7 +1223,7 @@ module issue_read_operands
       if (CVA6Cfg.RVFI_DII) dii_id_n = issue_instr_i[0].dii_id;
     end
     x_transaction_rejected_n = 1'b0;
-    if (issue_instr_i[0].fu == CVXIF) begin
+    if (CVA6Cfg.CvxifEn && issue_instr_i[0].fu == CVXIF) begin
       x_transaction_rejected_n = x_transaction_rejected;
     end
   end
