@@ -340,7 +340,10 @@ module frontend
 
   // assert on branch, deassert when resolved
   logic speculative_q, speculative_d;
-  assign speculative_d = (speculative_q && !resolved_branch_i.valid || |is_branch || |is_return || |is_jalr) && !flush_i;
+  assign speculative_d = (speculative_q && !resolved_branch_i.valid ||
+                          |(is_branch & instr_queue_consumed) ||
+                          |(is_return & instr_queue_consumed) ||
+                          |(is_jalr & instr_queue_consumed)) && !flush_i;
   assign icache_dreq_o.spec = speculative_d;
 
   assign bht_update.valid = resolved_branch_i.valid
