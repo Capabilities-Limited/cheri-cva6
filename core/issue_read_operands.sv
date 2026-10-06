@@ -429,6 +429,7 @@ module issue_read_operands
           if (CVA6Cfg.SpeculativeSb) begin
             // Issue speculative instruction, will be removed on BMISS
             fus_busy[1].alu = 1'b1;
+            fus_busy[1].aes = 1'b1;
             fus_busy[1].clu = 1'b1;
             fus_busy[1].ctrl_flow = 1'b1;
             fus_busy[1].csr = 1'b1;
@@ -438,6 +439,7 @@ module issue_read_operands
             // There are no branch misses on a JAL
             if (issue_instr_i[0].op == ariane_pkg::ADD) begin
               fus_busy[1].alu = 1'b1;
+              fus_busy[1].aes = 1'b1;
               fus_busy[1].clu = 1'b1;
               fus_busy[1].ctrl_flow = 1'b1;
               fus_busy[1].csr = 1'b1;
@@ -452,10 +454,18 @@ module issue_read_operands
             fus_busy[1].alu2 = 1'b1;
           end else begin
             fus_busy[1].alu = 1'b1;
+            fus_busy[1].aes = 1'b1;
             fus_busy[1].ctrl_flow = 1'b1;
             fus_busy[1].clu = 1'b1;
             fus_busy[1].csr = 1'b1;
           end
+        end
+        AES: begin
+          fus_busy[1].alu = 1'b1;
+          fus_busy[1].aes = 1'b1;
+          fus_busy[1].ctrl_flow = 1'b1;
+          fus_busy[1].clu = 1'b1;
+          fus_busy[1].csr = 1'b1;
         end
         CSR: begin
           // Control hazard
@@ -480,6 +490,7 @@ module issue_read_operands
         end
         CLU: begin
           fus_busy[1].alu = 1'b1;
+          fus_busy[1].aes = 1'b1;
           fus_busy[1].clu = 1'b1;
           fus_busy[1].ctrl_flow = 1'b1;
           fus_busy[1].csr = 1'b1;
