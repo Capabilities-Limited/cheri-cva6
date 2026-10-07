@@ -105,7 +105,9 @@ module branch_unit #(
     if (CVA6Cfg.CheriPresent) begin
       target_pcc = cva6_cheri_pkg::set_cap_reg_address(
           jump_base_cap, target_address, cva6_cheri_pkg::get_cap_reg_meta_data(jump_base_cap));
-      target_pcc = cva6_cheri_pkg::set_cap_reg_otype(target_pcc, cva6_cheri_pkg::UNSEALED_CAP);
+      if (jump_base_cap.otype == cva6_cheri_pkg::SENTRY_CAP && !jump_base[0] &&
+          !(|fu_data_i.imm[CVA6Cfg.VLEN-1:0]))
+        target_pcc = cva6_cheri_pkg::set_cap_reg_otype(target_pcc, cva6_cheri_pkg::UNSEALED_CAP);
     end else begin
       target_pcc = '0;
     end
@@ -119,7 +121,7 @@ module branch_unit #(
           automatic cva6_cheri_pkg::cap_reg_t compare_target_cap;
           compare_pcc = cva6_cheri_pkg::set_cap_reg_int_mode(pcc, 0);
           compare_target_cap = cva6_cheri_pkg::set_cap_reg_int_mode(
-              cva6_cheri_pkg::set_cap_reg_otype(operand_a_cap, cva6_cheri_pkg::UNSEALED_CAP), 0);
+              cva6_cheri_pkg::set_cap_reg_otype(operand_a_cap, target_pcc.otype), 0);
           if (compare_target_cap != cva6_cheri_pkg::set_cap_reg_address(
                   compare_pcc,
                   compare_target_cap[CVA6Cfg.XLEN-1:0],
