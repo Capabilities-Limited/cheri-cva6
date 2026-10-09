@@ -584,7 +584,8 @@ module ariane_testharness import cva6_cheri_pkg::*; #(
         .slv_req_t               (ariane_axi_soc::req_slv_t),
         .slv_resp_t              (ariane_axi_soc::resp_slv_t),
         .mst_req_t               (axi_mst_req_t),
-        .mst_resp_t              (axi_mst_resp_t)
+        .mst_resp_t              (axi_mst_resp_t),
+        .perf_counters           (4)
     ) i_axi_tagctrl_top (
         .clk_i,
         .rst_ni,
