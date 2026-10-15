@@ -82,7 +82,7 @@ package cva6_config_pkg;
 
   localparam CVA6ConfigMmuPresent = 1;
 
-  localparam CVA6ConfigRvfiTrace = 1;
+  localparam CVA6ConfigRvfiTrace = 0;
 
   localparam config_pkg::cva6_user_cfg_t cva6_cfg = '{
       XLEN: unsigned'(CVA6ConfigXlen),
@@ -106,7 +106,7 @@ package cva6_config_pkg;
       XF8: bit'(CVA6ConfigF8En),
       RVA: bit'(CVA6ConfigAExtEn),
       RVB: bit'(CVA6ConfigBExtEn),
-      ZKN: bit'(1),
+      ZKN: bit'(0),
       RVV: bit'(CVA6ConfigVExtEn),
       RVC: bit'(CVA6ConfigCExtEn),
       RVH: bit'(CVA6ConfigHExtEn),
