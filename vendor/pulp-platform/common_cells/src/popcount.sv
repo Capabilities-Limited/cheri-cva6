@@ -30,7 +30,10 @@ module popcount #(
    logic [PopcountWidth-2:0]         left_child_result, right_child_result;
 
    //Zero pad the input to next power of two
-   assign padded_input = {{{PaddedWidth-INPUT_WIDTH}{1'b0}}, data_i};
+   always_comb begin
+     padded_input = '0;
+     padded_input[INPUT_WIDTH-1:0] = data_i;
+   end
 
    //Recursive instantiation to build binary adder tree
    if (INPUT_WIDTH == 1) begin : single_node
