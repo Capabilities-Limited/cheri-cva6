@@ -391,6 +391,12 @@ module compressed_decoder #(
               instr_i[11:7],
               riscv::OpcodeOpImm
             };
+            if (CVA6Cfg.CheriPresent && !int_mode_i) begin
+              // Hints that would have side effects on CHERI are reserved
+              if (instr_i[11:7] != '0 && {instr_i[12], instr_i[6:2], instr_i[11:7]} == '0) begin
+                illegal_instr_o = 1'b1;
+              end
+            end
           end
 
 
@@ -500,6 +506,12 @@ module compressed_decoder #(
                   instr_i[9:7],
                   riscv::OpcodeOpImm
                 };
+                if (CVA6Cfg.CheriPresent && !int_mode_i) begin
+                  // Hints that would have side effects on CHERI are reserved
+                  if ({instr_i[12], instr_i[6:2]} == '0) begin
+                    illegal_instr_o = 1'b1;
+                  end
+                end
               end
 
               2'b10: begin
@@ -820,6 +832,12 @@ module compressed_decoder #(
               instr_i[11:7],
               riscv::OpcodeOpImm
             };
+            if (CVA6Cfg.CheriPresent && !int_mode_i) begin
+              // Hints that would have side effects on CHERI are reserved
+              if (instr_i[11:7] != '0 && {instr_i[12], instr_i[6:2], instr_i[11:7]} == '0) begin
+                illegal_instr_o = 1'b1;
+              end
+            end
           end
 
           riscv::OpcodeC2Fldsp: begin
