@@ -1889,6 +1889,7 @@ module decoder
                       5'b00100: instruction_o.op = ariane_pkg::YTAGR;
                       5'b00101: instruction_o.op = ariane_pkg::YTYPER;
                       5'b00110: instruction_o.op = ariane_pkg::YMODER;
+                      5'b00111: instruction_o.op = ariane_pkg::YHIR;
                       default:  illegal_instr = 1'b1;
                     endcase
                   end
@@ -1954,11 +1955,7 @@ module decoder
               3'b101: begin  // shifts and YBNDSWI
                 instruction_o.rs1 = instr.itype.rs1;
                 instruction_o.rd  = instr.itype.rd;
-                if (instr.instr[31:27] == 5'b0  // SRLIY(i.e. YHIR)
-                    && instr.instr[26:20] == 7'd64) begin  // Only shift by 64 valid
-                  instruction_o.fu = CLU;
-                  instruction_o.op = ariane_pkg::YHIR;
-                end else if (instr.instr[31:29] == 3'b111) begin
+                if (instr.instr[31:29] == 3'b111) begin
                   imm_select = SCIMM;
                   instruction_o.fu = CLU;
                   instruction_o.op = ariane_pkg::YBNDSW;
