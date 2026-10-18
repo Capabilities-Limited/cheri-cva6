@@ -383,11 +383,11 @@ package riscv;
     CSR_VTYPE            = 12'hC21,
     CSR_VLENB            = 12'hC22,
     // CHERI: CSRs
-    CSR_DDC              = 12'h416,
-    CSR_UTID             = 12'h480,
-    CSR_STID             = 12'h580,
-    CSR_VSTID            = 12'hA80,
-    CSR_MTID             = 12'h780,
+    CSR_DDC              = 12'h03f,
+    CSR_UTID             = 12'h07f,
+    CSR_STID             = 12'h17f,
+    CSR_VSTID            = 12'h27f,
+    CSR_MTID             = 12'h37f,
     // Virtual Supervisor Mode CSRs
     CSR_VSSTATUS         = 12'h200,
     CSR_VSIE             = 12'h204,
@@ -645,9 +645,9 @@ package riscv;
     CSR_DPC              = 12'h7b1,
     CSR_DSCRATCH0        = 12'h7b2,  // optional
     CSR_DSCRATCH1        = 12'h7b3,  // optional
-    CSR_DROOTCSEL        = 12'h7ba,
-    CSR_DDDC             = 12'h7bc,
-    CSR_DROOTC           = 12'h7bd,
+    CSR_DROOTCSEL        = 12'h7bd,
+    CSR_DROOTC           = 12'h7be,
+    CSR_DDDC             = 12'h7bf,
     // Counters and Timers from Zicntr extension (User Mode - R/O Shadows)
     CSR_CYCLE            = 12'hC00,
     CSR_CYCLEH           = 12'hC80,
