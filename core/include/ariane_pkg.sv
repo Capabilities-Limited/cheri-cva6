@@ -345,7 +345,7 @@ package ariane_pkg;
     // Capability-Modification Instructions
     YPERMC,
     YMODEW,
-    PACKY,
+    YHIW,
     YADDRW,
     YADD,
     YBNDSRW,

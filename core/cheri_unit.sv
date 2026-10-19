@@ -264,7 +264,7 @@ module cheri_unit
             set_cap_reg_int_mode(operand_a, operand_b.addr[0]);
       end
       // CSetHigh
-      ariane_pkg::PACKY: begin
+      ariane_pkg::YHIW: begin
         cap_mem = cap_reg_to_cap_mem(operand_a);
         cap_mem[((CVA6Cfg.XLEN*2)-1):CVA6Cfg.XLEN] = operand_b[XLEN-1:0];
         clu_result = cap_mem_to_cap_reg(cap_mem);
