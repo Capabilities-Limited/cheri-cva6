@@ -1811,7 +1811,7 @@ module decoder
                 instruction_o.rd  = instr.rtype.rd;
                 instruction_o.fu  = CLU;
                 unique case (instr.rtype.funct7)
-                  7'b000_0001: instruction_o.op = ariane_pkg::PACKY;
+                  7'b000_0001: instruction_o.op = ariane_pkg::YHIW;
                   7'b000_0011: begin
                     case (instr.rtype.rs2)
                       // ------------------------------------
