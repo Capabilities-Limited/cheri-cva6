@@ -185,7 +185,9 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         $(wildcard corev_apu/fpga/src/axi_slice/src/*.sv)                            \
         $(wildcard vendor/pulp-platform/axi_riscv_atomics/src/*.sv)                  \
         $(wildcard corev_apu/axi_mem_if/src/*.sv)                                    \
-        $(wildcard corev_apu/riscv-dbg/src/*.sv)                                     \
+        $(filter-out corev_apu/riscv-dbg/src/dmi_test.sv                             \
+                     corev_apu/riscv-dbg/src/dmi_bscane_tap.sv,                      \
+          $(wildcard corev_apu/riscv-dbg/src/*.sv))                                  \
         corev_apu/rv_plic/rtl/rv_plic_target.sv                                      \
         corev_apu/rv_plic/rtl/rv_plic_gateway.sv                                     \
         corev_apu/rv_plic/rtl/plic_regmap.sv                                         \
@@ -210,7 +212,11 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/pulp-platform/axi/src/axi_demux.sv                                    \
         vendor/pulp-platform/axi/src/axi_xbar.sv                                     \
         vendor/pulp-platform/axi/src/axi_isolate.sv                                  \
+        vendor/pulp-platform/common_cells/src/cdc_reset_ctrlr_pkg.sv                 \
+        vendor/pulp-platform/common_cells/src/cdc_4phase.sv                          \
+        vendor/pulp-platform/common_cells/src/cdc_reset_ctrlr.sv                     \
         vendor/pulp-platform/common_cells/src/cdc_2phase.sv                          \
+        vendor/pulp-platform/common_cells/src/cdc_2phase_clearable.sv                \
         vendor/pulp-platform/common_cells/src/spill_register_flushable.sv            \
         vendor/pulp-platform/common_cells/src/spill_register.sv                      \
         vendor/pulp-platform/common_cells/src/deprecated/fifo_v1.sv                  \
