@@ -1927,7 +1927,7 @@ module decoder
                 if (CVA6Cfg.RVA) begin
                   instruction_o.fu  = STORE;
                   instruction_o.rs1 = instr.atype.rs1;
-                  if (instruction_o.rs1 == 5'b0) illegal_instr = 1'b1;
+                  if (instruction_o.rs1 == 5'b0 && !int_mode_i) illegal_instr = 1'b1;
                   instruction_o.rs2 = instr.atype.rs2;
                   instruction_o.rd = instr.atype.rd;
                   instruction_o.use_ddc = int_mode_i;
