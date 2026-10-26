@@ -379,6 +379,7 @@ module decoder
                 end
                 if (CVA6Cfg.CheriPresent) begin
                   instruction_o.use_ddc = int_mode_i;
+                  if (!int_mode_i && instruction_o.rs1 == 5'b0) illegal_instr = 1'b1;
                 end else begin
                   instruction_o.use_ddc = 1'b0;
                 end
@@ -1313,6 +1314,7 @@ module decoder
           instruction_o.rs2 = instr.stype.rs2;
           if (CVA6Cfg.CheriPresent) begin
             instruction_o.use_ddc = int_mode_i;
+            if (!int_mode_i && instruction_o.rs1 == 5'b0) illegal_instr = 1'b1;
           end else begin
             instruction_o.use_ddc = 1'b0;
           end
@@ -1339,6 +1341,7 @@ module decoder
           instruction_o.rd = instr.itype.rd;
           if (CVA6Cfg.CheriPresent) begin
             instruction_o.use_ddc = int_mode_i;
+            if (!int_mode_i && instruction_o.rs1 == 5'b0) illegal_instr = 1'b1;
           end else begin
             instruction_o.use_ddc = 1'b0;
           end
@@ -1374,6 +1377,7 @@ module decoder
             instruction_o.rs2 = instr.stype.rs2;
             if (CVA6Cfg.CheriPresent) begin
               instruction_o.use_ddc = int_mode_i;
+              if (!int_mode_i && instruction_o.rs1 == 5'b0) illegal_instr = 1'b1;
             end else begin
               instruction_o.use_ddc = 1'b0;
             end
@@ -1409,6 +1413,7 @@ module decoder
             instruction_o.rd = instr.itype.rd;
             if (CVA6Cfg.CheriPresent) begin
               instruction_o.use_ddc = int_mode_i;
+              if (!int_mode_i && instruction_o.rs1 == 5'b0) illegal_instr = 1'b1;
             end else begin
               instruction_o.use_ddc = 1'b0;
             end
@@ -1651,6 +1656,7 @@ module decoder
           instruction_o.rd  = instr.atype.rd;
           if (CVA6Cfg.CheriPresent) begin
             instruction_o.use_ddc = int_mode_i;
+            if (!int_mode_i && instruction_o.rs1 == 5'b0) illegal_instr = 1'b1;
           end else begin
             instruction_o.use_ddc = 1'b0;
           end
