@@ -103,7 +103,7 @@ module cheri_unit
       // CAndPerm
       ariane_pkg::YPERMC: begin
         automatic cap_report_perms_t new_perms;
-        check_operand_a_violations.seal = 1'b1;
+        automatic cap_hperms_t hperms_compare_exclude_mask;
         tmp_cap = operand_a;
         new_perms = hperms_and_uperms_to_report_perms(operand_a.hperms, operand_a.uperms,
                                                       operand_a_malformed);
@@ -112,6 +112,18 @@ module cheri_unit
         tmp_cap.hperms = legalize_arch_perms(report_perms_to_hperms(new_perms));
         tmp_cap.hperms.int_mode = operand_a.hperms.int_mode;
         if (!tmp_cap.hperms.permit_execute) tmp_cap.hperms.int_mode = 1'b0;
+
+        // Check if AP or SDP have been changed and clear the tag.
+        // Hperms is AP with P and G included. Exclude G from the comparison
+        // P should not be changable on a sealed cap, so compare it anyway, though it should not be
+        // possible for this instruction to change it without clearing some other permission,
+        // so the check should be redundant.
+        hperms_compare_exclude_mask = '0;
+        hperms_compare_exclude_mask.cap_level = 1'b1;
+        if (operand_a_is_sealed && (((tmp_cap.hperms ^ operand_a.hperms) & ~hperms_compare_exclude_mask) != '0)) begin
+          tmp_cap.tag = 1'b0;
+        end
+        if (operand_a_is_sealed && (tmp_cap.uperms != operand_a.uperms)) tmp_cap.tag = 1'b0;
         clu_result = tmp_cap;
       end
       // CTestSubset
