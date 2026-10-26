@@ -2987,9 +2987,11 @@ module csr_regfile
     csr_exception_o = {
       {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.XLEN{1'b0}}, {CVA6Cfg.GPLEN{1'b0}}, {32{1'b0}}, 1'b0, 1'b0
     };
+    csr_exception_o.cause = riscv::ILLEGAL_INSTR;
+    // we don't set the tval field as this will be set by the commit stage
+    // this spares the extra wiring from commit to CSR and back to commit
 
     if (cheri_access_violation && !debug_mode_q) begin
-      csr_exception_o.cause = cva6_cheri_pkg::CAP_INSTR_ACCESS_FAULT;
       csr_exception_o.valid = 1'b1;
     end
     // ----------------------------------
@@ -2998,14 +3000,10 @@ module csr_regfile
     // we got an exception in one of the processes above
     // throw an illegal instruction exception
     if (update_access_exception || read_access_exception) begin
-      csr_exception_o.cause = riscv::ILLEGAL_INSTR;
-      // we don't set the tval field as this will be set by the commit stage
-      // this spares the extra wiring from commit to CSR and back to commit
       csr_exception_o.valid = 1'b1;
     end
 
     if (privilege_violation) begin
-      csr_exception_o.cause = riscv::ILLEGAL_INSTR;
       csr_exception_o.valid = 1'b1;
     end
 
