@@ -1,5 +1,5 @@
 # CHERI (RVY Extension) Implementation
-CVA6-CHERI is a fork of CVA6 that has been modified with support for version 0.9.9 of the RVY CHERI RISC-V architecture specification.
+CVA6-CHERI is a fork of CVA6 that has been modified with support for version 0.9.10 of the RVY CHERI RISC-V architecture specification.
 This documentation gives information of changes made to the microarchitecture for CVA6-CHERI.
 The upstream CVA6 documentation should be used for information about non-CHERI features.
 See the Issue tracker for information on any parts of the specification not yet implemented and plans to update to future versions.
