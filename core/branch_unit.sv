@@ -105,9 +105,14 @@ module branch_unit #(
     if (CVA6Cfg.CheriPresent) begin
       target_pcc = cva6_cheri_pkg::set_cap_reg_address(
           jump_base_cap, target_address, cva6_cheri_pkg::get_cap_reg_meta_data(jump_base_cap));
-      if (jump_base_cap.otype == cva6_cheri_pkg::SENTRY_CAP && !jump_base[0] &&
-          !(|fu_data_i.imm[CVA6Cfg.VLEN-1:0]))
-        target_pcc = cva6_cheri_pkg::set_cap_reg_otype(target_pcc, cva6_cheri_pkg::UNSEALED_CAP);
+      if (jump_base_cap.otype != cva6_cheri_pkg::UNSEALED_CAP) begin
+        if (jump_base_cap.otype == cva6_cheri_pkg::SENTRY_CAP &&
+                (!jump_base[0] && !(|fu_data_i.imm[CVA6Cfg.VLEN-1:0]))) begin
+          target_pcc = cva6_cheri_pkg::set_cap_reg_otype(target_pcc, cva6_cheri_pkg::UNSEALED_CAP);
+        end else begin
+          target_pcc.tag = 1'b0;
+        end
+      end
     end else begin
       target_pcc = '0;
     end
