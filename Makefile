@@ -247,6 +247,7 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups.sv \
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups_read.sv \
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups_write.sv \
+        vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_flushing.sv \
         corev_apu/tb/ariane_testharness.sv                                           \
         corev_apu/tb/ariane_peripherals.sv                                           \
         corev_apu/tb/rvfi_tracer.sv                                                  \
