@@ -3231,8 +3231,8 @@ module csr_regfile
         jvt_q <= '0;
       end
       // debug signals
+      debug_mode_q <= 1'b0;
       if (CVA6Cfg.DebugEn) begin
-        debug_mode_q       <= 1'b0;
         dcsr_q             <= '{xdebugver: 4'h4, prv: riscv::PRIV_LVL_M, default: '0};
         dpc_q              <= REG_ROOT;
         dddc_q             <= REG_NULL;
