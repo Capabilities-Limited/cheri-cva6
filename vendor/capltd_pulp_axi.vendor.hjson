@@ -1,0 +1,26 @@
+// Copyright (c) 2026 Capabilities Limited.
+// SPDX-License-Identifier: SHL-0.51
+
+{
+    // Name of the project
+    name: "capltd_pulp_axi",
+
+    // Target directory: relative to the location of this script.
+    target_dir: "capltd/pulp_axi",
+
+    // Upstream repository: Capabilities Limited additions to pulp-platform/axi
+    // (`axi_hazard_filter`, beat-limiting `axi_throttle`), ported to the common_cells v1
+    // naming used by vendor/pulp-platform/common_cells.
+    upstream: {
+        // URL
+        url: "https://github.com/Capabilities-Limited/pulp_axi.git",
+        // revision: head of branch `axi_cheri_tag_controller_ordering_dependencies`
+        rev: "124fda1ea39ffe3cf779d4c8f75b5e1963eef72c",
+    }
+
+    // Exclusions from upstream content
+    exclude_from_upstream: [
+        // Only used by Bender-based consumers (e.g. axi_cheri_tagcontroller).
+        "Bender.yml",
+    ]
+}
