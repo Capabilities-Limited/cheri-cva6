@@ -244,6 +244,7 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_hpdcache_read_req_rsp_wrapper.sv \
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_hpdcache_write_req_rsp_wrapper.sv \
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine.sv \
+        vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_flushing.sv \
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_root_init.sv \
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups.sv \
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups_read.sv \
