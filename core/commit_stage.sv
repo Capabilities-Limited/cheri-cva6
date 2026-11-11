@@ -334,9 +334,9 @@ module commit_stage
           we_gpr_o[0] = amo_resp_i.ack;
         end
       end
-      if (do_halt) begin
-        flush_commit_o = 1'b1;
-      end
+    end
+    if (do_halt) begin
+      flush_commit_o = 1'b1;
     end
 
     if (CVA6Cfg.NrCommitPorts > 1) begin
