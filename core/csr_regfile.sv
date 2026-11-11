@@ -2615,8 +2615,9 @@ module csr_regfile
         dcsr_d.cause = ariane_pkg::CauseRequest;
       end
 
-      // single step enable and we just retired an instruction
-      if (dcsr_q.step && commit_ack_i[0]) begin
+      // single step enable and we just retired an instruction or took an exception
+      // This is the first instruction after a resume, so no risk it was dropped.
+      if (dcsr_q.step && (commit_ack_i[0] || ex_i.valid)) begin
         single_step_done_d = 1'b1;
       end
 
@@ -3026,7 +3027,7 @@ module csr_regfile
       wfi_d = 1'b0;
       // or alternatively if there is no exception pending and we are not in debug mode wait here
       // for the interrupt
-    end else if (((CVA6Cfg.DebugEn && !debug_mode_q) && csr_op_i == WFI && !ex_i.valid) || (!CVA6Cfg.DebugEn && csr_op_i == WFI && !ex_i.valid)) begin
+    end else if (((CVA6Cfg.DebugEn && !debug_mode_q && !dcsr_q.step) && csr_op_i == WFI && !ex_i.valid) || (!CVA6Cfg.DebugEn && csr_op_i == WFI && !ex_i.valid)) begin
       wfi_d = 1'b1;
     end
   end
@@ -3231,8 +3232,8 @@ module csr_regfile
         jvt_q <= '0;
       end
       // debug signals
+      debug_mode_q <= 1'b0;
       if (CVA6Cfg.DebugEn) begin
-        debug_mode_q       <= 1'b0;
         dcsr_q             <= '{xdebugver: 4'h4, prv: riscv::PRIV_LVL_M, default: '0};
         dpc_q              <= REG_ROOT;
         dddc_q             <= REG_NULL;
