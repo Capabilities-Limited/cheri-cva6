@@ -2615,8 +2615,9 @@ module csr_regfile
         dcsr_d.cause = ariane_pkg::CauseRequest;
       end
 
-      // single step enable and we just retired an instruction
-      if (dcsr_q.step && commit_ack_i[0]) begin
+      // single step enable and we just retired an instruction or took an exception
+      // This is the first instruction after a resume, so no risk it was dropped.
+      if (dcsr_q.step && (commit_ack_i[0] || ex_i.valid)) begin
         single_step_done_d = 1'b1;
       end
 
