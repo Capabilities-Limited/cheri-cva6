@@ -15,7 +15,7 @@
         // URL
         url: "https://github.com/Capabilities-Limited/pulp_axi.git",
         // revision: head of branch `axi_cheri_tag_controller_ordering_dependencies`
-        rev: "124fda1ea39ffe3cf779d4c8f75b5e1963eef72c",
+        rev: "b29dc3464e613fc0b448228d7f016f92df18f4f1",
     }
 
     // Exclusions from upstream content
