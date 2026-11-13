@@ -41,6 +41,14 @@
 /// A larger `RegionSize` (e.g., the cache line size) narrows the comparators at the cost of
 /// detecting false hazards between transactions that share a region but not a byte.
 ///
+/// As an AXI burst never crosses a 4 KiB boundary (AXI Spec A3.4.1), all bytes of a burst share
+/// the same page number (address bits above bit 11).  The range of a burst is therefore stored as
+/// the regions it touches within its page, plus a `PageHashWidth`-bit hash of its page number,
+/// formed by XOR-folding the page number.  Two transactions overlap if their page hashes are equal
+/// and their in-page ranges intersect.  If the page number is wider than the hash, different pages
+/// can share a hash; this only causes false hazards (stalls), never a missed hazard.  If the page
+/// number fits into the hash, it is compared exactly.
+///
 /// ## Atomic Operations
 ///
 /// An ATOP is treated as a write.  An ATOP that has an R response (`AtomicLoad`, `AtomicSwap`,
@@ -59,6 +67,7 @@
 ///   starve a write to that region (and vice versa).
 /// - A transaction is retired one cycle after its response handshake, i.e., a transaction stalled
 ///   on it is forwarded one cycle after the response at the earliest.
+/// - Bursts that illegally cross a 4 KiB boundary are not supported (an assertion flags them).
 module axi_hazard_filter #(
   /// Maximum number of in-flight read transactions.
   parameter int unsigned MaxReadTxns  = 32'd0,
@@ -68,8 +77,10 @@ module axi_hazard_filter #(
   parameter int unsigned AxiIdWidth   = 32'd0,
   /// AXI4+ATOP address width.
   parameter int unsigned AxiAddrWidth = 32'd0,
-  /// Granularity of hazard detection in bytes.  Must be a power of two.
-  parameter int unsigned RegionSize   = 32'd1,
+  /// Granularity of hazard detection in bytes.  Must be a power of two and at most 4096.
+  parameter int unsigned RegionSize    = 32'd1,
+  /// Width of the hash of the page number (address bits above bit 11) stored per transaction.
+  parameter int unsigned PageHashWidth = 32'd16,
   /// AXI4+ATOP request struct definition.
   parameter type         axi_req_t    = logic,
   /// AXI4+ATOP response struct definition.
@@ -89,28 +100,41 @@ module axi_hazard_filter #(
   input  axi_resp_t mst_resp_i
 );
 
+  /// AXI bursts never cross a 4 KiB boundary, so the page number of all bytes of a burst is equal.
+  localparam int unsigned PageOffsetWidth   = 32'd12;
   localparam int unsigned RegionOffsetWidth = $clog2(RegionSize);
-  localparam int unsigned RegionIdxWidth    = AxiAddrWidth - RegionOffsetWidth;
+  /// Index of a region within a page (at least one bit wide, to keep the types legal).
+  localparam int unsigned RegionIdxWidth    = (PageOffsetWidth > RegionOffsetWidth) ?
+                                              (PageOffsetWidth - RegionOffsetWidth) : 32'd1;
   localparam int unsigned WrSlotIdxWidth    = cf_math_pkg::idx_width(MaxWriteTxns);
   localparam int unsigned RdSlotIdxWidth    = cf_math_pkg::idx_width(MaxReadTxns);
 
   typedef logic [AxiIdWidth-1:0]     id_t;
   typedef logic [AxiAddrWidth-1:0]   addr_t;
   typedef logic [RegionIdxWidth-1:0] region_idx_t;
+  typedef logic [PageHashWidth-1:0]  page_hash_t;
   typedef logic [WrSlotIdxWidth-1:0] wr_slot_idx_t;
   typedef logic [RdSlotIdxWidth-1:0] rd_slot_idx_t;
 
-  /// Inclusive range of regions accessed by a burst.
+  /// First and last byte address accessed by a burst.
   typedef struct packed {
+    addr_t first;
+    addr_t last;
+  } bounds_t;
+
+  /// Range of regions accessed by a burst: the hash of its page number and the inclusive range of
+  /// regions it touches within that page.
+  typedef struct packed {
+    page_hash_t  page;
     region_idx_t first;
     region_idx_t last;
   } range_t;
 
-  /// Compute the (conservative) range of regions accessed by a burst.
-  function automatic range_t burst_range(addr_t addr, axi_pkg::size_t size, axi_pkg::len_t len,
-                                         axi_pkg::burst_t burst);
-    addr_t  first_addr, last_addr, num_bytes;
-    range_t range;
+  /// Compute the (conservative) first and last byte address accessed by a burst.
+  function automatic bounds_t burst_bounds(addr_t addr, axi_pkg::size_t size, axi_pkg::len_t len,
+                                           axi_pkg::burst_t burst);
+    addr_t   first_addr, last_addr, num_bytes;
+    bounds_t bounds;
     num_bytes = (addr_t'(len) + addr_t'(1)) << size;
     unique case (burst)
       axi_pkg::BURST_FIXED: begin
@@ -129,22 +153,48 @@ module axi_hazard_filter #(
         last_addr  = first_addr + num_bytes - addr_t'(1);
       end
     endcase
-    range.first = region_idx_t'(first_addr >> RegionOffsetWidth);
-    range.last  = region_idx_t'(last_addr  >> RegionOffsetWidth);
+    bounds.first = first_addr;
+    bounds.last  = last_addr;
+    return bounds;
+  endfunction
+
+  /// XOR-fold the page number (the address bits above the page offset) into a hash.
+  function automatic page_hash_t page_hash(axi_pkg::largest_addr_t addr);
+    page_hash_t hash = '0;
+    for (int unsigned i = PageOffsetWidth; i < AxiAddrWidth; i++) begin
+      hash[(i - PageOffsetWidth) % PageHashWidth] ^= addr[i];
+    end
+    return hash;
+  endfunction
+
+  /// Index of the region within its page that contains a byte (given by its offset in the page).
+  function automatic region_idx_t region_idx(logic [PageOffsetWidth-1:0] page_offset);
+    return region_idx_t'(page_offset >> RegionOffsetWidth);
+  endfunction
+
+  /// Convert the bounds of a burst (which lie within one page) to its range of regions.
+  function automatic range_t to_range(bounds_t bounds);
+    range_t range;
+    range.page  = page_hash(axi_pkg::largest_addr_t'(bounds.first));
+    range.first = region_idx(bounds.first[PageOffsetWidth-1:0]);
+    range.last  = region_idx(bounds.last[PageOffsetWidth-1:0]);
     return range;
   endfunction
 
-  /// Determine whether two ranges share at least one region.
+  /// Determine whether two ranges (may) share at least one region.
   function automatic logic overlaps(range_t a, range_t b);
-    return (a.first <= b.last) && (b.first <= a.last);
+    return (a.page == b.page) && (a.first <= b.last) && (b.first <= a.last);
   endfunction
 
   // Address ranges of the incoming transactions.
-  range_t aw_range, ar_range;
-  assign aw_range = burst_range(slv_req_i.aw.addr, slv_req_i.aw.size, slv_req_i.aw.len,
-                                slv_req_i.aw.burst);
-  assign ar_range = burst_range(slv_req_i.ar.addr, slv_req_i.ar.size, slv_req_i.ar.len,
-                                slv_req_i.ar.burst);
+  bounds_t aw_bounds, ar_bounds;
+  range_t  aw_range,  ar_range;
+  assign aw_bounds = burst_bounds(slv_req_i.aw.addr, slv_req_i.aw.size, slv_req_i.aw.len,
+                                  slv_req_i.aw.burst);
+  assign ar_bounds = burst_bounds(slv_req_i.ar.addr, slv_req_i.ar.size, slv_req_i.ar.len,
+                                  slv_req_i.ar.burst);
+  assign aw_range  = to_range(aw_bounds);
+  assign ar_range  = to_range(ar_bounds);
 
   // An ATOP with R response also occupies a slot in the read table.
   logic aw_atop_r_resp;
@@ -380,8 +430,11 @@ module axi_hazard_filter #(
       else $fatal(1, "Maximum number of write transactions must be >= 1!");
     assert (RegionSize >= 1 && (RegionSize & (RegionSize - 1)) == 0)
       else $fatal(1, "RegionSize must be a power of two!");
-    assert (RegionOffsetWidth < AxiAddrWidth)
-      else $fatal(1, "RegionSize must be smaller than the address space!");
+    assert (RegionOffsetWidth <= PageOffsetWidth)
+      else $fatal(1, "RegionSize must be at most 4 KiB!");
+    assert (AxiAddrWidth >= PageOffsetWidth)
+      else $fatal(1, "AXI address width must be at least 12 bit!");
+    assert (PageHashWidth >= 1) else $fatal(1, "PageHashWidth must be at least 1!");
   end
 `ifndef XILINX_SIMULATOR
   default disable iff (~rst_ni);
@@ -410,6 +463,12 @@ module axi_hazard_filter #(
     else $error("Write ID queue did not accept a new transaction.");
   rd_alloc_gnt : assert property( @(posedge clk_i) (rd_idq_inp_req |-> rd_idq_inp_gnt))
     else $error("Read ID queue did not accept a new transaction.");
+  aw_4kib : assert property( @(posedge clk_i) (slv_req_i.aw_valid |->
+      (aw_bounds.first >> PageOffsetWidth) == (aw_bounds.last >> PageOffsetWidth)))
+    else $error("AW burst crosses a 4 KiB boundary.");
+  ar_4kib : assert property( @(posedge clk_i) (slv_req_i.ar_valid |->
+      (ar_bounds.first >> PageOffsetWidth) == (ar_bounds.last >> PageOffsetWidth)))
+    else $error("AR burst crosses a 4 KiB boundary.");
   rd_alloc_excl : assert property( @(posedge clk_i) !(ar_hs & aw_hs & aw_atop_r_resp))
     else $error("AR and ATOP with R response allocated in the read table in the same cycle.");
   b_unexpected : assert property( @(posedge clk_i) (b_hs |-> wr_idq_oup_valid))
@@ -438,8 +497,10 @@ module axi_hazard_filter_intf #(
   parameter int unsigned MAX_READ_TXNS  = 32'd0,
   /// Maximum number of in-flight write transactions.
   parameter int unsigned MAX_WRITE_TXNS = 32'd0,
-  /// Granularity of hazard detection in bytes.  Must be a power of two.
-  parameter int unsigned REGION_SIZE    = 32'd1
+  /// Granularity of hazard detection in bytes.  Must be a power of two and at most 4096.
+  parameter int unsigned REGION_SIZE     = 32'd1,
+  /// Width of the hash of the page number (address bits above bit 11) stored per transaction.
+  parameter int unsigned PAGE_HASH_WIDTH = 32'd16
 ) (
   /// Clock
   input  logic    clk_i,
@@ -475,7 +536,8 @@ module axi_hazard_filter_intf #(
     .MaxWriteTxns ( MAX_WRITE_TXNS ),
     .AxiIdWidth   ( AXI_ID_WIDTH   ),
     .AxiAddrWidth ( AXI_ADDR_WIDTH ),
-    .RegionSize   ( REGION_SIZE    ),
+    .RegionSize    ( REGION_SIZE     ),
+    .PageHashWidth ( PAGE_HASH_WIDTH ),
     .axi_req_t    ( axi_req_t      ),
     .axi_resp_t   ( axi_resp_t     )
   ) i_axi_hazard_filter (
