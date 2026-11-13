@@ -9,6 +9,6 @@
   upstream:
   {
     url: https://github.com/Capabilities-Limited/pulp_axi.git
-    rev: b29dc3464e613fc0b448228d7f016f92df18f4f1
+    rev: 7c368c88e09aabc96db4cc4b2497530023b87dc5
   }
 }
