@@ -30,7 +30,8 @@
 ///   forwarded.  The priority alternates between the two to avoid starving either direction.
 ///
 /// The W, B, and R channels are passed through unchanged; the module only stalls AW and AR.  It
-/// does not reorder transactions and does not modify any payload.
+/// does not reorder transactions and does not modify any payload.  `backpressure_o` is high in
+/// every cycle in which the module holds back a valid AW or AR, e.g., for performance counters.
 ///
 /// ## Regions
 ///
@@ -97,7 +98,10 @@ module axi_hazard_filter #(
   /// Master port request
   output axi_req_t  mst_req_o,
   /// Master port response
-  input  axi_resp_t mst_resp_i
+  input  axi_resp_t mst_resp_i,
+  /// Back pressure event: high in every cycle in which the filter holds back a valid AW or AR (due
+  /// to a hazard or a full in-flight table)
+  output logic      backpressure_o
 );
 
   /// AXI bursts never cross a 4 KiB boundary, so the page number of all bytes of a burst is equal.
@@ -111,15 +115,16 @@ module axi_hazard_filter #(
 
   typedef logic [AxiIdWidth-1:0]     id_t;
   typedef logic [AxiAddrWidth-1:0]   addr_t;
+  typedef logic [PageOffsetWidth-1:0] page_offset_t;
   typedef logic [RegionIdxWidth-1:0] region_idx_t;
   typedef logic [PageHashWidth-1:0]  page_hash_t;
   typedef logic [WrSlotIdxWidth-1:0] wr_slot_idx_t;
   typedef logic [RdSlotIdxWidth-1:0] rd_slot_idx_t;
 
-  /// First and last byte address accessed by a burst.
+  /// Offsets within the page of the first and last byte accessed by a burst.
   typedef struct packed {
-    addr_t first;
-    addr_t last;
+    page_offset_t first;
+    page_offset_t last;
   } bounds_t;
 
   /// Range of regions accessed by a burst: the hash of its page number and the inclusive range of
@@ -130,32 +135,46 @@ module axi_hazard_filter #(
     region_idx_t last;
   } range_t;
 
-  /// Compute the (conservative) first and last byte address accessed by a burst.
-  function automatic bounds_t burst_bounds(addr_t addr, axi_pkg::size_t size, axi_pkg::len_t len,
-                                           axi_pkg::burst_t burst);
-    addr_t   first_addr, last_addr, num_bytes;
-    bounds_t bounds;
-    num_bytes = (addr_t'(len) + addr_t'(1)) << size;
+  /// Compute the (conservative) page offsets of the first and last byte accessed by a burst.
+  ///
+  /// As a legal burst stays within its 4 KiB page, all offsets fit into `PageOffsetWidth` bits.
+  /// The span `(len + 1) * 2^size - 1` (the offset of the last byte relative to the first) is
+  /// used instead of the byte count, which would need one more bit for a burst of exactly 4 KiB.
+  function automatic bounds_t burst_bounds(page_offset_t offset, axi_pkg::size_t size,
+                                           axi_pkg::len_t len, axi_pkg::burst_t burst);
+    page_offset_t beat_mask, span;
+    bounds_t      bounds;
+    beat_mask = (page_offset_t'(1) << size) - page_offset_t'(1);
+    // The low `size` bits of `len << size` are zero, so the OR adds `2^size - 1`.
+    span      = (page_offset_t'(len) << size) | beat_mask;
     unique case (burst)
       axi_pkg::BURST_FIXED: begin
-        first_addr = addr_t'(axi_pkg::aligned_addr(axi_pkg::largest_addr_t'(addr), size));
-        last_addr  = first_addr + addr_t'(axi_pkg::num_bytes(size)) - addr_t'(1);
+        bounds.first = offset & ~beat_mask;
+        bounds.last  = bounds.first | beat_mask;
       end
       axi_pkg::BURST_WRAP: begin
-        // The total size of a legal wrapping burst is a power of two, so aligning to it yields the
-        // wrap boundary.  This avoids `axi_pkg::wrap_boundary()`, whose assumption on `len` would
-        // fire on the (don't care) payload of idle channels.
-        first_addr = addr & ~(num_bytes - addr_t'(1));
-        last_addr  = first_addr + num_bytes - addr_t'(1);
+        // The total size of a legal wrapping burst is a power of two, so `span` is a mask and
+        // aligning to it yields the wrap boundary.  This avoids `axi_pkg::wrap_boundary()`, whose
+        // assumption on `len` would fire on the (don't care) payload of idle channels.
+        bounds.first = offset & ~span;
+        bounds.last  = bounds.first | span;
       end
       default: begin // `BURST_INCR` (and reserved burst type, conservatively)
-        first_addr = addr_t'(axi_pkg::aligned_addr(axi_pkg::largest_addr_t'(addr), size));
-        last_addr  = first_addr + num_bytes - addr_t'(1);
+        bounds.first = offset & ~beat_mask;
+        bounds.last  = bounds.first + span;
       end
     endcase
-    bounds.first = first_addr;
-    bounds.last  = last_addr;
     return bounds;
+  endfunction
+
+  /// Determine whether a burst illegally crosses a 4 KiB boundary (only used by assertions).  Only
+  /// an `INCR` burst can: a `FIXED` or `WRAP` burst stays within its aligned window.
+  function automatic logic crosses_page(page_offset_t offset, axi_pkg::size_t size,
+                                        axi_pkg::len_t len, axi_pkg::burst_t burst);
+    int unsigned first, num_bytes;
+    first     = (int'(offset) >> size) << size;
+    num_bytes = (int'(len) + 1) << size;
+    return (burst == axi_pkg::BURST_INCR) && (first + num_bytes > (1 << PageOffsetWidth));
   endfunction
 
   /// XOR-fold the page number (the address bits above the page offset) into a hash.
@@ -168,16 +187,17 @@ module axi_hazard_filter #(
   endfunction
 
   /// Index of the region within its page that contains a byte (given by its offset in the page).
-  function automatic region_idx_t region_idx(logic [PageOffsetWidth-1:0] page_offset);
+  function automatic region_idx_t region_idx(page_offset_t page_offset);
     return region_idx_t'(page_offset >> RegionOffsetWidth);
   endfunction
 
-  /// Convert the bounds of a burst (which lie within one page) to its range of regions.
-  function automatic range_t to_range(bounds_t bounds);
+  /// Convert the address and bounds of a burst to its range of regions.  All bytes of a legal burst
+  /// share the page of its address.
+  function automatic range_t to_range(addr_t addr, bounds_t bounds);
     range_t range;
-    range.page  = page_hash(axi_pkg::largest_addr_t'(bounds.first));
-    range.first = region_idx(bounds.first[PageOffsetWidth-1:0]);
-    range.last  = region_idx(bounds.last[PageOffsetWidth-1:0]);
+    range.page  = page_hash(axi_pkg::largest_addr_t'(addr));
+    range.first = region_idx(bounds.first);
+    range.last  = region_idx(bounds.last);
     return range;
   endfunction
 
@@ -189,12 +209,12 @@ module axi_hazard_filter #(
   // Address ranges of the incoming transactions.
   bounds_t aw_bounds, ar_bounds;
   range_t  aw_range,  ar_range;
-  assign aw_bounds = burst_bounds(slv_req_i.aw.addr, slv_req_i.aw.size, slv_req_i.aw.len,
-                                  slv_req_i.aw.burst);
-  assign ar_bounds = burst_bounds(slv_req_i.ar.addr, slv_req_i.ar.size, slv_req_i.ar.len,
-                                  slv_req_i.ar.burst);
-  assign aw_range  = to_range(aw_bounds);
-  assign ar_range  = to_range(ar_bounds);
+  assign aw_bounds = burst_bounds(slv_req_i.aw.addr[PageOffsetWidth-1:0], slv_req_i.aw.size,
+                                  slv_req_i.aw.len, slv_req_i.aw.burst);
+  assign ar_bounds = burst_bounds(slv_req_i.ar.addr[PageOffsetWidth-1:0], slv_req_i.ar.size,
+                                  slv_req_i.ar.len, slv_req_i.ar.burst);
+  assign aw_range  = to_range(slv_req_i.aw.addr, aw_bounds);
+  assign ar_range  = to_range(slv_req_i.ar.addr, ar_bounds);
 
   // An ATOP with R response also occupies a slot in the read table.
   logic aw_atop_r_resp;
@@ -317,6 +337,8 @@ module axi_hazard_filter #(
     mst_req_o.ar_valid  = slv_req_i.ar_valid  & ar_fwd;
     slv_resp_o.ar_ready = mst_resp_i.ar_ready & ar_fwd;
   end
+
+  assign backpressure_o = (slv_req_i.aw_valid & ~aw_fwd) | (slv_req_i.ar_valid & ~ar_fwd);
 
   ///////////////////////////////
   // Allocation and retirement
@@ -464,10 +486,12 @@ module axi_hazard_filter #(
   rd_alloc_gnt : assert property( @(posedge clk_i) (rd_idq_inp_req |-> rd_idq_inp_gnt))
     else $error("Read ID queue did not accept a new transaction.");
   aw_4kib : assert property( @(posedge clk_i) (slv_req_i.aw_valid |->
-      (aw_bounds.first >> PageOffsetWidth) == (aw_bounds.last >> PageOffsetWidth)))
+      !crosses_page(slv_req_i.aw.addr[PageOffsetWidth-1:0], slv_req_i.aw.size, slv_req_i.aw.len,
+                    slv_req_i.aw.burst)))
     else $error("AW burst crosses a 4 KiB boundary.");
   ar_4kib : assert property( @(posedge clk_i) (slv_req_i.ar_valid |->
-      (ar_bounds.first >> PageOffsetWidth) == (ar_bounds.last >> PageOffsetWidth)))
+      !crosses_page(slv_req_i.ar.addr[PageOffsetWidth-1:0], slv_req_i.ar.size, slv_req_i.ar.len,
+                    slv_req_i.ar.burst)))
     else $error("AR burst crosses a 4 KiB boundary.");
   rd_alloc_excl : assert property( @(posedge clk_i) !(ar_hs & aw_hs & aw_atop_r_resp))
     else $error("AR and ATOP with R response allocated in the read table in the same cycle.");
@@ -509,7 +533,9 @@ module axi_hazard_filter_intf #(
   /// AXI4+ATOP Slave modport
   AXI_BUS.Slave   slv,
   /// AXI4+ATOP Master modport
-  AXI_BUS.Master  mst
+  AXI_BUS.Master  mst,
+  /// Back pressure event: high in every cycle in which the filter holds back a valid AW or AR
+  output logic    backpressure_o
 );
 
   typedef logic [AXI_ID_WIDTH    -1:0] id_t;
@@ -545,8 +571,9 @@ module axi_hazard_filter_intf #(
     .rst_ni,
     .slv_req_i  ( slv_req  ),
     .slv_resp_o ( slv_resp ),
-    .mst_req_o  ( mst_req  ),
-    .mst_resp_i ( mst_resp )
+    .mst_req_o      ( mst_req  ),
+    .mst_resp_i     ( mst_resp ),
+    .backpressure_o
   );
 
 // pragma translate_off
