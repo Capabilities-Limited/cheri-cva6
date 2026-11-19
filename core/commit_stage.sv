@@ -335,9 +335,6 @@ module commit_stage
         end
       end
     end
-    if (do_halt) begin
-      flush_commit_o = 1'b1;
-    end
 
     if (CVA6Cfg.NrCommitPorts > 1) begin
       commit_macro_ack[1] = 1'b0;
