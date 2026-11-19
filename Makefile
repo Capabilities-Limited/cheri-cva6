@@ -223,6 +223,7 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/pulp-platform/common_cells/src/deprecated/fifo_v2.sv                  \
         vendor/pulp-platform/common_cells/src/stream_delay.sv                        \
         vendor/pulp-platform/common_cells/src/lfsr_16bit.sv                          \
+        vendor/pulp-platform/common_cells/src/id_queue.sv                            \
         vendor/capltd/axi_cheri_tagcontroller/src/common_cells/src/cb_filter.sv      \
         vendor/capltd/axi_cheri_tagcontroller/src/common_cells/src/sub_per_hash.sv   \
         vendor/pulp-platform/tech_cells_generic/src/deprecated/cluster_clk_cells.sv  \
@@ -247,6 +248,9 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups.sv \
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups_read.sv \
         vendor/capltd/axi_cheri_tagcontroller/src/tag_lookup_engine/tag_lookup_engine_table_lookups_write.sv \
+        vendor/capltd/pulp_axi/src/stream_throttle.sv                                \
+        vendor/capltd/pulp_axi/src/axi_throttle.sv                                   \
+        vendor/capltd/pulp_axi/src/axi_hazard_filter.sv                              \
         corev_apu/tb/ariane_testharness.sv                                           \
         corev_apu/tb/ariane_peripherals.sv                                           \
         corev_apu/tb/rvfi_tracer.sv                                                  \
