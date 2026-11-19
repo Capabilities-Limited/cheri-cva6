@@ -489,6 +489,12 @@ package config_pkg;
     assert (!(Cfg.RVZCMT && ~Cfg.MmuPresent));
     // Can only have CHERI hybrid support if CHERI purecap is supported
     assert (!(!Cfg.RVY && Cfg.RVZcherihybrid));
+    // Zcmp is incompatible with Zcd (compressed double-precision FP loads/stores,
+    // automatically present whenever both C and D are implemented), due to
+    // opcode collisions.
+    if (Cfg.RVZCMP && Cfg.RVC && Cfg.RVD) begin
+      $fatal(1, "[config] RVZCMP (Zcmp) and RVC+RVD (Zcd = C+D) are mutually exclusive");
+    end
     // pragma translate_on
   endfunction
 
