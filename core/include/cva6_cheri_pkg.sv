@@ -733,9 +733,9 @@ package cva6_cheri_pkg;
         permit_execute       : hp.permit_execute,
         access_sys_regs      : hp.access_sys_regs,
         reserved_1_lo        : '1,
-        uperms               : up,
+        uperms               : perms_are_malformed ? '0 : up,
         permit_cap           : hp.permit_cap,
-        cap_level            : hp_raw.cap_level,  // Not a permission, so not legalised
+        cap_level            : hp.cap_level,
         permit_store_level   : hp.permit_store_level,
         permit_elevate_level : hp.permit_elevate_level,
         permit_load_mutable  : hp.permit_load_mutable,
