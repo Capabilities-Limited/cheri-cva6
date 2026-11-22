@@ -429,7 +429,7 @@ module cva6_hpdcache_subsystem
 
   a_invalid_instruction_fetch :
   assert property (
-    @(posedge clk_i) disable iff (!rst_ni) icache_dreq_o.valid |-> (|icache_dreq_o.data) !== 1'hX)
+    @(posedge clk_i) disable iff (!rst_ni) (icache_dreq_o.valid && !icache_dreq_o.ex) |-> (|icache_dreq_o.data) !== 1'hX)
   else
     $warning(
         1,
