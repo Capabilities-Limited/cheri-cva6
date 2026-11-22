@@ -518,15 +518,7 @@ module cva6_rvfi
       exception = (i == 0) && commit_instr_valid[i] && ex_commit_valid && !commit_drop[i];
       rd_addr = commit_instr_rd[i][4:0];
       rs2_addr = (is_amo_sc(commit_instr_op[i]) && wdata[i] == 1) ? '0 : commit_instr_rs2[i][4:0];
-      valid = (commit_ack[i] && !ex_commit_valid && !commit_drop[i]) ||
-        (exception && (ex_commit_cause == riscv::ENV_CALL_MMODE ||
-                  ex_commit_cause == riscv::ENV_CALL_SMODE ||
-                  ex_commit_cause == riscv::ENV_CALL_UMODE ||
-                  ex_commit_cause == cva6_cheri_pkg::CAP_INSTR_ACCESS_FAULT ||
-                  ex_commit_cause == cva6_cheri_pkg::CAP_LOAD_ACCESS_FAULT ||
-                  ex_commit_cause == cva6_cheri_pkg::CAP_STORE_AMO_ACCESS_FAULT ||
-                  ex_commit_cause == cva6_cheri_pkg::CAP_LOAD_CAPABILITY_FAULT ||
-                  ex_commit_cause == cva6_cheri_pkg::CAP_STORE_AMO_PAGE_FAULT));
+      valid = (commit_ack[i] && !ex_commit_valid && !commit_drop[i]) || (exception && !ex_commit_cause[CVA6Cfg.XLEN-1]);
       rd_is_fpr = CVA6Cfg.FpPresent && is_rd_fpr(commit_instr_op[i]);
 
       rvfi_instr_d[i] = rvfi_instr_q[i];
