@@ -1772,7 +1772,9 @@ module cva6
   // Parameter Check
   // -------------------
   // pragma translate_off
+`ifndef SYNTHESIS
   initial config_pkg::check_cfg(CVA6Cfg);
+`endif
   // pragma translate_on
 
   // -------------------
@@ -1780,6 +1782,7 @@ module cva6
   // -------------------
 
   //pragma translate_off
+`ifndef SYNTHESIS
 `ifdef PITON_ARIANE
   localparam PC_QUEUE_DEPTH = 16;
 
@@ -1931,6 +1934,7 @@ module cva6
     $fclose(f);
   end
 `endif  // VERILATOR
+`endif  // SYNTHESIS
   //pragma translate_on
 
 
@@ -1993,10 +1997,12 @@ module cva6
   );
 
   //pragma translate_off
+`ifndef SYNTHESIS
   initial begin
     assert (!(CVA6Cfg.SuperscalarEn && CVA6Cfg.EnableAccelerator))
     else $fatal(1, "Accelerator is not supported by superscalar pipeline");
   end
+`endif
   //pragma translate_on
 
 endmodule  // ariane

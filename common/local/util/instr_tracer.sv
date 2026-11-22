@@ -14,6 +14,7 @@
 
 `ifndef VERILATOR
 //pragma translate_off
+`ifndef SYNTHESIS
 `include "ex_trace_item.svh"
 `include "instr_trace_item.svh"
 
@@ -310,5 +311,6 @@ module instr_tracer #(
   end
 
 endmodule : instr_tracer
+`endif
 //pragma translate_on
 `endif
