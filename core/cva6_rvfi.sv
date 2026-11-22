@@ -540,7 +540,7 @@ module cva6_rvfi
       // Set it based on whether the previous instruction trapped.
       rvfi_instr_d[i].intr = valid ? rvfi_intr_d : '0;
 
-      if (exception && ex_commit_cause[31]) begin
+      if (exception && ex_commit_cause[CVA6Cfg.XLEN-1]) begin
         rvfi_intr_d = 'b101;
       end else if (exception) begin
         rvfi_intr_d = 'b11;
