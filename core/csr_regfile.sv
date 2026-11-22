@@ -1320,6 +1320,8 @@ module csr_regfile
     scbcfe_d               = scbcfe_q;
     hcbcfe_d               = hcbcfe_q;
 
+    scontext_d             = scontext_q;
+
     // trigger module defaults
     tdata1_to_tm           = '0;
     tdata2_to_tm           = '0;
