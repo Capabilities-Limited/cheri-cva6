@@ -41,7 +41,7 @@ module sram_cache #(
 );
   localparam DATA_AND_USER_WIDTH = USER_EN ? DATA_WIDTH + USER_WIDTH : DATA_WIDTH;
   if (TECHNO_CUT) begin : gen_techno_cut
-    if (USER_EN > 0) begin
+    if (USER_EN > 0) begin : gen_user_en
       logic [DATA_WIDTH + USER_WIDTH-1:0] wdata_user;
       logic [DATA_WIDTH + USER_WIDTH-1:0] rdata_user;
       logic [(DATA_WIDTH+7)/8+(DATA_WIDTH+7)/8-1:0] be;
@@ -71,7 +71,7 @@ module sram_cache #(
         .addr_i   ( addr_i                    ),
         .rdata_o  ( rdata_user                )
       );
-    end else begin
+    end else begin : gen_no_user_en
       logic [DATA_WIDTH-1:0] wdata_user;
       logic [DATA_WIDTH-1:0] rdata_user;
       logic [(DATA_WIDTH+7)/8-1:0] be;
@@ -102,7 +102,7 @@ module sram_cache #(
         .rdata_o  ( rdata_user                )
       );
     end
-  end else begin
+  end else begin : gen_no_techno_cut
     sram #(
           .USER_WIDTH (USER_WIDTH),
           .DATA_WIDTH (DATA_WIDTH),
