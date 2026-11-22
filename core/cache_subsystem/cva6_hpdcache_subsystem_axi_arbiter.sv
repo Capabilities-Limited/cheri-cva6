@@ -142,7 +142,8 @@ module cva6_hpdcache_subsystem_axi_arbiter
       .rdata_o(icache_miss_req_rdata)
   );
 
-  assign icache_miss_req_w = icache_miss_valid_i, icache_miss_ready_o = icache_miss_req_wok;
+  assign icache_miss_req_w = icache_miss_valid_i;
+  assign icache_miss_ready_o = icache_miss_req_wok;
 
   assign icache_miss_req_wdata.mem_req_addr = icache_miss_i.paddr;
   assign icache_miss_req_wdata.mem_req_len = icache_miss_i.nc ? 0 : ICACHE_MEM_REQ_CL_LEN - 1;
@@ -203,7 +204,8 @@ module cva6_hpdcache_subsystem_axi_arbiter
           .rdata_o(icache_miss_resp_data_rdata)
       );
 
-      assign icache_miss_resp_meta_r = 1'b1, icache_miss_resp_data_r = 1'b1;
+      assign icache_miss_resp_meta_r = 1'b1;
+      assign icache_miss_resp_data_r = 1'b1;
 
       assign icache_miss_resp_meta_w = icache_miss_resp_w & icache_miss_resp_wdata.mem_resp_r_last;
 

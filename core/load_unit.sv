@@ -507,8 +507,8 @@ module load_unit
   // ---------------
   // Retire Load
   // ---------------
-  assign ldbuf_rindex = (CVA6Cfg.NrLoadBufEntries > 1) ? ldbuf_id_t'(req_port_i.data_rid) : 1'b0,
-      ldbuf_rdata = ldbuf_q[ldbuf_rindex];
+  assign ldbuf_rindex = (CVA6Cfg.NrLoadBufEntries > 1) ? ldbuf_id_t'(req_port_i.data_rid) : 1'b0;
+  assign ldbuf_rdata = ldbuf_q[ldbuf_rindex];
   if (CVA6Cfg.CheriPresent) begin
     assign ldbuf_tlb_info_rdata = ldbuf_prev_w_q && (ldbuf_rindex == ldbuf_last_id_q) ?
                                     ldbuf_tlb_info_wdata
