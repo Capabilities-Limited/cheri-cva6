@@ -220,18 +220,18 @@ module cva6_hpdcache_wrapper
   endgenerate
 
   //  Snoop load port
-  assign snoop_valid[0] = dcache_req_valid[1] & dcache_req_ready[1],
-      snoop_abort[0] = dcache_req_abort[1],
-      snoop_addr_offset[0] = dcache_req[1].addr_offset,
-      snoop_addr_tag[0] = dcache_req_tag[1],
-      snoop_phys_indexed[0] = dcache_req[1].phys_indexed;
+  assign snoop_valid[0] = dcache_req_valid[1] & dcache_req_ready[1];
+  assign snoop_abort[0] = dcache_req_abort[1];
+  assign snoop_addr_offset[0] = dcache_req[1].addr_offset;
+  assign snoop_addr_tag[0] = dcache_req_tag[1];
+  assign snoop_phys_indexed[0] = dcache_req[1].phys_indexed;
 
   //  Snoop Store/AMO port
-  assign snoop_valid[1] = dcache_req_valid[NumPorts-1] & dcache_req_ready[NumPorts-1],
-      snoop_abort[1] = dcache_req_abort[NumPorts-1],
-      snoop_addr_offset[1] = dcache_req[NumPorts-1].addr_offset,
-      snoop_addr_tag[1] = dcache_req_tag[NumPorts-1],
-      snoop_phys_indexed[1] = dcache_req[NumPorts-1].phys_indexed;
+  assign snoop_valid[1] = dcache_req_valid[NumPorts-1] & dcache_req_ready[NumPorts-1];
+  assign snoop_abort[1] = dcache_req_abort[NumPorts-1];
+  assign snoop_addr_offset[1] = dcache_req[NumPorts-1].addr_offset;
+  assign snoop_addr_tag[1] = dcache_req_tag[NumPorts-1];
+  assign snoop_phys_indexed[1] = dcache_req[NumPorts-1].phys_indexed;
 
   generate
     for (genvar h = 0; h < NrHwPrefetchers; h++) begin : gen_hwpf_throttle
@@ -379,7 +379,8 @@ module cva6_hpdcache_wrapper
       .cfg_scrub_restart_i                (1'b0)
   );
 
-  assign dcache_miss_o = dcache_read_miss, wbuffer_not_ni_o = wbuffer_empty_o;
+  assign dcache_miss_o = dcache_read_miss;
+  assign wbuffer_not_ni_o = wbuffer_empty_o;
   //  }}}
 
 endmodule : cva6_hpdcache_wrapper
