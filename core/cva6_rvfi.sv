@@ -661,7 +661,7 @@ module cva6_rvfi
     `CONNECT_RVFI_SAME(1'b1, mtval)
     `CONNECT_RVFI_SAME(1'b1, mip)
 
-    `CONNECT_RVFI_FULL(1'b1, menvcfg, csr.fiom_q)
+    `CONNECT_RVFI_FULL(1'b1, menvcfg, csr.menvcfg_q)
 
     `CONNECT_RVFI_FULL(CVA6Cfg.XLEN == 32, menvcfgh, 32'h0)
 

@@ -363,6 +363,22 @@ module csr_regfile
   riscv::cbie_t mcbie_q, mcbie_d, scbie_q, scbie_d, hcbie_q, hcbie_d;
   logic mcbcfe_q, mcbcfe_d, scbcfe_q, scbcfe_d, hcbcfe_q, hcbcfe_d;
 
+  // Construct menvcfg from consistuent registers
+  logic [CVA6Cfg.XLEN-1:0] menvcfg;
+  always_comb begin
+    menvcfg = '0;
+    if (CVA6Cfg.RVU) begin
+      menvcfg = '0 | mfiom_q;
+    end
+    if (CVA6Cfg.RVZiCbom) begin
+      menvcfg[5:4] = mcbie_q;
+      menvcfg[6]   = mcbcfe_q;
+    end
+    if (CVA6Cfg.CheriPresent) begin
+      menvcfg[9] = menvcre;
+    end
+  end
+
   localparam logic [CVA6Cfg.XLEN-1:0] IsaCode = (CVA6Cfg.XLEN'(CVA6Cfg.RVA) <<  0)                // A - Atomic Instructions extension
   | (CVA6Cfg.XLEN'(CVA6Cfg.RVB) << 1)  // B - Bitmanip extension
   | (CVA6Cfg.XLEN'(CVA6Cfg.RVC) << 2)  // C - Compressed extension
@@ -786,17 +802,7 @@ module csr_regfile
         else read_access_exception = 1'b1;
         riscv::CSR_MIP: csr_rdata = mip_q;
         riscv::CSR_MENVCFG: begin
-          csr_rdata = '0;
-          if (CVA6Cfg.RVU) begin
-            csr_rdata = '0 | mfiom_q;
-          end
-          if (CVA6Cfg.RVZiCbom) begin
-            csr_rdata[5:4] = mcbie_q;
-            csr_rdata[6]   = mcbcfe_q;
-          end
-          if (CVA6Cfg.CheriPresent) begin
-            csr_rdata[9] = menvcre;
-          end
+          csr_rdata = menvcfg;
           if (!CVA6Cfg.RVU && !CVA6Cfg.RVZiCbom && !CVA6Cfg.CheriPresent) begin
             read_access_exception = 1'b1;
           end
@@ -3602,7 +3608,7 @@ module csr_regfile
   assign rvfi_csr_o.mepc_q = mepc_q;
   assign rvfi_csr_o.mcause_q = mcause_q;
   assign rvfi_csr_o.mtval_q = CVA6Cfg.TvalEn ? mtval_q : '0;
-  assign rvfi_csr_o.fiom_q = mfiom_q;
+  assign rvfi_csr_o.menvcfg_q = menvcfg;
   assign rvfi_csr_o.mcountinhibit_q = mcountinhibit_q;
   assign rvfi_csr_o.cycle_q = cycle_q;
   assign rvfi_csr_o.instret_q = instret_q;

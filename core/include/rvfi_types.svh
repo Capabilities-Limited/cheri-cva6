@@ -159,7 +159,7 @@
   logic [Cfg.XLEN-1:0] mepc_q; \
   logic [Cfg.XLEN-1:0] mcause_q; \
   logic [Cfg.XLEN-1:0] mtval_q; \
-  logic fiom_q; \
+  logic [Cfg.XLEN-1:0] menvcfg_q; \
   logic [ariane_pkg::MHPMCounterNum+3-1:0] mcountinhibit_q; \
   logic [63:0] cycle_q; \
   logic [63:0] instret_q; \
