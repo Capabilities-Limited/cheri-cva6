@@ -486,6 +486,7 @@ module cva6_rvfi
   rvfi_instr_t [CVA6Cfg.NrCommitPorts-1:0] rvfi_instr_q, rvfi_instr_d;
   rvfi_to_iti_t rvfi_to_iti_q, rvfi_to_iti_d;
   logic [CVA6Cfg.XLEN-1:0] rvfi_intr_q, rvfi_intr_d;
+  logic [63:0] rvfi_order_q, rvfi_order_d;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -494,18 +495,21 @@ module cva6_rvfi
       end
       rvfi_to_iti_q <= '0;
       rvfi_intr_q   <= '0;
+      rvfi_order_q  <= '0;
     end else begin
       for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
         rvfi_instr_q[i] <= rvfi_instr_d[i];
       end
       rvfi_to_iti_q <= rvfi_to_iti_d;
       rvfi_intr_q   <= rvfi_intr_d;
+      rvfi_order_q  <= rvfi_order_d;
     end
   end
 
   always_comb begin
     rvfi_to_iti_d = rvfi_to_iti_q;
     rvfi_intr_d   = rvfi_intr_q;
+    rvfi_order_d  = rvfi_order_q;
     for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
       automatic logic [31:0] commit_instr;
       automatic logic exception;
@@ -524,6 +528,8 @@ module cva6_rvfi
       rvfi_instr_d[i] = rvfi_instr_q[i];
 
       rvfi_instr_d[i].valid = valid;
+      rvfi_instr_d[i].order = rvfi_order_q + 64'(i);
+      if (valid) rvfi_order_d = rvfi_instr_d[i].order + 64'd1;
       rvfi_instr_d[i].insn = commit_instr;
       // when synchronous trap, the instruction is not executed
       rvfi_instr_d[i].trap = exception && !ex_commit_cause[31];
