@@ -49,6 +49,8 @@ package cva6_config_pkg;
   localparam CVA6ConfigDcacheFlushOnFence = 1'b1;
   localparam CVA6ConfigDcacheFlushOnFenceI = 1'b1;
   localparam CVA6ConfigDcacheInvalidateOnFlush = 1'b0;
+  localparam CVA6ConfigDcacheEccEnable = 1'b0;
+  localparam CVA6ConfigDcacheEccScrubberEnable = 1'b0;
 
   localparam CVA6ConfigDcacheIdWidth = 3;
   localparam CVA6ConfigMemTidWidth = CVA6ConfigAxiIdWidth;
@@ -164,8 +166,8 @@ package cva6_config_pkg;
       DcacheFlushOnFence: unsigned'(CVA6ConfigDcacheFlushOnFence),
       DcacheFlushOnFenceI: unsigned'(CVA6ConfigDcacheFlushOnFenceI),
       DcacheInvalidateOnFlush: unsigned'(CVA6ConfigDcacheInvalidateOnFlush),
-      DcacheEccEnable: bit'(0),
-      DcacheEccScrubberEnable: bit'(0),
+      DcacheEccEnable: bit'(CVA6ConfigDcacheEccEnable),
+      DcacheEccScrubberEnable: bit'(CVA6ConfigDcacheEccScrubberEnable),
       DataUserEn: unsigned'(CVA6ConfigDataUserEn),
       WtDcacheWbufDepth: int'(CVA6ConfigWtDcacheWbufDepth),
       FetchUserWidth: unsigned'(CVA6ConfigFetchUserWidth),
