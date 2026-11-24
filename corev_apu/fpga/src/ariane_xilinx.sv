@@ -1260,6 +1260,8 @@ localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
         .init_locked             (1'b1),
         .allow_resume            (1'b0),
         .allow_flush_when_locked (1'b0),
+        // SECDED ECC in the tag caches along with the data cache
+        .ecc_en                  (CVA6Cfg.DcacheEccEnable),
         .cap_size                (CapSize),
         .axi_id_width            (ariane_axi_soc::IdWidthSlave),
         .axi_addr_width          (AxiAddrWidth),
