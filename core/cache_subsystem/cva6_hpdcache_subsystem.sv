@@ -155,7 +155,8 @@ module cva6_hpdcache_subsystem
 
   localparam int ICACHE_RDTXID = 1 << (CVA6Cfg.MEM_TID_WIDTH - 1);
 
-  cva6_icache #(
+  //  Instruction cache built on a read-only HPDcache (with ECC when DcacheEccEnable is set)
+  cva6_hpdcache_icache #(
       .CVA6Cfg(CVA6Cfg),
       .icache_areq_t(icache_areq_t),
       .icache_arsp_t(icache_arsp_t),
@@ -164,7 +165,7 @@ module cva6_hpdcache_subsystem
       .icache_req_t(icache_req_t),
       .icache_rtrn_t(icache_rtrn_t),
       .RdTxId(ICACHE_RDTXID)
-  ) i_cva6_icache (
+  ) i_cva6_hpdcache_icache (
       .clk_i         (clk_i),
       .rst_ni        (rst_ni),
       .flush_i       (icache_flush_i),
