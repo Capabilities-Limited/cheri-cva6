@@ -376,6 +376,8 @@ done_processing:
     main_time++;
   }
 
+  top->final();
+
 #if VM_TRACE
   if (tfp)
     tfp->close();
