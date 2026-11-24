@@ -536,6 +536,7 @@ module wt_dcache_wbuffer
   ///////////////////////////////////////////////////////
 
   assign req_port_o.data_rvalid = '0;
+  assign req_port_o.data_error = '0;
   assign req_port_o.data_rdata  = '0;
   assign req_port_o.data_ruser  = '0;
   assign req_port_o.data_rid    = '0;

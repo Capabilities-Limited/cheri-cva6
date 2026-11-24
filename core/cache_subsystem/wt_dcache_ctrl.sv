@@ -128,6 +128,7 @@ module wt_dcache_ctrl
     rd_req_o               = 1'b0;
     miss_req_o             = 1'b0;
     req_port_o.data_rvalid = 1'b0;
+    req_port_o.data_error  = 1'b0;
     req_port_o.data_gnt    = 1'b0;
 
     // interfaces

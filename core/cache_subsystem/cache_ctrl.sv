@@ -126,6 +126,7 @@ module cache_ctrl
     // output assignments
     req_port_o.data_gnt = 1'b0;
     req_port_o.data_rvalid = 1'b0;
+    req_port_o.data_error = 1'b0;
     req_port_o.data_rdata = '0;
     req_port_o.data_rid = mem_req_q.id;
     req_port_o.data_ruser = '0;
