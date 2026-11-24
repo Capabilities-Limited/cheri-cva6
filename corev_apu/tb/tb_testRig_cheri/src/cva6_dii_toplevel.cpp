@@ -59,7 +59,9 @@
 // allow modulus.  You can also use a double, if you wish.
 static vluint64_t main_time = 0;
 
-static const char *verilog_plusargs[] = {"time_out"};
+// Accepted Verilog plusargs (prefix match, null-terminated): HPDcache ECC fault injection (when
+// built with defines=HPDCACHE_FAULT_INJ) and Verilator runtime options (e.g. +verilator+seed+<n>)
+static const char *verilog_plusargs[] = {"time_out", "hpdcache_fi_", "verilator+", 0};
 
 static int current_test_dii_start = 0;
 
