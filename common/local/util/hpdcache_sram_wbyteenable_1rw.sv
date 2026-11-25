@@ -121,6 +121,28 @@ end else if (ATOM_SIZE == NDATA*DATA_SIZE) begin
       .WrData_DI(wdata),
       .RdData_DO(rdata)
     );
+end else if (ATOM_SIZE == 8 && ((NDATA*DATA_SIZE) % 8) == 0) begin
+    //  Other widths with byte enables (e.g. ECC codewords: 72 or 144 bits), with the byte-write
+    //  template inferred as a block RAM by Vivado
+    localparam int unsigned NBYTES = NDATA*DATA_SIZE/8;
+
+    logic [NBYTES-1:0][7:0] mem [DEPTH];
+    logic [NBYTES-1:0]      __be;
+    logic [NBYTES-1:0][7:0] __wdata;
+
+    assign __be = wbyteenable;
+    assign __wdata = wdata;
+
+    always_ff @(posedge clk) begin
+        if (cs) begin
+            if (we) begin
+                for (int i = 0; i < int'(NBYTES); i++) begin
+                    if (__be[i]) mem[addr][i] <= __wdata[i];
+                end
+            end
+            rdata <= mem[addr];
+        end
+    end
 end else begin
     $fatal(1, "DATASIZE=%d, in not supported", NDATA*DATA_SIZE);
 end
