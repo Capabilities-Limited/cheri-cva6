@@ -169,6 +169,8 @@ module csr_regfile
     output logic [CVA6Cfg.REGLEN-1:0] ddc_o,
     // we are in debug mode -> that will change some decoding - EX_STAGE
     output logic debug_mode_o,
+    // we are in debug mode and should stop performance counters - PERF_COUNTERs
+    output logic stop_count_debug_o,
     // we are in single-step mode - COMMIT_STAGE
     output logic single_step_o,
     // Don't commit the next instruction as we've already done the single step - COMMIT_STAGE
@@ -1206,9 +1208,10 @@ module csr_regfile
     // --------------------
     cycle_d         = cycle_q;
     instret_d       = instret_q;
-    if (!(CVA6Cfg.DebugEn && debug_mode_q)) begin
+    if (!(stop_count_debug_o)) begin
       // increase instruction retired counter
       for (int i = 0; i < CVA6Cfg.NrCommitPorts; i++) begin
+        // Check ex_i low so exceptions and ebreaks do not count, even with stopcount 0 (the spec is slightly unclear)
         if (commit_ack_i[i] && !ex_i.valid && (!CVA6Cfg.PerfCounterEn || (CVA6Cfg.PerfCounterEn && !mcountinhibit_q[2])))
           instret++;
       end
@@ -1410,7 +1413,6 @@ module csr_regfile
             dcsr_d.xdebugver = 4'h4;
             // currently not supported
             dcsr_d.nmip      = 1'b0;
-            dcsr_d.stopcount = 1'b0;
             dcsr_d.stoptime  = 1'b0;
             // dcsr.prv is WARL over supported privilege modes
             // preserve the previous value on an unsupported write
@@ -3263,6 +3265,7 @@ module csr_regfile
   // determine if mprv needs to be considered if in debug mode
   assign mprv = (CVA6Cfg.DebugEn && debug_mode_q && !dcsr_q.mprven) ? 1'b0 : mstatus_q.mprv;
   assign debug_mode_o = CVA6Cfg.DebugEn ? debug_mode_q : 1'b0;
+  assign stop_count_debug_o = CVA6Cfg.DebugEn ? debug_mode_q && dcsr_q.stopcount : 1'b0;
   assign single_step_o = CVA6Cfg.DebugEn ? dcsr_q.step : 1'b0;
   assign mcountinhibit_o = {{29 - MHPMCounterNum{1'b0}}, mcountinhibit_q};
 
@@ -3282,11 +3285,11 @@ module csr_regfile
       // debug signals
       debug_mode_q <= 1'b0;
       if (CVA6Cfg.DebugEn) begin
-        dcsr_q             <= '{xdebugver: 4'h4, prv: riscv::PRIV_LVL_M, default: '0};
-        dpc_q              <= REG_ROOT;
-        dddc_q             <= REG_NULL;
-        dscratch0_q        <= REG_NULL;
-        dscratch1_q        <= REG_NULL;
+        dcsr_q <= '{xdebugver: 4'h4, prv: riscv::PRIV_LVL_M, stopcount: 1'b1, default: '0};
+        dpc_q <= REG_ROOT;
+        dddc_q <= REG_NULL;
+        dscratch0_q <= REG_NULL;
+        dscratch1_q <= REG_NULL;
         single_step_done_q <= 1'b0;
       end
       // machine mode registers
