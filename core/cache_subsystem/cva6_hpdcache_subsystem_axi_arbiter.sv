@@ -8,9 +8,12 @@
 //
 // Authors: Cesar Fuguet
 // Date: February, 2023
-// Description: AXI arbiter for the CVA6 cache subsystem integrating standard
-//              CVA6's instruction cache and the Core-V High-Performance
-//              L1 Dcache (CV-HPDcache).
+// Description: AXI arbiter for the CVA6 cache subsystem integrating an
+//              instruction cache and the Core-V High-Performance L1 Dcache
+//              (CV-HPDcache). Both caches use the HPDcache memory interface
+//              (the instruction cache is built on a read-only HPDcache): their
+//              read requests are arbitrated, and the read responses (flits of
+//              the AXI data width) are routed back by memory ID.
 
 module cva6_hpdcache_subsystem_axi_arbiter
 //  Parameters
@@ -22,8 +25,9 @@ module cva6_hpdcache_subsystem_axi_arbiter
     parameter type hpdcache_mem_req_w_t = logic,
     parameter type hpdcache_mem_resp_r_t = logic,
     parameter type hpdcache_mem_resp_w_t = logic,
-    parameter type icache_req_t = logic,
-    parameter type icache_rtrn_t = logic,
+    //  memory IDs of the I$: [IcacheIdBase, IcacheIdBase + 2**IcacheIdWidth)
+    parameter int unsigned IcacheIdBase = 0,
+    parameter int unsigned IcacheIdWidth = 1,
 
     parameter int unsigned AxiAddrWidth = 1,
     parameter int unsigned AxiDataWidth = 1,
@@ -45,15 +49,15 @@ module cva6_hpdcache_subsystem_axi_arbiter
     input logic clk_i,
     input logic rst_ni,
 
-    //  Interfaces from/to I$
+    //  Interfaces from/to I$ (read only)
     //  {{{
-    input  logic             icache_miss_valid_i,
-    output logic             icache_miss_ready_o,
-    input  icache_req_t      icache_miss_i,
-    input  hpdcache_mem_id_t icache_miss_id_i,
+    output logic              icache_read_ready_o,
+    input  logic              icache_read_valid_i,
+    input  hpdcache_mem_req_t icache_read_i,
 
-    output logic         icache_miss_resp_valid_o,
-    output icache_rtrn_t icache_miss_resp_o,
+    input  logic                 icache_read_resp_ready_i,
+    output logic                 icache_read_resp_valid_o,
+    output hpdcache_mem_resp_r_t icache_read_resp_o,
     //  }}}
 
     //  Interfaces from/to D$
@@ -94,161 +98,6 @@ module cva6_hpdcache_subsystem_axi_arbiter
 
   localparam int MEM_RESP_RT_DEPTH = (1 << CVA6Cfg.MEM_TID_WIDTH);
   typedef hpdcache_mem_id_t [MEM_RESP_RT_DEPTH-1:0] mem_resp_rt_t;
-  typedef logic [CVA6Cfg.ICACHE_LINE_WIDTH-1:0] icache_resp_data_t;
-  //  }}}
-
-  //  Adapt the I$ interface to the HPDcache memory interface
-  //  {{{
-  localparam int ICACHE_UC_WORD_INDEX = CVA6Cfg.AxiDataWidth > 64 ? $clog2(
-      CVA6Cfg.AxiDataWidth / 64
-  ) : 1;
-  localparam int ICACHE_CL_SIZE = $clog2(CVA6Cfg.ICACHE_LINE_WIDTH / 8);
-  localparam int ICACHE_WORD_SIZE = 3;
-  localparam int ICACHE_MEM_REQ_CL_LEN =
-    (CVA6Cfg.ICACHE_LINE_WIDTH + CVA6Cfg.AxiDataWidth - 1)/CVA6Cfg.AxiDataWidth;
-  localparam int ICACHE_MEM_REQ_CL_SIZE =
-    (CVA6Cfg.AxiDataWidth <= CVA6Cfg.ICACHE_LINE_WIDTH) ?
-      $clog2(
-      CVA6Cfg.AxiDataWidth / 8
-  ) : ICACHE_CL_SIZE;
-
-  //    I$ request
-  hpdcache_mem_req_t icache_miss_req_wdata;
-  logic icache_miss_req_w, icache_miss_req_wok;
-
-  hpdcache_mem_req_t icache_miss_req_rdata;
-  logic icache_miss_req_r, icache_miss_req_rok;
-
-  logic icache_miss_pending_q;
-
-  //  This FIFO has two functionalities:
-  //  -  Stabilize the ready-valid protocol. The ICACHE can abort a valid
-  //     transaction without receiving the corresponding ready signal. This
-  //     behavior is not supported by AXI.
-  //  -  Cut a possible long timing path.
-  hpdcache_fifo_reg #(
-      .FIFO_DEPTH (1),
-      .fifo_data_t(hpdcache_mem_req_t)
-  ) i_icache_miss_req_fifo (
-      .clk_i,
-      .rst_ni,
-
-      .w_i    (icache_miss_req_w),
-      .wok_o  (icache_miss_req_wok),
-      .wdata_i(icache_miss_req_wdata),
-
-      .r_i    (icache_miss_req_r),
-      .rok_o  (icache_miss_req_rok),
-      .rdata_o(icache_miss_req_rdata)
-  );
-
-  assign icache_miss_req_w = icache_miss_valid_i, icache_miss_ready_o = icache_miss_req_wok;
-
-  assign icache_miss_req_wdata.mem_req_addr = icache_miss_i.paddr;
-  assign icache_miss_req_wdata.mem_req_len = icache_miss_i.nc ? 0 : ICACHE_MEM_REQ_CL_LEN - 1;
-  assign icache_miss_req_wdata.mem_req_size = icache_miss_i.nc ? ICACHE_WORD_SIZE : ICACHE_MEM_REQ_CL_SIZE;
-  assign icache_miss_req_wdata.mem_req_id = icache_miss_i.tid;
-  assign icache_miss_req_wdata.mem_req_command = hpdcache_pkg::HPDCACHE_MEM_READ;
-  assign icache_miss_req_wdata.mem_req_atomic = hpdcache_pkg::hpdcache_mem_atomic_e'(0);
-  assign icache_miss_req_wdata.mem_req_cacheable = ~icache_miss_i.nc;
-
-
-  //    I$ response
-  logic icache_miss_resp_w, icache_miss_resp_wok;
-  hpdcache_mem_resp_r_t icache_miss_resp_wdata;
-
-  logic icache_miss_resp_data_w, icache_miss_resp_data_wok;
-  logic icache_miss_resp_data_r, icache_miss_resp_data_rok;
-  icache_resp_data_t icache_miss_resp_data_rdata;
-
-  logic icache_miss_resp_meta_w, icache_miss_resp_meta_wok;
-  logic icache_miss_resp_meta_r, icache_miss_resp_meta_rok;
-  hpdcache_mem_id_t  icache_miss_resp_meta_id;
-
-  icache_resp_data_t icache_miss_rdata;
-
-  generate
-    if (CVA6Cfg.AxiDataWidth < CVA6Cfg.ICACHE_LINE_WIDTH) begin
-      hpdcache_fifo_reg #(
-          .FIFO_DEPTH (1),
-          .fifo_data_t(hpdcache_mem_id_t)
-      ) i_icache_refill_meta_fifo (
-          .clk_i,
-          .rst_ni,
-
-          .w_i    (icache_miss_resp_meta_w),
-          .wok_o  (icache_miss_resp_meta_wok),
-          .wdata_i(icache_miss_resp_wdata.mem_resp_r_id),
-
-          .r_i    (icache_miss_resp_meta_r),
-          .rok_o  (icache_miss_resp_meta_rok),
-          .rdata_o(icache_miss_resp_meta_id)
-      );
-
-      hpdcache_data_upsize #(
-          .WR_WIDTH(CVA6Cfg.AxiDataWidth),
-          .RD_WIDTH(CVA6Cfg.ICACHE_LINE_WIDTH),
-          .DEPTH   (1)
-      ) i_icache_hpdcache_data_upsize (
-          .clk_i,
-          .rst_ni,
-
-          .w_i    (icache_miss_resp_data_w),
-          .wlast_i(icache_miss_resp_wdata.mem_resp_r_last),
-          .wok_o  (icache_miss_resp_data_wok),
-          .wdata_i(icache_miss_resp_wdata.mem_resp_r_data),
-
-          .r_i    (icache_miss_resp_data_r),
-          .rok_o  (icache_miss_resp_data_rok),
-          .rdata_o(icache_miss_resp_data_rdata)
-      );
-
-      assign icache_miss_resp_meta_r = 1'b1, icache_miss_resp_data_r = 1'b1;
-
-      assign icache_miss_resp_meta_w = icache_miss_resp_w & icache_miss_resp_wdata.mem_resp_r_last;
-
-      assign icache_miss_resp_data_w = icache_miss_resp_w;
-
-      assign icache_miss_resp_wok = icache_miss_resp_data_wok & (
-               icache_miss_resp_meta_wok | ~icache_miss_resp_wdata.mem_resp_r_last);
-
-    end else begin
-      assign icache_miss_resp_data_rok = icache_miss_resp_w;
-      assign icache_miss_resp_meta_rok = icache_miss_resp_w;
-      assign icache_miss_resp_wok = 1'b1;
-      assign icache_miss_resp_meta_id = icache_miss_resp_wdata.mem_resp_r_id;
-      assign icache_miss_resp_data_rdata = icache_miss_resp_wdata.mem_resp_r_data;
-    end
-  endgenerate
-
-  //  In the case of uncacheable accesses, the Icache expects the data to be right-aligned
-  always_comb begin : icache_miss_resp_data_comb
-    if (!icache_miss_req_rdata.mem_req_cacheable) begin
-      automatic logic [ICACHE_UC_WORD_INDEX - 1:0] icache_miss_word_index;
-      automatic logic [63:0] icache_miss_word;
-      if (CVA6Cfg.AxiDataWidth > 64) begin
-        icache_miss_word_index = icache_miss_req_rdata.mem_req_addr[3+:ICACHE_UC_WORD_INDEX];
-      end else begin
-        icache_miss_word_index = 0;
-      end
-      icache_miss_word  = icache_miss_resp_data_rdata[icache_miss_word_index*64+:64];
-      icache_miss_rdata = {{CVA6Cfg.ICACHE_LINE_WIDTH - 64{1'b0}}, icache_miss_word};
-    end else begin
-      icache_miss_rdata = icache_miss_resp_data_rdata;
-    end
-  end
-
-  assign icache_miss_resp_valid_o = icache_miss_resp_meta_rok;
-  assign icache_miss_resp_o.rtype = wt_cache_pkg::ICACHE_IFILL_ACK;
-  assign icache_miss_resp_o.user = '0;
-  assign icache_miss_resp_o.inv = '0;
-  assign icache_miss_resp_o.tid = icache_miss_resp_meta_id;
-  assign icache_miss_resp_o.data = icache_miss_rdata;
-
-  //  consume the Icache miss on the arrival of the response. The request
-  //  metadata is decoded to forward the correct word in case of uncacheable
-  //  Icache access
-  assign icache_miss_req_r = icache_miss_resp_meta_rok;
   //  }}}
 
   //  Read request arbiter
@@ -261,8 +110,9 @@ module cva6_hpdcache_subsystem_axi_arbiter
   logic                    mem_req_read_valid_arb;
   hpdcache_mem_req_t       mem_req_read_arb;
 
-  assign mem_req_read_valid[0] = icache_miss_req_rok & ~icache_miss_pending_q;
-  assign mem_req_read[0] = icache_miss_req_rdata;
+  assign icache_read_ready_o = mem_req_read_ready[0];
+  assign mem_req_read_valid[0] = icache_read_valid_i;
+  assign mem_req_read[0] = icache_read_i;
 
   assign dcache_read_ready_o = mem_req_read_ready[1];
   assign mem_req_read_valid[1] = dcache_read_valid_i;
@@ -301,7 +151,8 @@ module cva6_hpdcache_subsystem_axi_arbiter
 
   always_comb begin
     for (int i = 0; i < MEM_RESP_RT_DEPTH; i++) begin
-      mem_resp_read_rt[i] = (i == int'(icache_miss_id_i)) ? 0 : 1;
+      mem_resp_read_rt[i] = ((i >= int'(IcacheIdBase)) &&
+                             (i < int'(IcacheIdBase) + (1 << IcacheIdWidth))) ? 0 : 1;
     end
   end
 
@@ -325,26 +176,14 @@ module cva6_hpdcache_subsystem_axi_arbiter
       .mem_resp_rt_i(mem_resp_read_rt)
   );
 
-  assign icache_miss_resp_w = mem_resp_read_valid_arb[0];
-  assign icache_miss_resp_wdata = mem_resp_read_arb[0];
-  assign mem_resp_read_ready_arb[0] = icache_miss_resp_wok;
+  assign icache_read_resp_valid_o = mem_resp_read_valid_arb[0];
+  assign icache_read_resp_o = mem_resp_read_arb[0];
+  assign mem_resp_read_ready_arb[0] = icache_read_resp_ready_i;
 
   assign dcache_read_resp_valid_o = mem_resp_read_valid_arb[1];
   assign dcache_read_resp_o = mem_resp_read_arb[1];
   assign mem_resp_read_ready_arb[1] = dcache_read_resp_ready_i;
   //  }}}
-
-  //  I$ miss pending
-  //  {{{
-  always_ff @(posedge clk_i or negedge rst_ni) begin : icache_miss_pending_ff
-    if (!rst_ni) begin
-      icache_miss_pending_q <= 1'b0;
-    end else begin
-      icache_miss_pending_q <= ( (icache_miss_req_rok & mem_req_read_ready[0]) & ~icache_miss_pending_q) |
-                               (~(icache_miss_req_r   & icache_miss_req_rok)   &  icache_miss_pending_q);
-    end
-  end
-  // }}}
 
   //  AXI adapters
   //  {{{

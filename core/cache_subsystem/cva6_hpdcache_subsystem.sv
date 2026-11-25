@@ -145,44 +145,6 @@ module cva6_hpdcache_subsystem
     return y < x ? x : y;
   endfunction
 
-  //  I$ instantiation
-  //  {{{
-  logic icache_miss_valid, icache_miss_ready;
-  icache_req_t icache_miss;
-
-  logic icache_miss_resp_valid;
-  icache_rtrn_t icache_miss_resp;
-
-  localparam int ICACHE_RDTXID = 1 << (CVA6Cfg.MEM_TID_WIDTH - 1);
-
-  //  Instruction cache built on a read-only HPDcache (with ECC when DcacheEccEnable is set)
-  cva6_hpdcache_icache #(
-      .CVA6Cfg(CVA6Cfg),
-      .icache_areq_t(icache_areq_t),
-      .icache_arsp_t(icache_arsp_t),
-      .icache_dreq_t(icache_dreq_t),
-      .icache_drsp_t(icache_drsp_t),
-      .icache_req_t(icache_req_t),
-      .icache_rtrn_t(icache_rtrn_t),
-      .RdTxId(ICACHE_RDTXID)
-  ) i_cva6_hpdcache_icache (
-      .clk_i         (clk_i),
-      .rst_ni        (rst_ni),
-      .flush_i       (icache_flush_i),
-      .en_i          (icache_en_i),
-      .miss_o        (icache_miss_o),
-      .areq_i        (icache_areq_i),
-      .areq_o        (icache_areq_o),
-      .dreq_i        (icache_dreq_i),
-      .dreq_o        (icache_dreq_o),
-      .mem_rtrn_vld_i(icache_miss_resp_valid),
-      .mem_rtrn_i    (icache_miss_resp),
-      .mem_data_req_o(icache_miss_valid),
-      .mem_data_ack_i(icache_miss_ready),
-      .mem_data_o    (icache_miss)
-  );
-  //  }}}
-
   //  D$ instantiation
   //  {{{
   `include "hpdcache_typedef.svh"
@@ -375,6 +337,51 @@ module cva6_hpdcache_subsystem
       .dcache_mem_resp_write_i(dcache_write_resp)
   );
 
+  //  I$ instantiation
+  //  {{{
+  //    The I$ memory IDs are [ICACHE_RDTXID, ICACHE_RDTXID + 2**ICACHE_MEM_ID_WIDTH): above the
+  //    IDs of the D$ refills, and below the ID of the D$ uncacheable accesses (all ones)
+  localparam int ICACHE_RDTXID = 1 << (CVA6Cfg.MEM_TID_WIDTH - 1);
+  localparam int ICACHE_MEM_ID_WIDTH = 2;
+
+  logic                 icache_read_ready;
+  logic                 icache_read_valid;
+  hpdcache_mem_req_t    icache_read;
+  logic                 icache_read_resp_ready;
+  logic                 icache_read_resp_valid;
+  hpdcache_mem_resp_r_t icache_read_resp;
+
+  //  Instruction cache built on a read-only HPDcache (with ECC when DcacheEccEnable is set), with
+  //  the same memory interface as the D$ (flits of the AXI data width)
+  cva6_hpdcache_icache #(
+      .CVA6Cfg      (CVA6Cfg),
+      .icache_areq_t(icache_areq_t),
+      .icache_arsp_t(icache_arsp_t),
+      .icache_dreq_t(icache_dreq_t),
+      .icache_drsp_t(icache_drsp_t),
+      .mem_req_t    (hpdcache_mem_req_t),
+      .mem_resp_r_t (hpdcache_mem_resp_r_t),
+      .MemIdWidth   (ICACHE_MEM_ID_WIDTH),
+      .MemIdBase    (CVA6Cfg.MEM_TID_WIDTH'(ICACHE_RDTXID))
+  ) i_cva6_hpdcache_icache (
+      .clk_i                (clk_i),
+      .rst_ni               (rst_ni),
+      .flush_i              (icache_flush_i),
+      .en_i                 (icache_en_i),
+      .miss_o               (icache_miss_o),
+      .areq_i               (icache_areq_i),
+      .areq_o               (icache_areq_o),
+      .dreq_i               (icache_dreq_i),
+      .dreq_o               (icache_dreq_o),
+      .mem_req_read_ready_i (icache_read_ready),
+      .mem_req_read_valid_o (icache_read_valid),
+      .mem_req_read_o       (icache_read),
+      .mem_resp_read_ready_o(icache_read_resp_ready),
+      .mem_resp_read_valid_i(icache_read_resp_valid),
+      .mem_resp_read_i      (icache_read_resp)
+  );
+  //  }}}
+
   //  AXI arbiter instantiation
   //  {{{
   cva6_hpdcache_subsystem_axi_arbiter #(
@@ -384,8 +391,8 @@ module cva6_hpdcache_subsystem
       .hpdcache_mem_req_w_t (hpdcache_mem_req_w_t),
       .hpdcache_mem_resp_r_t(hpdcache_mem_resp_r_t),
       .hpdcache_mem_resp_w_t(hpdcache_mem_resp_w_t),
-      .icache_req_t         (icache_req_t),
-      .icache_rtrn_t        (icache_rtrn_t),
+      .IcacheIdBase         (ICACHE_RDTXID),
+      .IcacheIdWidth        (ICACHE_MEM_ID_WIDTH),
 
       .AxiAddrWidth (CVA6Cfg.AxiAddrWidth),
       .AxiDataWidth (CVA6Cfg.AxiDataWidth),
@@ -402,13 +409,14 @@ module cva6_hpdcache_subsystem
       .clk_i,
       .rst_ni,
 
-      .icache_miss_valid_i(icache_miss_valid),
-      .icache_miss_ready_o(icache_miss_ready),
-      .icache_miss_i      (icache_miss),
-      .icache_miss_id_i   (hpdcache_mem_id_t'(ICACHE_RDTXID)),
+      .icache_read_ready_o(icache_read_ready),
+      .icache_read_valid_i(icache_read_valid),
+      .icache_read_i      (icache_read),
 
-      .icache_miss_resp_valid_o(icache_miss_resp_valid),
-      .icache_miss_resp_o      (icache_miss_resp),
+      .icache_read_resp_ready_i(icache_read_resp_ready),
+      .icache_read_resp_valid_o(icache_read_resp_valid),
+      .icache_read_resp_o      (icache_read_resp),
+
 
       .dcache_read_ready_o(dcache_read_ready),
       .dcache_read_valid_i(dcache_read_valid),
@@ -441,6 +449,10 @@ module cva6_hpdcache_subsystem
   initial begin : initial_assertions
     assert (CVA6Cfg.MEM_TID_WIDTH <= CVA6Cfg.AxiIdWidth)
     else $fatal(1, "MEM_TID_WIDTH shall be less or equal to the AxiIdWidth");
+    assert (HPDcacheCfg.u.mshrSets * HPDcacheCfg.u.mshrWays <= ICACHE_RDTXID)
+    else $fatal(1, "the memory IDs of the D$ refills overlap with those of the I$");
+    assert (ICACHE_RDTXID + (1 << ICACHE_MEM_ID_WIDTH) < (1 << CVA6Cfg.MEM_TID_WIDTH))
+    else $fatal(1, "the memory IDs of the I$ overlap with the uncacheable ID of the D$");
   end
 
   a_invalid_instruction_fetch :

@@ -24,25 +24,29 @@
 //              invalidated on a flush (fence.i) and when it is enabled, and fetches are
 //              uncacheable when the cache is disabled or the address is not in a cacheable region.
 //
-//              The memory interface of the HPDcache is as wide as a cacheline, and each memory read
-//              (a cacheline refill or an uncacheable fetch) is sent on the I$ miss interface, one at
-//              a time.
+//              The memory read interface of the HPDcache is connected to the AXI arbiter of the cache
+//              subsystem as the one of the data cache: 64-bit (AXI data width) flits are streamed in
+//              directly, without a conversion to cachelines. The memory IDs of the I$ are offset by
+//              MemIdBase, so that they do not collide with those of the data cache. A fetch whose
+//              memory read fails (bus error) is responded with an instruction access fault.
 
 `include "hpdcache_typedef.svh"
 
 module cva6_hpdcache_icache
   import ariane_pkg::*;
-  import wt_cache_pkg::*;
 #(
     parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
     parameter type icache_areq_t = logic,
     parameter type icache_arsp_t = logic,
     parameter type icache_dreq_t = logic,
     parameter type icache_drsp_t = logic,
-    parameter type icache_req_t = logic,
-    parameter type icache_rtrn_t = logic,
     parameter type exception_t = logic,
-    parameter logic [CVA6Cfg.MEM_TID_WIDTH-1:0] RdTxId = 0
+    //  memory read request/response types of the cache subsystem (those of the data cache)
+    parameter type mem_req_t = logic,
+    parameter type mem_resp_r_t = logic,
+    //  memory IDs of the I$: MemIdBase + [0, 2**MemIdWidth)
+    parameter int unsigned MemIdWidth = 2,
+    parameter logic [CVA6Cfg.MEM_TID_WIDTH-1:0] MemIdBase = 0
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -54,11 +58,13 @@ module cva6_hpdcache_icache
     output icache_arsp_t areq_o,
     input  icache_dreq_t dreq_i,
     output icache_drsp_t dreq_o,
-    input  logic         mem_rtrn_vld_i,
-    input  icache_rtrn_t mem_rtrn_i,
-    output logic         mem_data_req_o,
-    input  logic         mem_data_ack_i,
-    output icache_req_t  mem_data_o
+    //  memory read interface (to the AXI arbiter)
+    input  logic         mem_req_read_ready_i,
+    output logic         mem_req_read_valid_o,
+    output mem_req_t     mem_req_read_o,
+    output logic         mem_resp_read_ready_o,
+    input  logic         mem_resp_read_valid_i,
+    input  mem_resp_r_t  mem_resp_read_i
 );
 
   //  HPDcache configuration
@@ -85,7 +91,7 @@ module cva6_hpdcache_icache
     //  refills write 128 bits (or a fetch) per cycle in the data RAM
     userCfg.accessWords = (CVA6Cfg.FETCH_WIDTH > 128) ? CVA6Cfg.FETCH_WIDTH / WordWidth :
                                                         128 / WordWidth;
-    //  one outstanding refill (the I$ miss interface handles one request at a time)
+    //  up to two outstanding refills
     userCfg.mshrSets = 1;
     userCfg.mshrWays = 2;
     userCfg.mshrWaysPerRamWord = 2;
@@ -94,7 +100,7 @@ module cva6_hpdcache_icache
     userCfg.mshrUseRegbank = 1'b1;
     userCfg.cbufEntries = 2;
     userCfg.refillCoreRspFeedthrough = 1'b1;
-    userCfg.refillFifoDepth = 2;
+    userCfg.refillFifoDepth = 2 * (CVA6Cfg.ICACHE_LINE_WIDTH / CVA6Cfg.AxiDataWidth);
     //  read-only: no write buffer nor flush
     userCfg.wbufDirEntries = 1;
     userCfg.wbufDataEntries = 1;
@@ -104,8 +110,8 @@ module cva6_hpdcache_icache
     userCfg.flushEntries = 1;
     userCfg.flushFifoDepth = 1;
     userCfg.memAddrWidth = CVA6Cfg.AxiAddrWidth;
-    userCfg.memIdWidth = 2;
-    userCfg.memDataWidth = CVA6Cfg.ICACHE_LINE_WIDTH;
+    userCfg.memIdWidth = MemIdWidth;
+    userCfg.memDataWidth = CVA6Cfg.AxiDataWidth;
     userCfg.wtEn = 1'b0;
     userCfg.wbEn = 1'b0;
     userCfg.lowLatency = 1'b1;
@@ -344,7 +350,7 @@ module cva6_hpdcache_icache
   //  response to the frontend
   assign dreq_o.vaddr = vaddr_q;
   assign dreq_o.dii_id = dii_id_q;
-  assign dreq_o.data = hpd_rsp[0].rdata[0 +: CVA6Cfg.FETCH_WIDTH];
+  assign dreq_o.data = CVA6Cfg.FETCH_WIDTH'(hpd_rsp[0].rdata);
   assign dreq_o.user = '0;
 
   always_comb begin : p_fsm
@@ -509,6 +515,14 @@ module cva6_hpdcache_icache
       default: state_d = IDLE;
     endcase
 
+    //  a fetch whose memory read failed (bus error on the refill or the uncacheable read) is
+    //  responded with an instruction access fault
+    if (dreq_o.valid && rsp_valid && hpd_rsp[0].error && !dreq_o.ex.valid) begin
+      dreq_o.ex.valid = 1'b1;
+      dreq_o.ex.cause = riscv::INSTR_ACCESS_FAULT;
+      dreq_o.ex.tval = CVA6Cfg.XLEN'(vaddr_q);
+    end
+
     //  accept a new request, unless the cache has to be flushed (or invalidated to be enabled)
     if (accept_req && !(flush_d || (en_i && !cache_en_q))) begin
       dreq_o.ready = hpd_req_ready[0];
@@ -559,65 +573,32 @@ module cva6_hpdcache_icache
   end
   //  }}}
 
-  //  Memory interface: HPDcache memory reads on the I$ miss interface, one at a time
+  //  Memory interface: the memory reads of the HPDcache, with the I$ memory IDs offset by
+  //  MemIdBase (in the memory request and response types of the cache subsystem)
   //  {{{
-  logic                    mem_pending_q;
-  hpdcache_mem_id_t        mem_id_q;
-  logic [CVA6Cfg.PLEN-1:0] mem_addr_q;
-  logic                    mem_nc_q;
-  logic                    mem_rsp_valid_q;
-  hpdcache_mem_data_t      mem_rsp_data_q;
+  assign mem_req_read_valid_o = mem_req_read_valid;
+  assign mem_req_read_ready = mem_req_read_ready_i;
 
-  //  an uncacheable fetch reads the 64-bit word holding it
-  assign mem_data_req_o = mem_req_read_valid && !mem_pending_q;
-  assign mem_req_read_ready = mem_data_ack_i && !mem_pending_q;
-  assign mem_data_o.paddr = mem_req_read.mem_req_cacheable ?
-      CVA6Cfg.PLEN'(mem_req_read.mem_req_addr) :
-      CVA6Cfg.PLEN'(mem_req_read.mem_req_addr) & ~CVA6Cfg.PLEN'(7);
-  assign mem_data_o.nc = !mem_req_read.mem_req_cacheable;
-  assign mem_data_o.tid = RdTxId;
-  assign mem_data_o.way = '0;
-
-  //  the response of the I$ miss interface is a cacheline, or the 64-bit word of an uncacheable
-  //  fetch (right-aligned), which the HPDcache expects at its position in the cacheline
-  always_ff @(posedge clk_i or negedge rst_ni) begin : mem_ff
-    if (!rst_ni) begin
-      mem_pending_q   <= 1'b0;
-      mem_id_q        <= '0;
-      mem_addr_q      <= '0;
-      mem_nc_q        <= 1'b0;
-      mem_rsp_valid_q <= 1'b0;
-      mem_rsp_data_q  <= '0;
-    end else begin
-      if (mem_data_req_o && mem_data_ack_i) begin
-        mem_pending_q <= 1'b1;
-        mem_id_q      <= mem_req_read.mem_req_id;
-        mem_addr_q    <= CVA6Cfg.PLEN'(mem_req_read.mem_req_addr);
-        mem_nc_q      <= !mem_req_read.mem_req_cacheable;
-      end
-      if (mem_rtrn_vld_i && (mem_rtrn_i.rtype == ICACHE_IFILL_ACK) && mem_pending_q) begin
-        mem_rsp_valid_q <= 1'b1;
-        if (mem_nc_q) begin
-          mem_rsp_data_q <= hpdcache_mem_data_t'(mem_rtrn_i.data[63:0]) <<
-                            ({mem_addr_q[$clog2(CVA6Cfg.ICACHE_LINE_WIDTH/8)-1:3], 6'b0});
-        end else begin
-          mem_rsp_data_q <= hpdcache_mem_data_t'(mem_rtrn_i.data);
-        end
-      end else if (mem_resp_read_ready) begin
-        if (mem_rsp_valid_q) mem_pending_q <= 1'b0;
-        mem_rsp_valid_q <= 1'b0;
-      end
-    end
+  always_comb begin : mem_req_read_comb
+    mem_req_read_o = '0;
+    mem_req_read_o.mem_req_addr = mem_req_read.mem_req_addr;
+    mem_req_read_o.mem_req_len = mem_req_read.mem_req_len;
+    mem_req_read_o.mem_req_size = mem_req_read.mem_req_size;
+    mem_req_read_o.mem_req_id = MemIdBase | CVA6Cfg.MEM_TID_WIDTH'(mem_req_read.mem_req_id);
+    mem_req_read_o.mem_req_command = mem_req_read.mem_req_command;
+    mem_req_read_o.mem_req_atomic = mem_req_read.mem_req_atomic;
+    mem_req_read_o.mem_req_cacheable = mem_req_read.mem_req_cacheable;
   end
 
-  //  bus errors on fetches are not reported (as with cva6_icache)
-  assign mem_resp_read_valid = mem_rsp_valid_q;
-  always_comb begin : mem_resp_comb
+  assign mem_resp_read_valid = mem_resp_read_valid_i;
+  assign mem_resp_read_ready_o = mem_resp_read_ready;
+
+  always_comb begin : mem_resp_read_comb
     mem_resp_read = '0;
-    mem_resp_read.mem_resp_r_error = hpdcache_pkg::HPDCACHE_MEM_RESP_OK;
-    mem_resp_read.mem_resp_r_id = mem_id_q;
-    mem_resp_read.mem_resp_r_data = mem_rsp_data_q;
-    mem_resp_read.mem_resp_r_last = 1'b1;
+    mem_resp_read.mem_resp_r_error = mem_resp_read_i.mem_resp_r_error;
+    mem_resp_read.mem_resp_r_id = hpdcache_mem_id_t'(mem_resp_read_i.mem_resp_r_id);
+    mem_resp_read.mem_resp_r_data = mem_resp_read_i.mem_resp_r_data;
+    mem_resp_read.mem_resp_r_last = mem_resp_read_i.mem_resp_r_last;
   end
   //  }}}
 
@@ -629,8 +610,10 @@ module cva6_hpdcache_icache
     else $fatal(1, "[l1 icache] cache index width can be maximum 12bit since VM uses 4kB pages");
     assert (!CVA6Cfg.FETCH_USER_EN)
     else $fatal(1, "[l1 icache] fetch user bits are not supported by the HPDcache I$");
-    assert (CVA6Cfg.ICACHE_LINE_WIDTH >= 64)
-    else $fatal(1, "[l1 icache] the cacheline shall be at least 64 bits");
+    assert (CVA6Cfg.ICACHE_LINE_WIDTH >= CVA6Cfg.AxiDataWidth)
+    else $fatal(1, "[l1 icache] the cacheline shall be at least as wide as the AXI data");
+    assert ((MemIdBase & CVA6Cfg.MEM_TID_WIDTH'((1 << HPDcacheCfg.u.memIdWidth) - 1)) == 0)
+    else $fatal(1, "[l1 icache] MemIdBase shall be aligned to the I$ memory IDs");
   end
   //  pragma translate_on
   //  }}}
