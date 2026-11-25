@@ -3110,7 +3110,7 @@ module csr_regfile
       if (CVA6Cfg.CheriPresent) begin
         trap_vector_base_o = cva6_cheri_pkg::set_cap_reg_addr(
           REG_ROOT,
-          CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + (commit_instr_i.int_mode ? CVA6Cfg.ExceptionAddress[CVA6Cfg.VLEN-1:0] : CVA6Cfg.ExceptionCapModeAddress[CVA6Cfg.VLEN-1:0])
+          CVA6Cfg.DmBaseAddress[CVA6Cfg.VLEN-1:0] + (commit_instr_i.int_mode ? CVA6Cfg.ExceptionIntModeAddress[CVA6Cfg.VLEN-1:0] : CVA6Cfg.ExceptionCapModeAddress[CVA6Cfg.VLEN-1:0])
         );
         trap_vector_base_o = cva6_cheri_pkg::set_cap_reg_int_mode(trap_vector_base_o, 1'b0);
       end else begin
