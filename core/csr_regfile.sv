@@ -1045,6 +1045,7 @@ module csr_regfile
 
           // if index is not even and XLEN==64, raise exception
           if (CVA6Cfg.XLEN == 64 && index[0] == 1'b1) read_access_exception = 1'b1;
+          else if (CVA6Cfg.NrPMPEntries == 0) read_access_exception = 1'b1;
           else begin
             // The following line has no effect. It's here just to prevent the synthesizer from crashing
             if (CVA6Cfg.XLEN == 64) index = (index >> 1) << 1;
@@ -1118,13 +1119,17 @@ module csr_regfile
                 riscv::CSR_PMPADDR63: begin
           // index is calculated using PMPADDR0 as the offset
           automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
-          // Important: we only support granularity 8 bytes (G=1)
-          // -> last bit of pmpaddr must be set 0/1 based on the mode:
-          // NA4, NAPOT: 1
-          // TOR, OFF:   0
-          if (pmpcfg_q[index].addr_mode[1] == 1'b1)
-            csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b1};
-          else csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b0};
+          if (CVA6Cfg.NrPMPEntries == 0) begin
+            read_access_exception = 1'b1;
+          end else begin
+            // Important: we only support granularity 8 bytes (G=1)
+            // -> last bit of pmpaddr must be set 0/1 based on the mode:
+            // NA4, NAPOT: 1
+            // TOR, OFF:   0
+            if (pmpcfg_q[index].addr_mode[1] == 1'b1)
+              csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b1};
+            else csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b0};
+          end
         end
         riscv::CSR_DDC:
         if (CVA6Cfg.CheriPresent) begin
@@ -2266,6 +2271,7 @@ module csr_regfile
 
           // if index is not even and XLEN==64, raise exception
           if (CVA6Cfg.XLEN == 64 && index[0] == 1'b1) update_access_exception = 1'b1;
+          else if (CVA6Cfg.NrPMPEntries == 0) update_access_exception = 1'b1;
           else begin
             for (int i = 0; i < CVA6Cfg.XLEN / 8; i++) begin
               if (!pmpcfg_q[index*4+i].locked) pmpcfg_d[index*4+i] = csr_wdata[i*8+:8];
@@ -2338,14 +2344,18 @@ module csr_regfile
                 riscv::CSR_PMPADDR63: begin
           // index is calculated using PMPADDR0 as the offset
           automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
-          // check if the entry or the entry above is locked
-          if (!pmpcfg_q[index].locked) begin
-            if (index < 63) begin
-              if (!(pmpcfg_q[index+1].locked && pmpcfg_q[index+1].addr_mode == riscv::TOR)) begin
+          if (CVA6Cfg.NrPMPEntries == 0) begin
+            update_access_exception = 1'b1;
+          end else begin
+            // check if the entry or the entry above is locked
+            if (!pmpcfg_q[index].locked) begin
+              if (index < 63) begin
+                if (!(pmpcfg_q[index+1].locked && pmpcfg_q[index+1].addr_mode == riscv::TOR)) begin
+                  pmpaddr_d[index] = csr_wdata[CVA6Cfg.PLEN-3:0];
+                end
+              end else begin
                 pmpaddr_d[index] = csr_wdata[CVA6Cfg.PLEN-3:0];
               end
-            end else begin
-              pmpaddr_d[index] = csr_wdata[CVA6Cfg.PLEN-3:0];
             end
           end
         end
