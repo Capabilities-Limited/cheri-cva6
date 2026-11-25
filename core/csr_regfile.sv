@@ -1938,6 +1938,8 @@ module csr_regfile
           mstatus_d.wpri2 = 1'b0;
           mstatus_d.wpri0 = 1'b0;
           mstatus_d.ube   = 1'b0;  // CVA6 is little-endian
+          mstatus_d.sbe   = 1'b0;  // CVA6 is little-endian
+          mstatus_d.mbe   = 1'b0;  // CVA6 is little-endian
           // this register has side-effects on other registers, flush the pipeline
           flush_o         = 1'b1;
         end
