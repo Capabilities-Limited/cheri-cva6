@@ -69,7 +69,9 @@ module cva6_hpdcache_icache
 
   //  HPDcache configuration
   //  {{{
-  localparam int unsigned WordWidth = 32;
+  //  a fetch is a single word: with ECC, a 64-bit word needs 8 check bits where two 32-bit words
+  //  need 14
+  localparam int unsigned WordWidth = (CVA6Cfg.FETCH_WIDTH < 64) ? CVA6Cfg.FETCH_WIDTH : 64;
 
   function automatic hpdcache_pkg::hpdcache_user_cfg_t icacheSetConfig();
     hpdcache_pkg::hpdcache_user_cfg_t userCfg;
@@ -88,19 +90,24 @@ module cva6_hpdcache_icache
                                  CVA6Cfg.ICACHE_SET_ASSOC : 128 / WordWidth;
     userCfg.dataSetsPerRam = userCfg.sets;
     userCfg.dataRamByteEnable = 1'b1;
-    //  refills write 128 bits (or a fetch) per cycle in the data RAM
-    userCfg.accessWords = (CVA6Cfg.FETCH_WIDTH > 128) ? CVA6Cfg.FETCH_WIDTH / WordWidth :
-                                                        128 / WordWidth;
-    //  up to two outstanding refills
+    //  refills write one memory flit (or a fetch, if wider) per cycle in the data RAM. The
+    //  HPDcache buffers a whole cacheline before writing it, so each miss takes clWords /
+    //  accessWords cycles more than its memory burst: a wider access shortens misses, but makes
+    //  the data RAM cuts shallower (fewer sets * clWords / accessWords entries)
+    userCfg.accessWords = ((CVA6Cfg.FETCH_WIDTH > CVA6Cfg.AxiDataWidth) ? CVA6Cfg.FETCH_WIDTH :
+                                                                          CVA6Cfg.AxiDataWidth) /
+                          WordWidth;
+    //  one outstanding refill: fetches are sent one at a time
     userCfg.mshrSets = 1;
-    userCfg.mshrWays = 2;
-    userCfg.mshrWaysPerRamWord = 2;
+    userCfg.mshrWays = 1;
+    userCfg.mshrWaysPerRamWord = 1;
     userCfg.mshrSetsPerRam = 1;
     userCfg.mshrRamByteEnable = 1'b1;
     userCfg.mshrUseRegbank = 1'b1;
     userCfg.cbufEntries = 2;
     userCfg.refillCoreRspFeedthrough = 1'b1;
-    userCfg.refillFifoDepth = 2 * (CVA6Cfg.ICACHE_LINE_WIDTH / CVA6Cfg.AxiDataWidth);
+    //  one cacheline: the minimum, as refills are written once the whole cacheline is buffered
+    userCfg.refillFifoDepth = CVA6Cfg.ICACHE_LINE_WIDTH / CVA6Cfg.AxiDataWidth;
     //  read-only: no write buffer nor flush
     userCfg.wbufDirEntries = 1;
     userCfg.wbufDataEntries = 1;
