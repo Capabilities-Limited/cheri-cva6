@@ -27,7 +27,7 @@ module perf_counters
 ) (
     input logic clk_i,
     input logic rst_ni,
-    input logic debug_mode_i,  // debug mode
+    input logic stop_count_debug_i,  // debug mode and debug stopcount
     // SRAM like interface
     input logic [11:0] addr_i,  // read/write address (up to ariane_pkg::MHPMCounterNum counters possible)
     input logic we_i,  // write enable
@@ -147,7 +147,7 @@ module perf_counters
 
     // Increment the non-inhibited counters with active events
     for (int unsigned i = 1; i <= MHPMCounterNum; i++) begin
-      if ((!debug_mode_i) && (!we_i)) begin
+      if ((!stop_count_debug_i) && (!we_i)) begin
         if ((events[i]) == 1 && (!mcountinhibit_i[i+2])) begin
           generic_counter_d[i] = generic_counter_q[i] + 1'b1;
         end

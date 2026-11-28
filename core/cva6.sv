@@ -633,6 +633,7 @@ module cva6
   logic icache_en_csr;
   logic acc_cons_en_csr;
   logic debug_mode;
+  logic stop_count_debug;
   logic single_step_csr_commit;
   logic halt_for_single_step;
   logic commit_single_step;
@@ -1317,6 +1318,7 @@ module cva6
       .hu_o                    (hu),
       .ddc_o                   (ddc),
       .debug_mode_o            (debug_mode),
+      .stop_count_debug_o      (stop_count_debug),
       .single_step_o           (single_step_csr_commit),
       .halt_for_single_step_o  (halt_for_single_step),
       .commit_single_step_i    (commit_single_step),
@@ -1361,15 +1363,15 @@ module cva6
         .dcache_req_o_t(dcache_req_o_t),
         .NumPorts(NumPorts)
     ) perf_counters_i (
-        .clk_i         (clk_i),
-        .rst_ni        (rst_ni),
-        .debug_mode_i  (debug_mode),
-        .addr_i        (addr_csr_perf),
-        .we_i          (we_csr_perf),
-        .data_i        (data_csr_perf),
-        .data_o        (data_perf_csr),
-        .commit_instr_i(commit_instr_id_commit),
-        .commit_ack_i  (commit_ack),
+        .clk_i             (clk_i),
+        .rst_ni            (rst_ni),
+        .stop_count_debug_i(stop_count_debug),
+        .addr_i            (addr_csr_perf),
+        .we_i              (we_csr_perf),
+        .data_i            (data_csr_perf),
+        .data_o            (data_perf_csr),
+        .commit_instr_i    (commit_instr_id_commit),
+        .commit_ack_i      (commit_ack),
 
         .l1_icache_miss_i   (icache_miss_cache_perf),
         .l1_dcache_miss_i   (dcache_miss_cache_perf),
